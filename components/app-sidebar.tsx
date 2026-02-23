@@ -42,8 +42,8 @@ const data = {
       icon: Building2,
     },
     {
-      title: "Contactos",
-      url: "#",
+      title: "Leads",
+      url: "/dashboard/contacts",
       icon: Users,
     },
     {

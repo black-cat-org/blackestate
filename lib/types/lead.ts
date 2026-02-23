@@ -1,7 +1,10 @@
+export type LeadStatus = "nuevo" | "contactado" | "interesado" | "cerrado" | "descartado"
+
 export interface Lead {
   id: string
   propertyId: string
   source: string | null
+  status: LeadStatus
   name: string
   phone: string
   email: string
@@ -11,6 +14,12 @@ export interface Lead {
   zoneOfInterest?: string
   wantsOffers: boolean
   createdAt: string
+}
+
+export interface LeadFilters {
+  search: string
+  status: LeadStatus | "all"
+  source: string | "all"
 }
 
 export interface PropertyVisit {
