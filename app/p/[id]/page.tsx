@@ -12,7 +12,6 @@ import { LandingAmenities } from "@/components/landing/landing-amenities"
 import { LandingDescription } from "@/components/landing/landing-description"
 import { LandingMap } from "@/components/landing/landing-map"
 import { LandingContactForm } from "@/components/landing/landing-contact-form"
-import { LandingWhatsappButton } from "@/components/landing/landing-whatsapp-button"
 import { LandingSourceTracker } from "@/components/landing/landing-source-tracker"
 import { LandingFooter } from "@/components/landing/landing-footer"
 
@@ -105,7 +104,6 @@ export default async function PropertyLandingPage({ params, searchParams }: Page
       </main>
 
       <LandingFooter />
-      <LandingWhatsappButton property={property} />
       <LandingSourceTracker propertyId={property.id} source={source} />
     </div>
   )

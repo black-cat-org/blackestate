@@ -5,11 +5,12 @@ import Image from "next/image"
 import { cn } from "@/lib/utils"
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { ChevronLeftIcon, ChevronRightIcon, ImageIcon } from "lucide-react"
+import { ChevronLeftIcon, ChevronRightIcon, ImageIcon, XIcon } from "lucide-react"
 
 interface LandingGalleryProps {
   photos: string[]
@@ -94,42 +95,48 @@ export function LandingGallery({ photos, title }: LandingGalleryProps) {
 
       {/* Lightbox */}
       <Dialog open={lightboxOpen} onOpenChange={setLightboxOpen}>
-        <DialogContent className="max-w-4xl border-none bg-black/95 p-0 sm:max-w-4xl">
+        <DialogContent showCloseButton={false} className="max-h-[90vh] max-w-[90vw] gap-0 overflow-hidden rounded-lg border-none bg-black p-0 sm:max-w-4xl">
           <DialogTitle className="sr-only">
             {title} - Foto {currentIndex + 1} de {photos.length}
           </DialogTitle>
-          <div className="relative flex aspect-[4/3] items-center justify-center">
+
+          <DialogClose className="absolute top-3 right-3 z-10 flex size-8 items-center justify-center rounded-full bg-black/60 text-white transition-opacity hover:bg-black/80 focus:outline-none">
+            <XIcon className="size-4" />
+            <span className="sr-only">Cerrar</span>
+          </DialogClose>
+
+          <div className="relative aspect-[4/3]">
             <Image
               src={photos[currentIndex]}
               alt={`${title} - Foto ${currentIndex + 1}`}
               fill
-              className="object-contain"
+              className="object-cover"
               sizes="90vw"
             />
-
-            {photos.length > 1 && (
-              <>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={goToPrevious}
-                  className="absolute left-2 top-1/2 -translate-y-1/2 text-white hover:bg-white/20"
-                >
-                  <ChevronLeftIcon className="size-6" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={goToNext}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-white hover:bg-white/20"
-                >
-                  <ChevronRightIcon className="size-6" />
-                </Button>
-              </>
-            )}
           </div>
 
-          <div className="pb-4 text-center text-sm text-white/70">
+          {photos.length > 1 && (
+            <>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={goToPrevious}
+                className="absolute left-2 top-1/2 -translate-y-1/2 text-white hover:bg-white/20"
+              >
+                <ChevronLeftIcon className="size-6" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={goToNext}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-white hover:bg-white/20"
+              >
+                <ChevronRightIcon className="size-6" />
+              </Button>
+            </>
+          )}
+
+          <div className="absolute bottom-4 left-1/2 z-10 -translate-x-1/2 rounded-full bg-black/60 px-3 py-1 text-sm text-white">
             {currentIndex + 1} / {photos.length}
           </div>
         </DialogContent>

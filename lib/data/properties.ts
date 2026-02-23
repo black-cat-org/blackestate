@@ -34,7 +34,11 @@ const mockProperties: Property[] = [
     orientation: "norte",
     amenities: ["pileta", "quincho", "parrilla", "jardin", "terraza", "calefaccion", "aire_acondicionado"],
     media: {
-      photos: ["/placeholder-house-1.jpg", "/placeholder-house-2.jpg"],
+      photos: [
+        "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=1200&q=80",
+        "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1200&q=80",
+        "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=1200&q=80",
+      ],
       videoUrl: "https://youtube.com/watch?v=example1",
       blueprints: [],
     },
@@ -75,7 +79,10 @@ const mockProperties: Property[] = [
     orientation: "este",
     amenities: ["balcon", "ascensor", "seguridad", "laundry", "gym"],
     media: {
-      photos: ["/placeholder-apt-1.jpg"],
+      photos: [
+        "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=1200&q=80",
+        "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=1200&q=80",
+      ],
       blueprints: [],
     },
     createdAt: "2026-02-01T09:00:00Z",
@@ -102,7 +109,13 @@ const mockProperties: Property[] = [
     },
     totalArea: { value: 800, unit: "m2" },
     amenities: [],
-    media: { photos: ["/placeholder-land-1.jpg"], blueprints: [] },
+    media: {
+      photos: [
+        "https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=1200&q=80",
+        "https://images.unsplash.com/photo-1628624747186-a941c476b7ef?w=1200&q=80",
+      ],
+      blueprints: [],
+    },
     createdAt: "2026-01-20T08:00:00Z",
     updatedAt: "2026-01-20T08:00:00Z",
   },
@@ -132,7 +145,13 @@ const mockProperties: Property[] = [
     bathrooms: 2,
     condition: "buena",
     amenities: ["aire_acondicionado"],
-    media: { photos: ["/placeholder-commercial-1.jpg"], blueprints: [] },
+    media: {
+      photos: [
+        "https://images.unsplash.com/photo-1604328698692-f76ea9498e76?w=1200&q=80",
+        "https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=1200&q=80",
+      ],
+      blueprints: [],
+    },
     createdAt: "2025-12-10T10:00:00Z",
     updatedAt: "2026-02-01T09:00:00Z",
   },
@@ -165,7 +184,13 @@ const mockProperties: Property[] = [
     condition: "excelente",
     orientation: "norte",
     amenities: ["ascensor", "seguridad", "aire_acondicionado", "calefaccion"],
-    media: { photos: ["/placeholder-office-1.jpg"], blueprints: [] },
+    media: {
+      photos: [
+        "https://images.unsplash.com/photo-1497366216548-37526070297c?w=1200&q=80",
+        "https://images.unsplash.com/photo-1497366811353-6870744d04b2?w=1200&q=80",
+      ],
+      blueprints: [],
+    },
     createdAt: "2026-02-05T12:00:00Z",
     updatedAt: "2026-02-18T16:00:00Z",
   },
@@ -199,7 +224,13 @@ const mockProperties: Property[] = [
     condition: "excelente",
     orientation: "oeste",
     amenities: ["parrilla", "terraza", "calefaccion"],
-    media: { photos: ["/placeholder-ph-1.jpg"], blueprints: [] },
+    media: {
+      photos: [
+        "https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?w=1200&q=80",
+        "https://images.unsplash.com/photo-1600573472592-401b489a3cdc?w=1200&q=80",
+      ],
+      blueprints: [],
+    },
     createdAt: "2026-01-28T14:00:00Z",
     updatedAt: "2026-02-12T10:00:00Z",
   },
@@ -226,7 +257,12 @@ const mockProperties: Property[] = [
     bathrooms: 2,
     condition: "regular",
     amenities: [],
-    media: { photos: [], blueprints: [] },
+    media: {
+      photos: [
+        "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=1200&q=80",
+      ],
+      blueprints: [],
+    },
     createdAt: "2026-02-20T08:00:00Z",
     updatedAt: "2026-02-20T08:00:00Z",
   },
@@ -260,7 +296,11 @@ const mockProperties: Property[] = [
     orientation: "norte",
     amenities: ["pileta", "quincho", "parrilla", "jardin", "calefaccion"],
     media: {
-      photos: ["/placeholder-cabin-1.jpg"],
+      photos: [
+        "https://images.unsplash.com/photo-1510798831971-661eb04b3739?w=1200&q=80",
+        "https://images.unsplash.com/photo-1449158743715-0a90ebb6d2d8?w=1200&q=80",
+        "https://images.unsplash.com/photo-1587061949409-02df41d5e562?w=1200&q=80",
+      ],
       virtualTourUrl: "https://example.com/tour",
       blueprints: [],
     },
@@ -300,7 +340,13 @@ const mockProperties: Property[] = [
     condition: "buena",
     orientation: "noreste",
     amenities: ["balcon", "ascensor", "seguridad", "aire_acondicionado", "calefaccion", "gym"],
-    media: { photos: ["/placeholder-temp-1.jpg"], blueprints: [] },
+    media: {
+      photos: [
+        "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=1200&q=80",
+        "https://images.unsplash.com/photo-1560185893-a55cbc8c57e8?w=1200&q=80",
+      ],
+      blueprints: [],
+    },
     createdAt: "2025-12-20T09:00:00Z",
     updatedAt: "2026-02-08T11:00:00Z",
   },
@@ -335,7 +381,14 @@ const mockProperties: Property[] = [
     condition: "excelente",
     orientation: "norte",
     amenities: ["pileta", "quincho", "parrilla", "jardin", "terraza", "seguridad", "calefaccion", "aire_acondicionado"],
-    media: { photos: ["/placeholder-quinta-1.jpg"], blueprints: [] },
+    media: {
+      photos: [
+        "https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=1200&q=80",
+        "https://images.unsplash.com/photo-1583608205776-bfd35f0d9f83?w=1200&q=80",
+        "https://images.unsplash.com/photo-1600047509807-ba8f99d2cdde?w=1200&q=80",
+      ],
+      blueprints: [],
+    },
     createdAt: "2026-01-10T10:00:00Z",
     updatedAt: "2026-02-14T09:00:00Z",
   },

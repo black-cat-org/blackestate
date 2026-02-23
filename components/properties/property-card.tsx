@@ -1,5 +1,6 @@
+import Image from "next/image"
 import Link from "next/link"
-import { Bath, BedDouble, Car, Maximize2, MapPin } from "lucide-react"
+import { Bath, BedDouble, Car, ImageIcon, Maximize2, MapPin } from "lucide-react"
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
 import { PropertyStatusBadge } from "./property-status-badge"
 import { PropertyActionsMenu } from "./property-actions-menu"
@@ -9,12 +10,22 @@ import type { Property } from "@/lib/types/property"
 
 export function PropertyCard({ property }: { property: Property }) {
   return (
-    <Card className="overflow-hidden">
+    <Card className="overflow-hidden pt-0">
       <Link href={`/dashboard/properties/${property.id}`}>
-        <div className="bg-muted relative aspect-video">
-          <div className="absolute inset-0 flex items-center justify-center text-muted-foreground text-sm">
-            {property.media.photos.length > 0 ? "📷" : "Sin fotos"}
-          </div>
+        <div className="bg-muted relative aspect-video overflow-hidden">
+          {property.media.photos.length > 0 ? (
+            <Image
+              src={property.media.photos[0]}
+              alt={property.title}
+              fill
+              className="object-cover transition-transform duration-300 hover:scale-105"
+              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+            />
+          ) : (
+            <div className="absolute inset-0 flex items-center justify-center text-muted-foreground">
+              <ImageIcon className="size-8" />
+            </div>
+          )}
           <div className="absolute top-2 left-2 flex gap-1.5">
             <span className="bg-primary text-primary-foreground rounded-full px-2.5 py-0.5 text-xs font-medium">
               {OPERATION_TYPE_LABELS[property.operationType]}
