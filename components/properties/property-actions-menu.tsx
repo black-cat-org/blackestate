@@ -1,7 +1,8 @@
 "use client"
 
+import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { MoreHorizontal, Eye, Pencil, Copy, Trash2 } from "lucide-react"
+import { MoreHorizontal, Eye, Pencil, Copy, Trash2, Share2 } from "lucide-react"
 import Link from "next/link"
 import {
   DropdownMenu,
@@ -17,10 +18,12 @@ import { Button } from "@/components/ui/button"
 import { STATUS_TRANSITIONS } from "@/lib/constants/property"
 import { updateProperty, duplicateProperty, deleteProperty } from "@/lib/data/properties"
 import { toast } from "sonner"
+import { ShareLinksDialog } from "@/components/properties/share-links-dialog"
 import type { Property } from "@/lib/types/property"
 
 export function PropertyActionsMenu({ property }: { property: Property }) {
   const router = useRouter()
+  const [shareOpen, setShareOpen] = useState(false)
   const transitions = STATUS_TRANSITIONS[property.status]
 
   const handleStatusChange = async (newStatus: Property["status"]) => {
@@ -54,6 +57,7 @@ export function PropertyActionsMenu({ property }: { property: Property }) {
   }
 
   return (
+    <>
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="icon" className="size-8">
@@ -78,6 +82,12 @@ export function PropertyActionsMenu({ property }: { property: Property }) {
           <Copy className="text-muted-foreground" />
           Duplicar
         </DropdownMenuItem>
+        {property.status === "activa" && (
+          <DropdownMenuItem onClick={() => setShareOpen(true)}>
+            <Share2 className="text-muted-foreground" />
+            Compartir
+          </DropdownMenuItem>
+        )}
         {transitions.length > 0 && (
           <DropdownMenuSub>
             <DropdownMenuSubTrigger>Cambiar estado</DropdownMenuSubTrigger>
@@ -97,5 +107,11 @@ export function PropertyActionsMenu({ property }: { property: Property }) {
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
+    <ShareLinksDialog
+      property={property}
+      open={shareOpen}
+      onOpenChange={setShareOpen}
+    />
+    </>
   )
 }

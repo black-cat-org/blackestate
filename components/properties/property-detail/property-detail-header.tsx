@@ -1,8 +1,9 @@
 "use client"
 
+import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { ArrowLeft, Pencil } from "lucide-react"
+import { ArrowLeft, Pencil, Share2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -14,10 +15,12 @@ import { PropertyStatusBadge } from "@/components/properties/property-status-bad
 import { OPERATION_TYPE_LABELS, PROPERTY_TYPE_LABELS, STATUS_TRANSITIONS } from "@/lib/constants/property"
 import { updateProperty } from "@/lib/data/properties"
 import { toast } from "sonner"
+import { ShareLinksDialog } from "@/components/properties/share-links-dialog"
 import type { Property } from "@/lib/types/property"
 
 export function PropertyDetailHeader({ property }: { property: Property }) {
   const router = useRouter()
+  const [shareOpen, setShareOpen] = useState(false)
   const transitions = STATUS_TRANSITIONS[property.status]
 
   const handleStatusChange = async (newStatus: Property["status"]) => {
@@ -68,13 +71,26 @@ export function PropertyDetailHeader({ property }: { property: Property }) {
             </span>
           </div>
         </div>
-        <Button variant="outline" asChild>
-          <Link href={`/dashboard/properties/${property.id}/edit`}>
-            <Pencil className="mr-2 size-4" />
-            Editar
-          </Link>
-        </Button>
+        <div className="flex items-center gap-2">
+          {property.status === "activa" && (
+            <Button variant="outline" onClick={() => setShareOpen(true)}>
+              <Share2 className="mr-2 size-4" />
+              Compartir
+            </Button>
+          )}
+          <Button variant="outline" asChild>
+            <Link href={`/dashboard/properties/${property.id}/edit`}>
+              <Pencil className="mr-2 size-4" />
+              Editar
+            </Link>
+          </Button>
+        </div>
       </div>
+      <ShareLinksDialog
+        property={property}
+        open={shareOpen}
+        onOpenChange={setShareOpen}
+      />
     </div>
   )
 }
