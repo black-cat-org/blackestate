@@ -12,6 +12,7 @@ interface PropertyFormNavProps {
   onNext: () => void
   onSave: () => void
   isLastStep: boolean
+  saveLabel?: string
 }
 
 export function PropertyFormNav({
@@ -21,6 +22,7 @@ export function PropertyFormNav({
   onNext,
   onSave,
   isLastStep,
+  saveLabel = "Guardar como borrador",
 }: PropertyFormNavProps) {
   return (
     <div className="space-y-6">
@@ -72,7 +74,7 @@ export function PropertyFormNav({
         </Button>
         {isLastStep ? (
           <Button type="button" onClick={onSave}>
-            Guardar como borrador
+            {saveLabel}
           </Button>
         ) : (
           <Button type="button" onClick={onNext}>

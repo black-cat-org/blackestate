@@ -1,6 +1,7 @@
 "use client"
 
-import { MoreHorizontal, Eye, Pencil, Copy, Pause, Trash2 } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { MoreHorizontal, Eye, Pencil, Copy, Trash2 } from "lucide-react"
 import Link from "next/link"
 import {
   DropdownMenu,
@@ -8,11 +9,50 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
+import { STATUS_TRANSITIONS } from "@/lib/constants/property"
+import { updateProperty, duplicateProperty, deleteProperty } from "@/lib/data/properties"
+import { toast } from "sonner"
 import type { Property } from "@/lib/types/property"
 
 export function PropertyActionsMenu({ property }: { property: Property }) {
+  const router = useRouter()
+  const transitions = STATUS_TRANSITIONS[property.status]
+
+  const handleStatusChange = async (newStatus: Property["status"]) => {
+    try {
+      await updateProperty(property.id, { status: newStatus })
+      toast.success("Estado actualizado")
+      router.refresh()
+    } catch {
+      toast.error("Error al cambiar estado")
+    }
+  }
+
+  const handleDuplicate = async () => {
+    try {
+      await duplicateProperty(property.id)
+      toast.success("Propiedad duplicada")
+      router.refresh()
+    } catch {
+      toast.error("Error al duplicar")
+    }
+  }
+
+  const handleDelete = async () => {
+    try {
+      await deleteProperty(property.id)
+      toast.success("Propiedad eliminada")
+      router.refresh()
+    } catch {
+      toast.error("Error al eliminar")
+    }
+  }
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -28,20 +68,30 @@ export function PropertyActionsMenu({ property }: { property: Property }) {
             Ver detalle
           </Link>
         </DropdownMenuItem>
-        <DropdownMenuItem disabled>
-          <Pencil className="text-muted-foreground" />
-          Editar
+        <DropdownMenuItem asChild>
+          <Link href={`/dashboard/properties/${property.id}/edit`}>
+            <Pencil className="text-muted-foreground" />
+            Editar
+          </Link>
         </DropdownMenuItem>
-        <DropdownMenuItem disabled>
+        <DropdownMenuItem onClick={handleDuplicate}>
           <Copy className="text-muted-foreground" />
           Duplicar
         </DropdownMenuItem>
-        <DropdownMenuItem disabled>
-          <Pause className="text-muted-foreground" />
-          Pausar
-        </DropdownMenuItem>
+        {transitions.length > 0 && (
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger>Cambiar estado</DropdownMenuSubTrigger>
+            <DropdownMenuSubContent>
+              {transitions.map((t) => (
+                <DropdownMenuItem key={t.status} onClick={() => handleStatusChange(t.status)}>
+                  {t.label}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
+        )}
         <DropdownMenuSeparator />
-        <DropdownMenuItem disabled className="text-destructive">
+        <DropdownMenuItem onClick={handleDelete} className="text-destructive">
           <Trash2 className="text-muted-foreground" />
           Eliminar
         </DropdownMenuItem>

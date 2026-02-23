@@ -4,6 +4,7 @@ import { UseFormReturn } from "react-hook-form"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { Switch } from "@/components/ui/switch"
 import {
   Select,
   SelectContent,
@@ -42,6 +43,16 @@ export function BasicDataStep({ form }: { form: UseFormReturn<PropertyFormData> 
         {errors.description && (
           <p className="text-sm text-destructive">{errors.description.message}</p>
         )}
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="shortDescription">Descripción corta</Label>
+        <Textarea
+          id="shortDescription"
+          {...register("shortDescription")}
+          placeholder="Resumen breve para listados y redes sociales..."
+          rows={2}
+        />
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
@@ -134,6 +145,18 @@ export function BasicDataStep({ form }: { form: UseFormReturn<PropertyFormData> 
             </Select>
           </div>
         </div>
+      </div>
+
+      <div className="flex items-center justify-between rounded-lg border p-4">
+        <div className="space-y-0.5">
+          <Label htmlFor="negotiable">Precio negociable</Label>
+          <p className="text-sm text-muted-foreground">Indicar si el precio es negociable</p>
+        </div>
+        <Switch
+          id="negotiable"
+          checked={watch("negotiable")}
+          onCheckedChange={(checked) => setValue("negotiable", checked)}
+        />
       </div>
     </div>
   )

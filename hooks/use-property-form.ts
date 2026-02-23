@@ -8,10 +8,12 @@ import type { PropertyFormData } from "@/lib/types/property"
 const basicDataSchema = z.object({
   title: z.string().min(5, "El título debe tener al menos 5 caracteres"),
   description: z.string().min(10, "La descripción debe tener al menos 10 caracteres"),
+  shortDescription: z.string().optional(),
   type: z.string().min(1, "Selecciona un tipo de propiedad"),
   operationType: z.string().min(1, "Selecciona un tipo de operación"),
   price: z.coerce.number().positive("El precio debe ser mayor a 0"),
   currency: z.string(),
+  negotiable: z.boolean(),
   expenses: z.union([z.coerce.number().nonnegative(), z.literal("")]).optional(),
   expensesCurrency: z.string(),
 })
@@ -55,10 +57,12 @@ const stepSchemas = [basicDataSchema, locationSchema, featuresSchema, mediaSchem
 const defaultValues: PropertyFormData = {
   title: "",
   description: "",
+  shortDescription: "",
   type: "",
   operationType: "",
   price: "",
   currency: "USD",
+  negotiable: false,
   expenses: "",
   expensesCurrency: "ARS",
   country: "Argentina",
@@ -88,11 +92,11 @@ const defaultValues: PropertyFormData = {
   blueprints: [],
 }
 
-export function usePropertyForm() {
+export function usePropertyForm(initialData?: Partial<PropertyFormData>) {
   const [currentStep, setCurrentStep] = useState(0)
 
   const form = useForm<PropertyFormData>({
-    defaultValues,
+    defaultValues: initialData ? { ...defaultValues, ...initialData } : defaultValues,
     mode: "onTouched",
   })
 

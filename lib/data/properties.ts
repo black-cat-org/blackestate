@@ -5,10 +5,12 @@ const mockProperties: Property[] = [
     id: "1",
     title: "Casa moderna en Palermo",
     description: "Hermosa casa de 3 plantas con diseño contemporáneo. Amplios ambientes, mucha luz natural. Ideal para familia. Ubicada en una de las mejores zonas de Palermo.",
+    shortDescription: "Casa 3 plantas, diseño contemporáneo en Palermo",
     type: "house",
     operationType: "venta",
     status: "activa",
     price: { amount: 450000, currency: "USD" },
+    negotiable: true,
     expenses: { amount: 35000, currency: "ARS" },
     address: {
       street: "Honduras",
@@ -47,6 +49,7 @@ const mockProperties: Property[] = [
     operationType: "alquiler",
     status: "activa",
     price: { amount: 650000, currency: "ARS" },
+    negotiable: false,
     expenses: { amount: 120000, currency: "ARS" },
     address: {
       street: "Cabildo",
@@ -86,6 +89,7 @@ const mockProperties: Property[] = [
     operationType: "venta",
     status: "activa",
     price: { amount: 120000, currency: "USD" },
+    negotiable: true,
     address: {
       street: "Los Robles",
       number: "350",
@@ -110,6 +114,7 @@ const mockProperties: Property[] = [
     operationType: "alquiler",
     status: "pausada",
     price: { amount: 3500, currency: "USD" },
+    negotiable: false,
     expenses: { amount: 85000, currency: "ARS" },
     address: {
       street: "Av. Santa Fe",
@@ -139,6 +144,7 @@ const mockProperties: Property[] = [
     operationType: "alquiler",
     status: "en_revision",
     price: { amount: 5800, currency: "USD" },
+    negotiable: true,
     expenses: { amount: 250000, currency: "ARS" },
     address: {
       street: "Av. Corrientes",
@@ -171,6 +177,7 @@ const mockProperties: Property[] = [
     operationType: "venta",
     status: "activa",
     price: { amount: 185000, currency: "USD" },
+    negotiable: true,
     address: {
       street: "Gurruchaga",
       number: "780",
@@ -204,6 +211,7 @@ const mockProperties: Property[] = [
     operationType: "alquiler",
     status: "borrador",
     price: { amount: 4200, currency: "USD" },
+    negotiable: false,
     address: {
       street: "Av. Mitre",
       number: "1800",
@@ -226,10 +234,12 @@ const mockProperties: Property[] = [
     id: "8",
     title: "Cabaña en Bariloche con vista al lago",
     description: "Cabaña de montaña con vista al Lago Nahuel Huapi. Construcción en madera y piedra. Ideal para alquiler temporario.",
+    shortDescription: "Cabaña con vista al lago, ideal alquiler temporario",
     type: "cabin",
     operationType: "venta",
     status: "vendida",
     price: { amount: 290000, currency: "USD" },
+    negotiable: false,
     address: {
       street: "Circuito Chico",
       number: "km 18",
@@ -265,6 +275,7 @@ const mockProperties: Property[] = [
     operationType: "temporal",
     status: "alquilada",
     price: { amount: 1800, currency: "USD" },
+    negotiable: false,
     expenses: { amount: 95000, currency: "ARS" },
     address: {
       street: "Av. Alvear",
@@ -297,10 +308,12 @@ const mockProperties: Property[] = [
     id: "10",
     title: "Casa quinta en Escobar",
     description: "Casa quinta con parque, pileta y cancha de tenis. Barrio cerrado con seguridad 24hs. Ideal para familia.",
+    shortDescription: "Casa quinta con parque, pileta y cancha de tenis",
     type: "house",
     operationType: "venta",
     status: "rechazada",
     price: { amount: 380000, currency: "USD" },
+    negotiable: true,
     expenses: { amount: 180000, currency: "ARS" },
     address: {
       street: "Los Sauces",
@@ -343,10 +356,12 @@ export async function createProperty(data: PropertyFormData): Promise<Property> 
     id: String(properties.length + 1),
     title: data.title,
     description: data.description,
+    shortDescription: data.shortDescription || undefined,
     type: data.type as Property["type"],
     operationType: data.operationType as Property["operationType"],
     status: "borrador",
     price: { amount: Number(data.price), currency: data.currency },
+    negotiable: data.negotiable,
     expenses: data.expenses ? { amount: Number(data.expenses), currency: data.expensesCurrency } : undefined,
     address: {
       street: data.street,
@@ -393,4 +408,59 @@ export async function updateProperty(id: string, data: Partial<Property>): Promi
 export async function deleteProperty(id: string): Promise<void> {
   properties = properties.filter((p) => p.id !== id)
   return Promise.resolve()
+}
+
+export async function duplicateProperty(id: string): Promise<Property> {
+  const original = properties.find((p) => p.id === id)
+  if (!original) throw new Error("Property not found")
+  const duplicate: Property = {
+    ...original,
+    id: String(properties.length + 1),
+    title: `${original.title} (copia)`,
+    status: "borrador",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  }
+  properties = [duplicate, ...properties]
+  return Promise.resolve(duplicate)
+}
+
+export function propertyToFormData(property: Property): PropertyFormData {
+  return {
+    title: property.title,
+    description: property.description,
+    shortDescription: property.shortDescription || "",
+    type: property.type,
+    operationType: property.operationType,
+    price: property.price.amount,
+    currency: property.price.currency,
+    negotiable: property.negotiable,
+    expenses: property.expenses?.amount ?? "",
+    expensesCurrency: property.expenses?.currency ?? "ARS",
+    country: property.address.country,
+    state: property.address.state,
+    city: property.address.city,
+    neighborhood: property.address.neighborhood || "",
+    street: property.address.street,
+    floor: property.address.floor || "",
+    apartment: property.address.apartment || "",
+    googleMapsUrl: property.address.googleMapsUrl || "",
+    lat: property.address.lat?.toString() || "",
+    lng: property.address.lng?.toString() || "",
+    totalArea: property.totalArea?.value ?? "",
+    coveredArea: property.coveredArea?.value ?? "",
+    surfaceUnit: property.totalArea?.unit || property.coveredArea?.unit || "m2",
+    rooms: property.rooms ?? "",
+    bedrooms: property.bedrooms ?? "",
+    bathrooms: property.bathrooms ?? "",
+    garages: property.garages ?? "",
+    age: property.age ?? "",
+    condition: property.condition || "",
+    orientation: property.orientation || "",
+    amenities: property.amenities,
+    photos: property.media.photos,
+    videoUrl: property.media.videoUrl || "",
+    virtualTourUrl: property.media.virtualTourUrl || "",
+    blueprints: property.media.blueprints,
+  }
 }

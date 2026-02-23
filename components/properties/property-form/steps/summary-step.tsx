@@ -69,6 +69,7 @@ export function SummaryStep({
       <SummarySection title="Datos básicos" stepIndex={0} onEdit={onGoToStep}>
         <SummaryRow label="Título" value={values.title} />
         <SummaryRow label="Descripción" value={values.description} />
+        <SummaryRow label="Descripción corta" value={values.shortDescription} />
         <SummaryRow
           label="Tipo"
           value={values.type ? PROPERTY_TYPE_LABELS[values.type as PropertyType] : undefined}
@@ -81,6 +82,7 @@ export function SummaryStep({
           label="Precio"
           value={values.price ? `${currencySymbol} ${Number(values.price).toLocaleString("es-AR")}` : undefined}
         />
+        <SummaryRow label="Negociable" value={values.negotiable ? "Sí" : "No"} />
         {values.expenses && (
           <SummaryRow
             label="Expensas"

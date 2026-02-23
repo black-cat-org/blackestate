@@ -1,4 +1,5 @@
 import { Bath, BedDouble, Car, DoorOpen, Maximize2, MapPin, Calendar, Compass } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { formatPrice, formatSurface } from "@/lib/utils/format"
 import {
@@ -22,7 +23,12 @@ export function PropertyDetailInfo({ property }: { property: Property }) {
   return (
     <div className="space-y-6">
       <InfoSection title="Precio">
-        <p className="text-3xl font-bold">{formatPrice(property.price)}</p>
+        <div className="flex items-center gap-3">
+          <p className="text-3xl font-bold">{formatPrice(property.price)}</p>
+          {property.negotiable && (
+            <Badge variant="secondary">Negociable</Badge>
+          )}
+        </div>
         {property.expenses && (
           <p className="text-muted-foreground text-sm">
             Expensas: {CURRENCY_SYMBOLS[property.expenses.currency]}{" "}
@@ -163,6 +169,9 @@ export function PropertyDetailInfo({ property }: { property: Property }) {
       <Separator />
 
       <InfoSection title="Descripción">
+        {property.shortDescription && (
+          <p className="text-sm font-medium text-muted-foreground italic mb-2">{property.shortDescription}</p>
+        )}
         <p className="text-sm leading-relaxed">{property.description}</p>
       </InfoSection>
     </div>

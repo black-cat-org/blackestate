@@ -58,10 +58,12 @@ export interface Property {
   id: string
   title: string
   description: string
+  shortDescription?: string
   type: PropertyType
   operationType: OperationType
   status: PropertyStatus
   price: CurrencyAmount
+  negotiable: boolean
   expenses?: CurrencyAmount
   address: PropertyAddress
   totalArea?: SurfaceArea
@@ -82,10 +84,12 @@ export interface Property {
 export interface PropertyFormData {
   title: string
   description: string
+  shortDescription: string
   type: PropertyType | ""
   operationType: OperationType | ""
   price: number | ""
   currency: Currency
+  negotiable: boolean
   expenses: number | ""
   expensesCurrency: Currency
   country: string

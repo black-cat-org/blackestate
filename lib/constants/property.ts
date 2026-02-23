@@ -99,6 +99,29 @@ export const ORIENTATION_OPTIONS = [
   { value: "suroeste", label: "Suroeste" },
 ] as const
 
+export const STATUS_TRANSITIONS: Record<PropertyStatus, { status: PropertyStatus; label: string }[]> = {
+  borrador: [
+    { status: "en_revision", label: "Enviar a revisión" },
+  ],
+  en_revision: [
+    { status: "activa", label: "Activar" },
+    { status: "rechazada", label: "Rechazar" },
+  ],
+  activa: [
+    { status: "pausada", label: "Pausar" },
+    { status: "vendida", label: "Marcar como vendida" },
+    { status: "alquilada", label: "Marcar como alquilada" },
+  ],
+  pausada: [
+    { status: "activa", label: "Reactivar" },
+  ],
+  vendida: [],
+  alquilada: [],
+  rechazada: [
+    { status: "borrador", label: "Volver a borrador" },
+  ],
+}
+
 export const WIZARD_STEPS = [
   { id: 1, title: "Datos básicos", description: "Título, tipo y precio" },
   { id: 2, title: "Ubicación", description: "Dirección y coordenadas" },
