@@ -7,6 +7,7 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb"
+import { DashboardHeader } from "@/components/dashboard-header"
 import { PropertyDetailHeader } from "@/components/properties/property-detail/property-detail-header"
 import { PropertyDetailGallery } from "@/components/properties/property-detail/property-detail-gallery"
 import { PropertyDetailInfo } from "@/components/properties/property-detail/property-detail-info"
@@ -27,30 +28,34 @@ export default async function PropertyDetailPage({
 
   return (
     <>
-      <Breadcrumb>
-        <BreadcrumbList>
-          <BreadcrumbItem className="hidden md:block">
-            <BreadcrumbLink href="/dashboard">Dashboard</BreadcrumbLink>
-          </BreadcrumbItem>
-          <BreadcrumbSeparator className="hidden md:block" />
-          <BreadcrumbItem className="hidden md:block">
-            <BreadcrumbLink href="/dashboard/properties">Propiedades</BreadcrumbLink>
-          </BreadcrumbItem>
-          <BreadcrumbSeparator className="hidden md:block" />
-          <BreadcrumbItem>
-            <BreadcrumbPage>{property.title}</BreadcrumbPage>
-          </BreadcrumbItem>
-        </BreadcrumbList>
-      </Breadcrumb>
+      <DashboardHeader>
+        <Breadcrumb>
+          <BreadcrumbList>
+            <BreadcrumbItem className="hidden md:block">
+              <BreadcrumbLink href="/dashboard">Dashboard</BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator className="hidden md:block" />
+            <BreadcrumbItem className="hidden md:block">
+              <BreadcrumbLink href="/dashboard/properties">Propiedades</BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator className="hidden md:block" />
+            <BreadcrumbItem>
+              <BreadcrumbPage>{property.title}</BreadcrumbPage>
+            </BreadcrumbItem>
+          </BreadcrumbList>
+        </Breadcrumb>
+      </DashboardHeader>
 
-      <PropertyDetailHeader property={property} />
+      <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
+        <PropertyDetailHeader property={property} />
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <div className="space-y-6">
-          <PropertyDetailGallery property={property} />
-          <PropertyDetailMap address={property.address} />
+        <div className="grid gap-6 lg:grid-cols-2">
+          <div className="space-y-6">
+            <PropertyDetailGallery property={property} />
+            <PropertyDetailMap address={property.address} />
+          </div>
+          <PropertyDetailInfo property={property} />
         </div>
-        <PropertyDetailInfo property={property} />
       </div>
     </>
   )

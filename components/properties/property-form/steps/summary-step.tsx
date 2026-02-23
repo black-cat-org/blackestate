@@ -90,14 +90,14 @@ export function SummaryStep({
       </SummarySection>
 
       <SummarySection title="Ubicación" stepIndex={1} onEdit={onGoToStep}>
+        <SummaryRow label="País" value={values.country} />
+        <SummaryRow label="Provincia" value={values.state} />
+        <SummaryRow label="Ciudad" value={values.city} />
+        <SummaryRow label="Barrio" value={values.neighborhood} />
         <SummaryRow
           label="Dirección"
-          value={values.street ? `${values.street} ${values.number}${values.floor ? `, Piso ${values.floor}` : ""}${values.apartment ? ` ${values.apartment}` : ""}` : undefined}
+          value={values.street ? `${values.street}${values.floor ? `, Piso ${values.floor}` : ""}${values.apartment ? ` ${values.apartment}` : ""}` : undefined}
         />
-        <SummaryRow label="Ciudad" value={values.city} />
-        <SummaryRow label="Provincia" value={values.state} />
-        <SummaryRow label="País" value={values.country} />
-        <SummaryRow label="Barrio" value={values.neighborhood} />
         {values.lat && values.lng && (
           <SummaryRow label="Coordenadas" value={`${values.lat}, ${values.lng}`} />
         )}
@@ -112,7 +112,7 @@ export function SummaryStep({
         )}
         {values.coveredArea && (
           <SummaryRow
-            label="Sup. cubierta"
+            label="Sup. construida"
             value={`${values.coveredArea} ${SURFACE_UNIT_LABELS[values.surfaceUnit as SurfaceUnit]}`}
           />
         )}
@@ -137,7 +137,6 @@ export function SummaryStep({
         <SummaryRow label="Video" value={values.videoUrl} />
         <SummaryRow label="Tour virtual" value={values.virtualTourUrl} />
         <SummaryRow label="Planos" value={`${values.blueprints?.length || 0} archivos`} />
-        <SummaryRow label="Documentos" value={`${values.documents?.length || 0} archivos`} />
       </SummarySection>
     </div>
   )

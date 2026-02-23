@@ -43,7 +43,7 @@ export function FeaturesStep({ form }: { form: UseFormReturn<PropertyFormData> }
           <Input id="totalArea" type="number" {...register("totalArea")} placeholder="0" />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="coveredArea">Superficie cubierta</Label>
+          <Label htmlFor="coveredArea">Superficie construida</Label>
           <Input id="coveredArea" type="number" {...register("coveredArea")} placeholder="0" />
         </div>
         <div className="space-y-2">

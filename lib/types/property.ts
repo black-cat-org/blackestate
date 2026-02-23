@@ -35,16 +35,16 @@ export interface SurfaceArea {
 
 export interface PropertyAddress {
   street: string
-  number: string
+  number?: string
   floor?: string
   apartment?: string
   city: string
   state: string
   country: string
   neighborhood?: string
-  zipCode?: string
   lat?: number
   lng?: number
+  googleMapsUrl?: string
 }
 
 export interface PropertyMedia {
@@ -52,7 +52,6 @@ export interface PropertyMedia {
   videoUrl?: string
   virtualTourUrl?: string
   blueprints: string[]
-  documents: string[]
 }
 
 export interface Property {
@@ -89,15 +88,14 @@ export interface PropertyFormData {
   currency: Currency
   expenses: number | ""
   expensesCurrency: Currency
+  country: string
+  state: string
+  city: string
+  neighborhood: string
   street: string
-  number: string
   floor: string
   apartment: string
-  city: string
-  state: string
-  country: string
-  neighborhood: string
-  zipCode: string
+  googleMapsUrl: string
   lat: string
   lng: string
   totalArea: number | ""
@@ -115,7 +113,6 @@ export interface PropertyFormData {
   videoUrl: string
   virtualTourUrl: string
   blueprints: string[]
-  documents: string[]
 }
 
 export interface PropertyFilters {

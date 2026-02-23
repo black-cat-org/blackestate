@@ -12,6 +12,7 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb"
 import { Button } from "@/components/ui/button"
+import { DashboardHeader } from "@/components/dashboard-header"
 import { PropertyFiltersBar } from "@/components/properties/property-filters"
 import { PropertyViewToggle } from "@/components/properties/property-view-toggle"
 import { PropertyCardsGrid } from "@/components/properties/property-cards-grid"
@@ -35,44 +36,48 @@ export default function PropertiesPage() {
 
   return (
     <>
-      <Breadcrumb>
-        <BreadcrumbList>
-          <BreadcrumbItem className="hidden md:block">
-            <BreadcrumbLink href="/dashboard">Dashboard</BreadcrumbLink>
-          </BreadcrumbItem>
-          <BreadcrumbSeparator className="hidden md:block" />
-          <BreadcrumbItem>
-            <BreadcrumbPage>Propiedades</BreadcrumbPage>
-          </BreadcrumbItem>
-        </BreadcrumbList>
-      </Breadcrumb>
+      <DashboardHeader>
+        <Breadcrumb>
+          <BreadcrumbList>
+            <BreadcrumbItem className="hidden md:block">
+              <BreadcrumbLink href="/dashboard">Dashboard</BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator className="hidden md:block" />
+            <BreadcrumbItem>
+              <BreadcrumbPage>Propiedades</BreadcrumbPage>
+            </BreadcrumbItem>
+          </BreadcrumbList>
+        </Breadcrumb>
+      </DashboardHeader>
 
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold tracking-tight">Propiedades</h1>
-        <Button asChild>
-          <Link href="/dashboard/properties/new">
-            <Plus className="mr-2 size-4" />
-            Nueva propiedad
-          </Link>
-        </Button>
-      </div>
-
-      <div className="flex items-center gap-4">
-        <div className="flex-1">
-          <PropertyFiltersBar filters={filters} onFiltersChange={setFilters} />
+      <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-bold tracking-tight">Propiedades</h1>
+          <Button asChild>
+            <Link href="/dashboard/properties/new">
+              <Plus className="mr-2 size-4" />
+              Nueva propiedad
+            </Link>
+          </Button>
         </div>
-        <PropertyViewToggle viewMode={viewMode} onViewModeChange={setViewMode} />
-      </div>
 
-      {loading ? (
-        <div className="flex items-center justify-center py-12">
-          <p className="text-muted-foreground">Cargando propiedades...</p>
+        <div className="flex items-center gap-4">
+          <div className="flex-1">
+            <PropertyFiltersBar filters={filters} onFiltersChange={setFilters} />
+          </div>
+          <PropertyViewToggle viewMode={viewMode} onViewModeChange={setViewMode} />
         </div>
-      ) : viewMode === "cards" ? (
-        <PropertyCardsGrid properties={filteredProperties} />
-      ) : (
-        <PropertyDataTable properties={filteredProperties} />
-      )}
+
+        {loading ? (
+          <div className="flex items-center justify-center py-12">
+            <p className="text-muted-foreground">Cargando propiedades...</p>
+          </div>
+        ) : viewMode === "cards" ? (
+          <PropertyCardsGrid properties={filteredProperties} />
+        ) : (
+          <PropertyDataTable properties={filteredProperties} />
+        )}
+      </div>
     </>
   )
 }

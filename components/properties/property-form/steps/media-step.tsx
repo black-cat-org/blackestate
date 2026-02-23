@@ -53,15 +53,6 @@ export function MediaStep({ form }: { form: UseFormReturn<PropertyFormData> }) {
           </p>
         </div>
       </div>
-
-      <div className="space-y-2">
-        <Label>Documentos legales</Label>
-        <div className="border-dashed border-2 rounded-lg p-6 flex flex-col items-center justify-center gap-2 text-center">
-          <p className="text-sm text-muted-foreground">
-            Subir documentos (disponible con backend)
-          </p>
-        </div>
-      </div>
     </div>
   )
 }

@@ -40,7 +40,7 @@ export function PropertyCard({ property }: { property: Property }) {
         <div className="text-muted-foreground flex items-center gap-1 text-xs">
           <MapPin className="size-3" />
           <span className="truncate">
-            {property.address.street} {property.address.number}
+            {property.address.street}
             {property.address.neighborhood ? `, ${property.address.neighborhood}` : ""}
             , {property.address.city}
           </span>

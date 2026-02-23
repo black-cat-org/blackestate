@@ -38,7 +38,7 @@ export function PropertyDetailInfo({ property }: { property: Property }) {
           <MapPin className="mt-0.5 size-4 text-muted-foreground shrink-0" />
           <div>
             <p>
-              {property.address.street} {property.address.number}
+              {property.address.street}
               {property.address.floor ? `, Piso ${property.address.floor}` : ""}
               {property.address.apartment ? ` ${property.address.apartment}` : ""}
             </p>
@@ -68,7 +68,7 @@ export function PropertyDetailInfo({ property }: { property: Property }) {
             <div className="flex items-center gap-2">
               <Maximize2 className="size-4 text-muted-foreground" />
               <div>
-                <p className="text-muted-foreground">Sup. cubierta</p>
+                <p className="text-muted-foreground">Sup. construida</p>
                 <p className="font-medium">{formatSurface(property.coveredArea)}</p>
               </div>
             </div>

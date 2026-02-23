@@ -17,15 +17,14 @@ const basicDataSchema = z.object({
 })
 
 const locationSchema = z.object({
+  country: z.string().min(1, "El país es obligatorio"),
+  state: z.string().min(1, "La provincia es obligatoria"),
+  city: z.string().min(1, "La ciudad es obligatoria"),
+  neighborhood: z.string().optional(),
   street: z.string().min(1, "La calle es obligatoria"),
-  number: z.string().min(1, "El número es obligatorio"),
   floor: z.string().optional(),
   apartment: z.string().optional(),
-  city: z.string().min(1, "La ciudad es obligatoria"),
-  state: z.string().min(1, "La provincia es obligatoria"),
-  country: z.string().min(1, "El país es obligatorio"),
-  neighborhood: z.string().optional(),
-  zipCode: z.string().optional(),
+  googleMapsUrl: z.string().optional(),
   lat: z.string().optional(),
   lng: z.string().optional(),
 })
@@ -49,7 +48,6 @@ const mediaSchema = z.object({
   videoUrl: z.string().optional(),
   virtualTourUrl: z.string().optional(),
   blueprints: z.array(z.string()),
-  documents: z.array(z.string()),
 })
 
 const stepSchemas = [basicDataSchema, locationSchema, featuresSchema, mediaSchema]
@@ -63,15 +61,14 @@ const defaultValues: PropertyFormData = {
   currency: "USD",
   expenses: "",
   expensesCurrency: "ARS",
+  country: "Argentina",
+  state: "",
+  city: "",
+  neighborhood: "",
   street: "",
-  number: "",
   floor: "",
   apartment: "",
-  city: "",
-  state: "",
-  country: "Argentina",
-  neighborhood: "",
-  zipCode: "",
+  googleMapsUrl: "",
   lat: "",
   lng: "",
   totalArea: "",
@@ -89,7 +86,6 @@ const defaultValues: PropertyFormData = {
   videoUrl: "",
   virtualTourUrl: "",
   blueprints: [],
-  documents: [],
 }
 
 export function usePropertyForm() {

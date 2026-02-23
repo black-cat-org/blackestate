@@ -40,11 +40,6 @@ const data = {
       title: "Propiedades",
       url: "/dashboard/properties",
       icon: Building2,
-      isActive: true,
-      items: [
-        { title: "Listado", url: "/dashboard/properties" },
-        { title: "Nueva propiedad", url: "/dashboard/properties/new" },
-      ],
     },
     {
       title: "Contactos",
