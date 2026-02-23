@@ -9,9 +9,7 @@ import {
 } from "@/components/ui/breadcrumb"
 import { DashboardHeader } from "@/components/dashboard-header"
 import { PropertyDetailHeader } from "@/components/properties/property-detail/property-detail-header"
-import { PropertyDetailGallery } from "@/components/properties/property-detail/property-detail-gallery"
-import { PropertyDetailInfo } from "@/components/properties/property-detail/property-detail-info"
-import { PropertyDetailMap } from "@/components/properties/property-detail/property-detail-map"
+import { PropertyDetailTabs } from "@/components/properties/property-detail/property-detail-tabs"
 import { getPropertyById } from "@/lib/data/properties"
 
 export default async function PropertyDetailPage({
@@ -49,13 +47,7 @@ export default async function PropertyDetailPage({
       <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
         <PropertyDetailHeader property={property} />
 
-        <div className="grid gap-6 lg:grid-cols-2">
-          <div className="space-y-6">
-            <PropertyDetailGallery property={property} />
-            <PropertyDetailMap address={property.address} />
-          </div>
-          <PropertyDetailInfo property={property} />
-        </div>
+        <PropertyDetailTabs property={property} />
       </div>
     </>
   )

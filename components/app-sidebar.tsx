@@ -7,6 +7,7 @@ import {
   LifeBuoy,
   Send,
   Settings2,
+  Sparkles,
   Users,
 } from "lucide-react"
 
@@ -45,6 +46,11 @@ const data = {
       title: "Leads",
       url: "/dashboard/contacts",
       icon: Users,
+    },
+    {
+      title: "Contenido IA",
+      url: "/dashboard/ai",
+      icon: Sparkles,
     },
     {
       title: "Configuración",
