@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Copy, Check, Hash, Plus, X, Sparkles } from "lucide-react"
+import { Copy, Check, Hash, Plus, X, Sparkles, Save } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -9,14 +9,16 @@ import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { toast } from "sonner"
 import { getHashtags, addHashtag, addHashtags, removeHashtag } from "@/lib/data/hashtags"
+import { createAiContent } from "@/lib/data/ai-contents"
 import { generateHashtags } from "@/lib/services/ai-mock"
 import type { Property } from "@/lib/types/property"
 
 interface AiHashtagLibraryProps {
   property: Property
+  onSave?: () => void
 }
 
-export function AiHashtagLibrary({ property }: AiHashtagLibraryProps) {
+export function AiHashtagLibrary({ property, onSave }: AiHashtagLibraryProps) {
   const [hashtags, setHashtags] = useState<string[]>(getHashtags)
   const [suggestions, setSuggestions] = useState<string[]>([])
   const [newTag, setNewTag] = useState("")
@@ -70,6 +72,21 @@ export function AiHashtagLibrary({ property }: AiHashtagLibraryProps) {
     setTimeout(() => setCopied(false), 2000)
   }
 
+  async function handleSaveAsContent() {
+    if (hashtags.length === 0) {
+      toast.error("No hay hashtags para guardar")
+      return
+    }
+    await createAiContent({
+      propertyId: property.id,
+      propertyTitle: property.title,
+      type: "hashtags",
+      text: hashtags.join(" "),
+    })
+    toast.success("Hashtags guardados como contenido")
+    onSave?.()
+  }
+
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === "Enter") {
       e.preventDefault()
@@ -97,6 +114,10 @@ export function AiHashtagLibrary({ property }: AiHashtagLibraryProps) {
           <Button variant="outline" onClick={handleCopyAll}>
             {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
             {copied ? "Copiados" : "Copiar todos"}
+          </Button>
+          <Button variant="outline" onClick={handleSaveAsContent}>
+            <Save className="size-4" />
+            Guardar como contenido
           </Button>
         </div>
 

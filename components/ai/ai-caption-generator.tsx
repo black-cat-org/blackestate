@@ -18,10 +18,12 @@ import type { AiPlatform } from "@/lib/types/ai-content"
 
 interface AiCaptionGeneratorProps {
   property: Property
+  defaultPlatform?: AiPlatform
+  onSave?: () => void
 }
 
-export function AiCaptionGenerator({ property }: AiCaptionGeneratorProps) {
-  const [platform, setPlatform] = useState<AiPlatform>("instagram")
+export function AiCaptionGenerator({ property, defaultPlatform, onSave }: AiCaptionGeneratorProps) {
+  const [platform, setPlatform] = useState<AiPlatform>(defaultPlatform ?? "instagram")
   const [customNote, setCustomNote] = useState("")
   const [text, setText] = useState("")
   const [loading, setLoading] = useState(false)
@@ -58,6 +60,7 @@ export function AiCaptionGenerator({ property }: AiCaptionGeneratorProps) {
       text,
     })
     toast.success("Caption guardado")
+    onSave?.()
   }
 
   return (

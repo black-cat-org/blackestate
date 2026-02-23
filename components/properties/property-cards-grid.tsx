@@ -1,7 +1,14 @@
 import { PropertyCard } from "./property-card"
+import { computeKitStatus } from "@/hooks/use-marketing-kit"
 import type { Property } from "@/lib/types/property"
+import type { AiContent } from "@/lib/types/ai-content"
 
-export function PropertyCardsGrid({ properties }: { properties: Property[] }) {
+interface PropertyCardsGridProps {
+  properties: Property[]
+  contents?: AiContent[]
+}
+
+export function PropertyCardsGrid({ properties, contents = [] }: PropertyCardsGridProps) {
   if (properties.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center">
@@ -13,9 +20,13 @@ export function PropertyCardsGrid({ properties }: { properties: Property[] }) {
 
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      {properties.map((property) => (
-        <PropertyCard key={property.id} property={property} />
-      ))}
+      {properties.map((property) => {
+        const propertyContents = contents.filter((c) => c.propertyId === property.id)
+        const kitStatus = computeKitStatus(propertyContents)
+        return (
+          <PropertyCard key={property.id} property={property} kitStatus={kitStatus} />
+        )
+      })}
     </div>
   )
 }

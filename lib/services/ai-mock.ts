@@ -1,6 +1,6 @@
-import type { Property } from "@/lib/types/property"
+import type { Property, PropertyFormData } from "@/lib/types/property"
 import type { AiPlatform } from "@/lib/types/ai-content"
-import { PROPERTY_TYPE_LABELS, OPERATION_TYPE_LABELS, AMENITIES_OPTIONS } from "@/lib/constants/property"
+import { PROPERTY_TYPE_LABELS, OPERATION_TYPE_LABELS, AMENITIES_OPTIONS, SURFACE_UNIT_LABELS } from "@/lib/constants/property"
 import { formatPrice, formatSurface } from "@/lib/utils/format"
 
 const delay = () => new Promise((r) => setTimeout(r, 1500))
@@ -108,6 +108,86 @@ export async function generateCaption(
     case "whatsapp":
       return `¡Hola! 👋\n\nTe comparto esta propiedad que puede interesarte:\n\n🏠 *${property.title}*\n📍 ${barrio}, ${property.address.city}\n💰 ${precio}\n${specs.map((s) => `• ${s}`).join("\n")}${customLine}\n\n¿Te gustaría coordinar una visita? 📲`
   }
+}
+
+export async function generateDescriptionFromFormData(data: PropertyFormData): Promise<string> {
+  await delay()
+
+  const tipo = data.type ? PROPERTY_TYPE_LABELS[data.type].toLowerCase() : "propiedad"
+  const operacion = data.operationType ? OPERATION_TYPE_LABELS[data.operationType].toLowerCase() : ""
+  const barrio = data.neighborhood || data.city || ""
+  const amenityLabels = getAmenityLabels(data.amenities || [])
+
+  const specs: string[] = []
+  if (data.totalArea) specs.push(`${data.totalArea} ${SURFACE_UNIT_LABELS[data.surfaceUnit]} totales`)
+  if (data.coveredArea) specs.push(`${data.coveredArea} ${SURFACE_UNIT_LABELS[data.surfaceUnit]} cubiertos`)
+  if (data.bedrooms) specs.push(`${data.bedrooms} dormitorio${Number(data.bedrooms) > 1 ? "s" : ""}`)
+  if (data.bathrooms) specs.push(`${data.bathrooms} baño${Number(data.bathrooms) > 1 ? "s" : ""}`)
+  if (data.garages) specs.push(`cochera para ${data.garages} vehículo${Number(data.garages) > 1 ? "s" : ""}`)
+
+  let text = ""
+
+  if (barrio && operacion) {
+    text = `Espectacular ${tipo} en ${operacion} ubicad${data.type === "house" || data.type === "cabin" ? "a" : "o"} en ${barrio}.`
+  } else if (barrio) {
+    text = `Espectacular ${tipo} en ${barrio}.`
+  } else if (data.title) {
+    text = `${data.title}. Una excelente oportunidad en el mercado inmobiliario.`
+  } else {
+    text = `Excelente ${tipo} disponible.`
+  }
+
+  if (specs.length > 0) {
+    text += ` Con ${specs.join(", ")}, esta propiedad es ideal para quienes buscan comodidad y calidad de vida.`
+  }
+
+  if (amenityLabels.length > 0) {
+    text += `\n\nEntre sus amenities destacados se encuentran: ${amenityLabels.join(", ")}.`
+  }
+
+  if (data.price && data.currency) {
+    text += `\n\nPrecio: ${data.currency} ${Number(data.price).toLocaleString("es-AR")}${data.negotiable ? " (negociable)" : ""}.`
+  }
+
+  if (data.city && data.state) {
+    text += ` Ubicación privilegiada en ${data.city}, ${data.state}.`
+  }
+
+  text += `\n\nNo pierda esta oportunidad. Contáctenos para coordinar una visita y conocer todos los detalles de esta increíble propiedad.`
+
+  return text
+}
+
+export async function generateShortDescriptionFromFormData(data: PropertyFormData): Promise<string> {
+  await delay()
+
+  const tipo = data.type ? PROPERTY_TYPE_LABELS[data.type].toLowerCase() : "propiedad"
+  const operacion = data.operationType ? OPERATION_TYPE_LABELS[data.operationType].toLowerCase() : ""
+  const barrio = data.neighborhood || data.city || ""
+
+  const specs: string[] = []
+  if (data.bedrooms) specs.push(`${data.bedrooms} dorm.`)
+  if (data.bathrooms) specs.push(`${data.bathrooms} baños`)
+  if (data.totalArea) specs.push(`${data.totalArea} ${SURFACE_UNIT_LABELS[data.surfaceUnit]}`)
+
+  let text = ""
+  if (barrio && operacion) {
+    text = `${tipo.charAt(0).toUpperCase() + tipo.slice(1)} en ${operacion} en ${barrio}`
+  } else if (barrio) {
+    text = `${tipo.charAt(0).toUpperCase() + tipo.slice(1)} en ${barrio}`
+  } else {
+    text = `${tipo.charAt(0).toUpperCase() + tipo.slice(1)} disponible`
+  }
+
+  if (specs.length > 0) {
+    text += `. ${specs.join(", ")}.`
+  }
+
+  if (data.price && data.currency) {
+    text += ` ${data.currency} ${Number(data.price).toLocaleString("es-AR")}.`
+  }
+
+  return text
 }
 
 export async function generateHashtags(property: Property): Promise<string[]> {

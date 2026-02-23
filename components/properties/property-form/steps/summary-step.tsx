@@ -1,8 +1,12 @@
 "use client"
 
+import { useState } from "react"
 import { UseFormReturn } from "react-hook-form"
-import { Pencil } from "lucide-react"
+import { Check, Loader2, Pencil, Sparkles, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Textarea } from "@/components/ui/textarea"
+import { toast } from "sonner"
+import { generateDescriptionFromFormData, generateShortDescriptionFromFormData } from "@/lib/services/ai-mock"
 import {
   PROPERTY_TYPE_LABELS,
   OPERATION_TYPE_LABELS,
@@ -31,7 +35,7 @@ function SummarySection({ title, stepIndex, onEdit, children }: SummarySectionPr
           Editar
         </Button>
       </div>
-      <div className="text-sm space-y-1">{children}</div>
+      <div className="text-sm">{children}</div>
     </div>
   )
 }
@@ -39,9 +43,9 @@ function SummarySection({ title, stepIndex, onEdit, children }: SummarySectionPr
 function SummaryRow({ label, value }: { label: string; value?: string | number | null }) {
   if (!value && value !== 0) return null
   return (
-    <div className="flex justify-between">
+    <div className="flex justify-between border-b border-border/50 py-1.5 last:border-0">
       <span className="text-muted-foreground">{label}</span>
-      <span>{value}</span>
+      <span className="text-right max-w-[60%]">{value}</span>
     </div>
   )
 }
@@ -58,6 +62,58 @@ export function SummaryStep({
   const amenityLabels = (values.amenities || [])
     .map((a) => AMENITIES_OPTIONS.find((o) => o.value === a)?.label || a)
     .join(", ")
+  const [generatingDesc, setGeneratingDesc] = useState(false)
+  const [generatedDesc, setGeneratedDesc] = useState<string | null>(null)
+  const [generatingShort, setGeneratingShort] = useState(false)
+  const [generatedShort, setGeneratedShort] = useState<string | null>(null)
+
+  async function handleGenerateDescription() {
+    setGeneratingDesc(true)
+    try {
+      const description = await generateDescriptionFromFormData(form.getValues())
+      setGeneratedDesc(description)
+    } catch {
+      toast.error("Error al generar la descripción")
+    } finally {
+      setGeneratingDesc(false)
+    }
+  }
+
+  function handleAcceptDescription() {
+    if (generatedDesc) {
+      form.setValue("description", generatedDesc, { shouldValidate: true })
+      toast.success("Descripción actualizada")
+      setGeneratedDesc(null)
+    }
+  }
+
+  function handleDiscardDescription() {
+    setGeneratedDesc(null)
+  }
+
+  async function handleGenerateShortDescription() {
+    setGeneratingShort(true)
+    try {
+      const short = await generateShortDescriptionFromFormData(form.getValues())
+      setGeneratedShort(short)
+    } catch {
+      toast.error("Error al generar la descripción corta")
+    } finally {
+      setGeneratingShort(false)
+    }
+  }
+
+  function handleAcceptShortDescription() {
+    if (generatedShort) {
+      form.setValue("shortDescription", generatedShort, { shouldValidate: true })
+      toast.success("Descripción corta actualizada")
+      setGeneratedShort(null)
+    }
+  }
+
+  function handleDiscardShortDescription() {
+    setGeneratedShort(null)
+  }
 
   return (
     <div className="space-y-6">
@@ -66,10 +122,71 @@ export function SummaryStep({
         Revisa los datos antes de guardar. Puedes editar cualquier sección.
       </p>
 
-      <SummarySection title="Datos básicos" stepIndex={0} onEdit={onGoToStep}>
+      <div className="space-y-2 rounded-lg border p-4">
+        <div className="flex items-center justify-between">
+          <h3 className="font-medium">Datos básicos</h3>
+          <div className="flex items-center gap-1">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              disabled={generatingDesc}
+              onClick={handleGenerateDescription}
+            >
+              {generatingDesc ? (
+                <Loader2 className="mr-1 size-3 animate-spin" />
+              ) : (
+                <Sparkles className="mr-1 size-3" />
+              )}
+              Generar con IA
+            </Button>
+            <Button type="button" variant="ghost" size="sm" onClick={() => onGoToStep(0)}>
+              <Pencil className="mr-1 size-3" />
+              Editar
+            </Button>
+          </div>
+        </div>
+        <div className="text-sm">
         <SummaryRow label="Título" value={values.title} />
         <SummaryRow label="Descripción" value={values.description} />
         <SummaryRow label="Descripción corta" value={values.shortDescription} />
+        <div className="flex justify-end py-1">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            disabled={generatingShort}
+            onClick={handleGenerateShortDescription}
+          >
+            {generatingShort ? (
+              <Loader2 className="mr-1 size-3 animate-spin" />
+            ) : (
+              <Sparkles className="mr-1 size-3" />
+            )}
+            Generar desc. corta con IA
+          </Button>
+        </div>
+        {generatedShort && (
+          <div className="mt-2 space-y-2 rounded-md border border-primary/20 bg-primary/5 p-3">
+            <p className="text-xs font-medium text-primary">Descripción corta generada por IA:</p>
+            <Textarea
+              value={generatedShort}
+              onChange={(e) => setGeneratedShort(e.target.value)}
+              rows={2}
+              className="text-sm"
+            />
+            <div className="flex items-center gap-2">
+              <Button type="button" size="sm" onClick={handleAcceptShortDescription}>
+                <Check className="mr-1 size-3" />
+                Aceptar
+              </Button>
+              <Button type="button" variant="ghost" size="sm" onClick={handleDiscardShortDescription}>
+                <X className="mr-1 size-3" />
+                Descartar
+              </Button>
+            </div>
+          </div>
+        )}
         <SummaryRow
           label="Tipo"
           value={values.type ? PROPERTY_TYPE_LABELS[values.type as PropertyType] : undefined}
@@ -89,7 +206,29 @@ export function SummaryStep({
             value={`${CURRENCY_SYMBOLS[values.expensesCurrency as Currency] || values.expensesCurrency} ${Number(values.expenses).toLocaleString("es-AR")}`}
           />
         )}
-      </SummarySection>
+        {generatedDesc && (
+          <div className="mt-3 space-y-2 rounded-md border border-primary/20 bg-primary/5 p-3">
+            <p className="text-xs font-medium text-primary">Descripción generada por IA:</p>
+            <Textarea
+              value={generatedDesc}
+              onChange={(e) => setGeneratedDesc(e.target.value)}
+              rows={5}
+              className="text-sm"
+            />
+            <div className="flex items-center gap-2">
+              <Button type="button" size="sm" onClick={handleAcceptDescription}>
+                <Check className="mr-1 size-3" />
+                Aceptar
+              </Button>
+              <Button type="button" variant="ghost" size="sm" onClick={handleDiscardDescription}>
+                <X className="mr-1 size-3" />
+                Descartar
+              </Button>
+            </div>
+          </div>
+        )}
+        </div>
+      </div>
 
       <SummarySection title="Ubicación" stepIndex={1} onEdit={onGoToStep}>
         <SummaryRow label="País" value={values.country} />

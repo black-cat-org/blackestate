@@ -1,14 +1,26 @@
 import Image from "next/image"
 import Link from "next/link"
-import { Bath, BedDouble, Car, ImageIcon, Maximize2, MapPin } from "lucide-react"
+import { Bath, BedDouble, Car, ImageIcon, Maximize2, MapPin, Sparkles } from "lucide-react"
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import { PropertyStatusBadge } from "./property-status-badge"
 import { PropertyActionsMenu } from "./property-actions-menu"
 import { PROPERTY_TYPE_LABELS, OPERATION_TYPE_LABELS } from "@/lib/constants/property"
+import { MARKETING_KIT_TOTAL } from "@/lib/constants/ai"
 import { formatPrice, formatSurface } from "@/lib/utils/format"
 import type { Property } from "@/lib/types/property"
+import type { MarketingKitStatus } from "@/lib/types/ai-content"
 
-export function PropertyCard({ property }: { property: Property }) {
+interface PropertyCardProps {
+  property: Property
+  kitStatus?: MarketingKitStatus
+}
+
+export function PropertyCard({ property, kitStatus }: PropertyCardProps) {
+  const completedCount = kitStatus?.completedCount ?? 0
+  const pct = kitStatus?.percentage ?? 0
+
   return (
     <Card className="overflow-hidden pt-0">
       <Link href={`/dashboard/properties/${property.id}`}>
@@ -84,11 +96,33 @@ export function PropertyCard({ property }: { property: Property }) {
         </div>
       </CardContent>
       <CardFooter className="pt-2">
-        <div className="flex items-center gap-2">
-          <PropertyStatusBadge status={property.status} />
-          <span className="text-muted-foreground text-xs">
-            {PROPERTY_TYPE_LABELS[property.type]}
-          </span>
+        <div className="flex w-full items-center justify-between">
+          <div className="flex items-center gap-2">
+            <PropertyStatusBadge status={property.status} />
+            <span className="text-muted-foreground text-xs">
+              {PROPERTY_TYPE_LABELS[property.type]}
+            </span>
+          </div>
+          <Link href={`/dashboard/properties/${property.id}/marketing`}>
+            {completedCount === 0 ? (
+              <Button variant="ghost" size="sm" className="h-7 text-xs">
+                <Sparkles className="size-3" />
+                Generar contenido
+              </Button>
+            ) : completedCount >= MARKETING_KIT_TOTAL ? (
+              <Badge className="bg-green-100 text-green-800">Listo para publicar</Badge>
+            ) : (
+              <span className="text-muted-foreground flex items-center gap-1.5 text-xs">
+                <div className="bg-muted h-1.5 w-12 overflow-hidden rounded-full">
+                  <div
+                    className="bg-primary h-full rounded-full"
+                    style={{ width: `${pct}%` }}
+                  />
+                </div>
+                {completedCount}/{MARKETING_KIT_TOTAL}
+              </span>
+            )}
+          </Link>
         </div>
       </CardFooter>
     </Card>

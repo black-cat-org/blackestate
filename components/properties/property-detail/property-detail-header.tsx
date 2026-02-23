@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { ArrowLeft, Pencil, Share2 } from "lucide-react"
+import { ArrowLeft, Pencil, Share2, Sparkles } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -72,6 +72,12 @@ export function PropertyDetailHeader({ property }: { property: Property }) {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <Button asChild>
+            <Link href={`/dashboard/properties/${property.id}/marketing`}>
+              <Sparkles className="mr-2 size-4" />
+              Kit de Marketing
+            </Link>
+          </Button>
           {property.status === "activa" && (
             <Button variant="outline" onClick={() => setShareOpen(true)}>
               <Share2 className="mr-2 size-4" />

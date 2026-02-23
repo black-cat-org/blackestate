@@ -20,6 +20,23 @@ const mockContents: AiContent[] = [
   },
   {
     id: "3",
+    propertyId: "1",
+    propertyTitle: "Casa moderna en Palermo",
+    type: "caption",
+    platform: "facebook",
+    text: "🏠 ¡Oportunidad única en Palermo!\n\nCasa moderna de 3 plantas con diseño contemporáneo.\n\n📐 320 m² totales | 280 m² cubiertos\n🛏️ 4 dormitorios | 🚿 3 baños\n🚗 Cochera para 2 vehículos\n\nAmenities: pileta, quincho, parrilla, jardín, terraza\n\n💰 US$ 450.000 (negociable)\n📍 Palermo, CABA\n\n¡Contactanos para coordinar una visita! 📲",
+    createdAt: "2026-02-18T14:00:00Z",
+  },
+  {
+    id: "4",
+    propertyId: "1",
+    propertyTitle: "Casa moderna en Palermo",
+    type: "hashtags",
+    text: "#inmobiliaria #propiedades #bienesraices #inversion #hogar #realestate #CasaEnPalermo #Palermo #VentaCasa #BuenosAires",
+    createdAt: "2026-02-17T09:00:00Z",
+  },
+  {
+    id: "5",
     propertyId: "2",
     propertyTitle: "Departamento 2 amb en Belgrano",
     type: "caption",
@@ -52,7 +69,26 @@ export async function createAiContent(
   return Promise.resolve(content)
 }
 
+export async function updateAiContent(
+  id: string,
+  data: Partial<Omit<AiContent, "id" | "createdAt">>
+): Promise<AiContent> {
+  const index = contents.findIndex((c) => c.id === id)
+  if (index === -1) throw new Error("Content not found")
+  contents[index] = { ...contents[index], ...data, updatedAt: new Date().toISOString() }
+  return Promise.resolve(contents[index])
+}
+
+export async function markAsPublished(id: string, platform: AiContent["publishedTo"]): Promise<AiContent> {
+  return updateAiContent(id, { publishedAt: new Date().toISOString(), publishedTo: platform })
+}
+
 export async function deleteAiContent(id: string): Promise<void> {
   contents = contents.filter((c) => c.id !== id)
+  return Promise.resolve()
+}
+
+export async function deleteAiContentsByProperty(propertyId: string): Promise<void> {
+  contents = contents.filter((c) => c.propertyId !== propertyId)
   return Promise.resolve()
 }

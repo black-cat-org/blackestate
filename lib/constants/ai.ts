@@ -2,9 +2,10 @@ import { Facebook, Instagram, Hash, MessageCircle, type LucideIcon } from "lucid
 import type { AiContentType, AiPlatform } from "@/lib/types/ai-content"
 
 export const AI_CONTENT_TYPE_LABELS: Record<AiContentType, string> = {
-  descripcion: "Descripción",
+  descripcion: "Descripcion",
   caption: "Caption",
   hashtags: "Hashtags",
+  brochure: "Brochure",
 }
 
 export const AI_PLATFORM_LABELS: Record<AiPlatform, string> = {
@@ -35,3 +36,5 @@ export const DEFAULT_HASHTAGS: string[] = [
   "#terreno",
   "#oportunidad",
 ]
+
+export const MARKETING_KIT_TOTAL = 6

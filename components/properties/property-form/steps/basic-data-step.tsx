@@ -1,10 +1,13 @@
 "use client"
 
+import { useState } from "react"
 import { UseFormReturn } from "react-hook-form"
+import { Loader2, Sparkles } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
+import { Button } from "@/components/ui/button"
 import {
   Select,
   SelectContent,
@@ -17,10 +20,31 @@ import {
   OPERATION_TYPE_LABELS,
   CURRENCY_LABELS,
 } from "@/lib/constants/property"
+import { generateDescriptionFromFormData } from "@/lib/services/ai-mock"
+import { toast } from "sonner"
 import type { PropertyFormData } from "@/lib/types/property"
 
 export function BasicDataStep({ form }: { form: UseFormReturn<PropertyFormData> }) {
   const { register, formState: { errors }, setValue, watch } = form
+  const [generating, setGenerating] = useState(false)
+
+  async function handleGenerateDescription() {
+    const values = form.getValues()
+    if (!values.title) {
+      toast.warning("Ingresá al menos un título para generar la descripción")
+      return
+    }
+    setGenerating(true)
+    try {
+      const description = await generateDescriptionFromFormData(values)
+      setValue("description", description, { shouldValidate: true })
+      toast.success("Descripción generada con IA")
+    } catch {
+      toast.error("Error al generar la descripción")
+    } finally {
+      setGenerating(false)
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -40,9 +64,26 @@ export function BasicDataStep({ form }: { form: UseFormReturn<PropertyFormData> 
           placeholder="Describe la propiedad..."
           rows={4}
         />
-        {errors.description && (
-          <p className="text-sm text-destructive">{errors.description.message}</p>
-        )}
+        <div className="flex items-center justify-between">
+          {errors.description && (
+            <p className="text-sm text-destructive">{errors.description.message}</p>
+          )}
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="ml-auto"
+            disabled={generating}
+            onClick={handleGenerateDescription}
+          >
+            {generating ? (
+              <Loader2 className="mr-1 size-3 animate-spin" />
+            ) : (
+              <Sparkles className="mr-1 size-3" />
+            )}
+            Generar con IA
+          </Button>
+        </div>
       </div>
 
       <div className="space-y-2">

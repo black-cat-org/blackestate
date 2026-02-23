@@ -8,13 +8,15 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { toast } from "sonner"
 import { PROPERTY_TYPE_LABELS, OPERATION_TYPE_LABELS } from "@/lib/constants/property"
 import { formatPrice, formatSurface } from "@/lib/utils/format"
+import { createAiContent } from "@/lib/data/ai-contents"
 import type { Property } from "@/lib/types/property"
 
 interface AiBrochureGeneratorProps {
   property: Property
+  onGenerated?: () => void
 }
 
-export function AiBrochureGenerator({ property }: AiBrochureGeneratorProps) {
+export function AiBrochureGenerator({ property, onGenerated }: AiBrochureGeneratorProps) {
   const [loading, setLoading] = useState(false)
   async function handleGenerate() {
     setLoading(true)
@@ -175,7 +177,14 @@ export function AiBrochureGenerator({ property }: AiBrochureGeneratorProps) {
       doc.text("gonzalo@blackestate.com", margin, footerY + 5)
 
       doc.save(`${property.title.replace(/\s+/g, "-").toLowerCase()}-brochure.pdf`)
+      await createAiContent({
+        propertyId: property.id,
+        propertyTitle: property.title,
+        type: "brochure",
+        text: "Brochure PDF generado",
+      })
       toast.success("Brochure PDF descargado")
+      onGenerated?.()
     } catch {
       toast.error("Error al generar el PDF")
     } finally {

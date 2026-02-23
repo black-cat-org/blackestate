@@ -19,17 +19,21 @@ import { PropertyCardsGrid } from "@/components/properties/property-cards-grid"
 import { PropertyDataTable } from "@/components/properties/property-data-table"
 import { usePropertiesFilter } from "@/hooks/use-properties-filter"
 import { getProperties } from "@/lib/data/properties"
+import { getAiContents } from "@/lib/data/ai-contents"
 import type { Property } from "@/lib/types/property"
+import type { AiContent } from "@/lib/types/ai-content"
 
 export default function PropertiesPage() {
   const [properties, setProperties] = useState<Property[]>([])
+  const [contents, setContents] = useState<AiContent[]>([])
   const [loading, setLoading] = useState(true)
   const { filters, setFilters, viewMode, setViewMode, filteredProperties } =
     usePropertiesFilter(properties)
 
   useEffect(() => {
-    getProperties().then((data) => {
-      setProperties(data)
+    Promise.all([getProperties(), getAiContents()]).then(([props, aiContents]) => {
+      setProperties(props)
+      setContents(aiContents)
       setLoading(false)
     })
   }, [])
@@ -73,7 +77,7 @@ export default function PropertiesPage() {
             <p className="text-muted-foreground">Cargando propiedades...</p>
           </div>
         ) : viewMode === "cards" ? (
-          <PropertyCardsGrid properties={filteredProperties} />
+          <PropertyCardsGrid properties={filteredProperties} contents={contents} />
         ) : (
           <PropertyDataTable properties={filteredProperties} />
         )}
