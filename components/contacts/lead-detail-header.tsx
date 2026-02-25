@@ -1,9 +1,18 @@
 "use client"
 
+import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { ArrowLeft, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,6 +29,8 @@ import type { Lead } from "@/lib/types/lead"
 export function LeadDetailHeader({ lead }: { lead: Lead }) {
   const router = useRouter()
   const transitions = LEAD_STATUS_TRANSITIONS[lead.status]
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   const handleStatusChange = async (newStatus: Lead["status"]) => {
     try {
@@ -32,12 +43,15 @@ export function LeadDetailHeader({ lead }: { lead: Lead }) {
   }
 
   const handleDelete = async () => {
+    setDeleting(true)
     try {
       await deleteLead(lead.id)
-      toast.success("Contacto eliminado")
+      toast.success("Lead eliminado")
       router.push("/dashboard/contacts")
     } catch {
       toast.error("Error al eliminar")
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -74,11 +88,30 @@ export function LeadDetailHeader({ lead }: { lead: Lead }) {
             <LeadSourceBadge source={lead.source} />
           </div>
         </div>
-        <Button variant="outline" className="text-destructive" onClick={handleDelete}>
+        <Button variant="outline" className="text-destructive" onClick={() => setDeleteDialogOpen(true)}>
           <Trash2 className="mr-2 size-4" />
           Eliminar
         </Button>
       </div>
+
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Eliminar lead</DialogTitle>
+            <DialogDescription>
+              ¿Seguro que querés eliminar a {lead.name}? Esta acción no se puede deshacer.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button variant="destructive" onClick={handleDelete} disabled={deleting}>
+              {deleting ? "Eliminando..." : "Eliminar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

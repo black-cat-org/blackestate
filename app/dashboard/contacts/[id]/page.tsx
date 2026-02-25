@@ -63,6 +63,7 @@ export default async function ContactDetailPage({
             <LeadSuggestedProperties
               lead={lead}
               suggestedProperties={suggestedProperties}
+              allProperties={allProperties}
             />
           </div>
         </div>
