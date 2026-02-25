@@ -11,7 +11,7 @@ Modulo de analiticas completo para el agente inmobiliario. Nueva seccion en el s
 
 - **Ruta:** `/dashboard/analytics`
 - **Sidebar:** Icono `BarChart3`, entre "Mi Bot" y "Configuracion"
-- **Filtro global:** Rango de fechas (7d, 30d, 90d, Este mes, Este ano, Personalizado)
+- **Filtro global:** Rango de fechas (7d, 30d, 90d, Este mes, Este año, Personalizado)
 - **Exportar:** Dropdown PDF / Excel por tab activo
 - **Navegacion:** 5 tabs con componente `Tabs` de shadcn
 

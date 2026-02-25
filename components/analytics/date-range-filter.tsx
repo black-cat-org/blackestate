@@ -8,7 +8,7 @@ const PRESETS: { value: DateRangePreset; label: string }[] = [
   { value: "30d", label: "Ultimos 30 dias" },
   { value: "90d", label: "Ultimos 90 dias" },
   { value: "this_month", label: "Este mes" },
-  { value: "this_year", label: "Este ano" },
+  { value: "this_year", label: "Este año" },
 ]
 
 interface DateRangeFilterProps {

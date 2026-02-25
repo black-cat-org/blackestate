@@ -309,7 +309,7 @@ git commit -m "feat(analytics): add xlsx package for Excel export"
 
 **Step 1: Create the date range filter component**
 
-`components/analytics/date-range-filter.tsx` — Client component with a Select dropdown for preset ranges (7d, 30d, 90d, Este mes, Este ano). Uses shadcn Select. Emits `onRangeChange(preset)`.
+`components/analytics/date-range-filter.tsx` — Client component with a Select dropdown for preset ranges (7d, 30d, 90d, Este mes, Este año). Uses shadcn Select. Emits `onRangeChange(preset)`.
 
 ```typescript
 "use client"
