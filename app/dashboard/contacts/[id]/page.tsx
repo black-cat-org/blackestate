@@ -11,8 +11,15 @@ import { DashboardHeader } from "@/components/dashboard-header"
 import { LeadDetailHeader } from "@/components/contacts/lead-detail-header"
 import { LeadDetailInfo } from "@/components/contacts/lead-detail-info"
 import { LeadSuggestedProperties } from "@/components/contacts/lead-suggested-properties"
+import { LeadSentProperties } from "@/components/contacts/lead-sent-properties"
+import { LeadTimeline } from "@/components/contacts/lead-timeline"
 import { getLeadById, getSuggestedProperties } from "@/lib/data/leads"
 import { getPropertyById, getProperties } from "@/lib/data/properties"
+import {
+  getMessagesByLead,
+  getActivitiesByLead,
+  getSentPropertiesByLead,
+} from "@/lib/data/bot"
 
 export default async function ContactDetailPage({
   params,
@@ -26,9 +33,12 @@ export default async function ContactDetailPage({
     notFound()
   }
 
-  const [property, allProperties] = await Promise.all([
+  const [property, allProperties, messages, activities, sentProperties] = await Promise.all([
     getPropertyById(lead.propertyId),
     getProperties(),
+    getMessagesByLead(id),
+    getActivitiesByLead(id),
+    getSentPropertiesByLead(id),
   ])
 
   const suggestedProperties = getSuggestedProperties(lead, allProperties)
@@ -59,7 +69,11 @@ export default async function ContactDetailPage({
           <div className="max-w-2xl">
             <LeadDetailInfo lead={lead} property={property} />
           </div>
-          <div>
+          <div className="space-y-6">
+            <LeadSentProperties
+              sentProperties={sentProperties}
+              properties={allProperties}
+            />
             <LeadSuggestedProperties
               lead={lead}
               suggestedProperties={suggestedProperties}
@@ -67,6 +81,12 @@ export default async function ContactDetailPage({
             />
           </div>
         </div>
+        <LeadTimeline
+          activities={activities}
+          messages={messages}
+          leadName={lead.name}
+          leadPhone={lead.phone}
+        />
       </div>
     </>
   )

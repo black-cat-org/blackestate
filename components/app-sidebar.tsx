@@ -2,7 +2,9 @@
 
 import * as React from "react"
 import {
+  Bot,
   Building2,
+  Calendar,
   LayoutDashboard,
   LifeBuoy,
   Send,
@@ -45,6 +47,16 @@ const data = {
       title: "Leads",
       url: "/dashboard/contacts",
       icon: Users,
+    },
+    {
+      title: "Citas",
+      url: "/dashboard/appointments",
+      icon: Calendar,
+    },
+    {
+      title: "Mi Bot",
+      url: "/dashboard/bot",
+      icon: Bot,
     },
     {
       title: "Configuración",
