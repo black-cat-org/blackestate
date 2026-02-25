@@ -102,17 +102,7 @@ export function MarketingKitView({ property }: MarketingKitViewProps) {
 
       <MarketingKitProgress status={status} />
 
-      {/* Captions para redes */}
-      <section className="space-y-4">
-        <h2 className="text-lg font-semibold">Captions para redes</h2>
-        <MarketingKitCaptionGrid
-          captions={captionsByPlatform}
-          hashtagsText={hashtagsContent?.text}
-          onGenerate={(platform) => openGenerator("caption", platform)}
-        />
-      </section>
-
-      {/* Hashtags */}
+      {/* Hashtags — primero, porque los captions dependen de ellos */}
       <section className="space-y-4">
         <h2 className="text-lg font-semibold flex items-center gap-2">
           <Hash className="size-5" />
@@ -129,6 +119,22 @@ export function MarketingKitView({ property }: MarketingKitViewProps) {
             </Button>
           </div>
         )}
+      </section>
+
+      {/* Captions para redes — bloqueados si no hay hashtags */}
+      <section className="space-y-4">
+        <h2 className="text-lg font-semibold">Captions para redes</h2>
+        {!hashtagsContent && (
+          <p className="text-muted-foreground text-sm">
+            Generá los hashtags primero para poder crear los captions de cada red social.
+          </p>
+        )}
+        <MarketingKitCaptionGrid
+          captions={captionsByPlatform}
+          hashtagsText={hashtagsContent?.text}
+          onGenerate={(platform) => openGenerator("caption", platform)}
+          locked={!hashtagsContent}
+        />
       </section>
 
       {/* Brochure PDF */}

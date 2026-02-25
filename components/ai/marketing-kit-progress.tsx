@@ -44,10 +44,10 @@ export function MarketingKitProgress({ status }: MarketingKitProgressProps) {
         </span>
       </div>
       <div className="flex flex-wrap gap-x-4 gap-y-1">
+        <CheckItem label="Hashtags" done={status.hasHashtags} />
         {PLATFORMS.map((p) => (
           <CheckItem key={p} label={AI_PLATFORM_LABELS[p]} done={status.captions[p]} />
         ))}
-        <CheckItem label="Hashtags" done={status.hasHashtags} />
         <CheckItem label="Brochure" done={status.hasBrochure} />
       </div>
     </div>

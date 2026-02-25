@@ -7,6 +7,7 @@ import { BasicDataStep } from "./steps/basic-data-step"
 import { LocationStep } from "./steps/location-step"
 import { FeaturesStep } from "./steps/features-step"
 import { MediaStep } from "./steps/media-step"
+import { DescriptionStep } from "./steps/description-step"
 import { SummaryStep } from "./steps/summary-step"
 import { createProperty, updateProperty } from "@/lib/data/properties"
 import { toast } from "sonner"
@@ -83,6 +84,7 @@ export function PropertyFormWizard({ propertyId, initialData }: PropertyFormWiza
     <LocationStep key="location" form={form} />,
     <FeaturesStep key="features" form={form} />,
     <MediaStep key="media" form={form} />,
+    <DescriptionStep key="description" form={form} />,
     <SummaryStep key="summary" form={form} onGoToStep={goToStep} />,
   ]
 

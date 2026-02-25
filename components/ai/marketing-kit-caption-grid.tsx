@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Copy, Check, Sparkles, RefreshCw } from "lucide-react"
+import { Copy, Check, Sparkles, RefreshCw, Lock } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -13,11 +13,12 @@ interface MarketingKitCaptionGridProps {
   captions: Record<AiPlatform, AiContent | undefined>
   hashtagsText?: string
   onGenerate: (platform: AiPlatform) => void
+  locked?: boolean
 }
 
 const PLATFORMS: AiPlatform[] = ["instagram", "facebook", "tiktok", "whatsapp"]
 
-export function MarketingKitCaptionGrid({ captions, hashtagsText, onGenerate }: MarketingKitCaptionGridProps) {
+export function MarketingKitCaptionGrid({ captions, hashtagsText, onGenerate, locked }: MarketingKitCaptionGridProps) {
   const [copiedPlatform, setCopiedPlatform] = useState<AiPlatform | null>(null)
 
   async function handleCopy(platform: AiPlatform) {
@@ -71,6 +72,11 @@ export function MarketingKitCaptionGrid({ captions, hashtagsText, onGenerate }: 
                     </Button>
                   </div>
                 </div>
+              ) : locked ? (
+                <p className="text-muted-foreground flex items-center gap-1.5 text-xs">
+                  <Lock className="size-3" />
+                  Generá los hashtags primero
+                </p>
               ) : (
                 <Button variant="outline" size="sm" className="w-full" onClick={() => onGenerate(platform)}>
                   <Sparkles className="size-4" />

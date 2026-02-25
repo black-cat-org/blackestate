@@ -5,10 +5,7 @@ import { useForm } from "react-hook-form"
 import { z } from "zod"
 import type { PropertyFormData } from "@/lib/types/property"
 
-const basicDataSchema = z.object({
-  title: z.string().min(5, "El título debe tener al menos 5 caracteres"),
-  description: z.string().min(10, "La descripción debe tener al menos 10 caracteres"),
-  shortDescription: z.string().optional(),
+const propertyDataSchema = z.object({
   type: z.string().min(1, "Selecciona un tipo de propiedad"),
   operationType: z.string().min(1, "Selecciona un tipo de operación"),
   price: z.coerce.number().positive("El precio debe ser mayor a 0"),
@@ -52,7 +49,14 @@ const mediaSchema = z.object({
   blueprints: z.array(z.string()),
 })
 
-const stepSchemas = [basicDataSchema, locationSchema, featuresSchema, mediaSchema]
+const descriptionSchema = z.object({
+  title: z.string().min(5, "El título debe tener al menos 5 caracteres"),
+  description: z.string().min(10, "La descripción debe tener al menos 10 caracteres"),
+  shortDescription: z.string().optional(),
+})
+
+const TOTAL_STEPS = 6
+const stepSchemas = [propertyDataSchema, locationSchema, featuresSchema, mediaSchema, descriptionSchema]
 
 const defaultValues: PropertyFormData = {
   title: "",
@@ -103,7 +107,7 @@ export function usePropertyForm(initialData?: Partial<PropertyFormData>) {
   const goToNextStep = useCallback(() => {
     const schema = stepSchemas[currentStep]
     if (!schema) {
-      setCurrentStep((s) => Math.min(s + 1, 4))
+      setCurrentStep((s) => Math.min(s + 1, TOTAL_STEPS - 1))
       return true
     }
 
@@ -120,7 +124,7 @@ export function usePropertyForm(initialData?: Partial<PropertyFormData>) {
     }
 
     form.clearErrors()
-    setCurrentStep((s) => Math.min(s + 1, 4))
+    setCurrentStep((s) => Math.min(s + 1, TOTAL_STEPS - 1))
     return true
   }, [currentStep, form])
 
@@ -138,6 +142,6 @@ export function usePropertyForm(initialData?: Partial<PropertyFormData>) {
     goToNextStep,
     goToPreviousStep,
     goToStep,
-    totalSteps: 5,
+    totalSteps: TOTAL_STEPS,
   }
 }

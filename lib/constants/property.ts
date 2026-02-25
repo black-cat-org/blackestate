@@ -123,9 +123,10 @@ export const STATUS_TRANSITIONS: Record<PropertyStatus, { status: PropertyStatus
 }
 
 export const WIZARD_STEPS = [
-  { id: 1, title: "Datos básicos", description: "Título, tipo y precio" },
+  { id: 1, title: "Datos", description: "Tipo, operación y precio" },
   { id: 2, title: "Ubicación", description: "Dirección y coordenadas" },
   { id: 3, title: "Características", description: "Superficie y amenities" },
   { id: 4, title: "Media", description: "Fotos y videos" },
-  { id: 5, title: "Resumen", description: "Revisión final" },
+  { id: 5, title: "Descripción", description: "Título y descripción con IA" },
+  { id: 6, title: "Resumen", description: "Revisión final" },
 ] as const
