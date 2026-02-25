@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import {
+  BarChart3,
   Bot,
   Building2,
   Calendar,
@@ -57,6 +58,11 @@ const data = {
       title: "Mi Bot",
       url: "/dashboard/bot",
       icon: Bot,
+    },
+    {
+      title: "Analíticas",
+      url: "/dashboard/analytics",
+      icon: BarChart3,
     },
     {
       title: "Configuración",

@@ -479,6 +479,10 @@ export async function getSentPropertiesByLead(leadId: string): Promise<SentPrope
   return Promise.resolve(sentProperties.filter((sp) => sp.leadId === leadId))
 }
 
+export async function getSentPropertiesAll(): Promise<SentProperty[]> {
+  return Promise.resolve([...sentProperties])
+}
+
 // Appointments
 export async function getAppointments(): Promise<Appointment[]> {
   return Promise.resolve([...appointments])
