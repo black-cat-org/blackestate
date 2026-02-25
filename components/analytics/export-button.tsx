@@ -1,0 +1,45 @@
+"use client"
+
+import { Button } from "@/components/ui/button"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { Download, FileSpreadsheet, FileText } from "lucide-react"
+
+interface ExportButtonProps {
+  activeTab: string
+}
+
+export function ExportButton({ activeTab }: ExportButtonProps) {
+  const handleExportPDF = () => {
+    console.log("Export PDF for", activeTab)
+  }
+
+  const handleExportExcel = () => {
+    console.log("Export Excel for", activeTab)
+  }
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline" size="sm">
+          <Download className="mr-2 size-4" />
+          Exportar
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem onClick={handleExportPDF}>
+          <FileText className="mr-2 size-4" />
+          PDF
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={handleExportExcel}>
+          <FileSpreadsheet className="mr-2 size-4" />
+          Excel
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
