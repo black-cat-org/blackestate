@@ -249,7 +249,7 @@ export function AnalyticsContent({ overviewData, leadsData, propertiesData, fina
     <div className="flex flex-1 flex-col gap-4">
       <div className="flex items-center justify-between">
         <DateRangeFilter value={dateRange} onChange={setDateRange} />
-        <ExportButton activeTab={activeTab} getExportData={getExportData} />
+        <ExportButton getExportData={getExportData} />
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
