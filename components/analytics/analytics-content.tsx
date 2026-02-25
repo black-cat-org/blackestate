@@ -6,7 +6,10 @@ import { DateRangeFilter } from "@/components/analytics/date-range-filter"
 import { ExportButton } from "@/components/analytics/export-button"
 import { OverviewTab } from "@/components/analytics/tabs/overview-tab"
 import { LeadsTab } from "@/components/analytics/tabs/leads-tab"
-import type { DateRangePreset, StatCardData, TimeSeriesPoint, AlertItem, FunnelStep, SourceMetric } from "@/lib/types/analytics"
+import { PropertiesTab } from "@/components/analytics/tabs/properties-tab"
+import { FinancialTab } from "@/components/analytics/tabs/financial-tab"
+import { BotTab } from "@/components/analytics/tabs/bot-tab"
+import type { DateRangePreset, StatCardData, TimeSeriesPoint, AlertItem, FunnelStep, SourceMetric, ZonePricing, PropertyRanking, PipelineStage, FinancialOperation, BotFunnelStep, HeatmapCell } from "@/lib/types/analytics"
 
 interface OverviewData {
   stats: StatCardData[]
@@ -25,12 +28,43 @@ interface LeadsData {
   leadsByPropertyType: { type: string; label: string; count: number }[]
 }
 
+interface PropertiesData {
+  stats: StatCardData[]
+  inventoryStatus: { status: string; label: string; count: number; percentage: number; fill: string }[]
+  priceByZone: ZonePricing[]
+  typeDistribution: { type: string; label: string; count: number; percentage: number }[]
+  pricePerM2: ZonePricing[]
+  topProperties: PropertyRanking[]
+  priceTrend: TimeSeriesPoint[]
+  priceTrendZones: string[]
+}
+
+interface FinancialData {
+  stats: StatCardData[]
+  revenueByMonth: TimeSeriesPoint[]
+  pipeline: PipelineStage[]
+  commissionsBySource: { source: string; label: string; amount: number }[]
+  commissionsByType: { type: string; label: string; amount: number; percentage: number }[]
+  topOperations: FinancialOperation[]
+}
+
+interface BotData {
+  stats: StatCardData[]
+  activityByDay: TimeSeriesPoint[]
+  botFunnel: BotFunnelStep[]
+  heatmap: HeatmapCell[]
+  appointmentOutcomes: { status: string; label: string; count: number; percentage: number; fill: string }[]
+}
+
 interface AnalyticsContentProps {
   overviewData: OverviewData
   leadsData: LeadsData
+  propertiesData: PropertiesData
+  financialData: FinancialData
+  botData: BotData
 }
 
-export function AnalyticsContent({ overviewData, leadsData }: AnalyticsContentProps) {
+export function AnalyticsContent({ overviewData, leadsData, propertiesData, financialData, botData }: AnalyticsContentProps) {
   const [dateRange, setDateRange] = useState<DateRangePreset>("30d")
   const [activeTab, setActiveTab] = useState("overview")
 
@@ -57,13 +91,13 @@ export function AnalyticsContent({ overviewData, leadsData }: AnalyticsContentPr
           <LeadsTab {...leadsData} />
         </TabsContent>
         <TabsContent value="properties" className="mt-4">
-          <p className="text-muted-foreground">Propiedades -- proximamente</p>
+          <PropertiesTab {...propertiesData} />
         </TabsContent>
         <TabsContent value="financial" className="mt-4">
-          <p className="text-muted-foreground">Financiero -- proximamente</p>
+          <FinancialTab {...financialData} />
         </TabsContent>
         <TabsContent value="bot" className="mt-4">
-          <p className="text-muted-foreground">Bot -- proximamente</p>
+          <BotTab {...botData} />
         </TabsContent>
       </Tabs>
     </div>

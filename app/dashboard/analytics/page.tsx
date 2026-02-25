@@ -20,12 +20,33 @@ import {
   getConversionBySource,
   getResponseTimeMetrics,
   getLeadsByPropertyType,
+  getPropertiesStats,
+  getInventoryStatus,
+  getAvgPriceByZone,
+  getPropertyTypeDistribution,
+  getPricePerM2ByZone,
+  getTopProperties,
+  getPriceTrendByZone,
+  getFinancialStats,
+  getRevenueByMonth,
+  getPipelineByStage,
+  getCommissionsBySource,
+  getCommissionsByOperationType,
+  getTopOperations,
+  getBotStats,
+  getBotActivityByDay,
+  getBotFunnel,
+  getEngagementHeatmap,
+  getAppointmentOutcomes,
 } from "@/lib/data/analytics"
 
 export default async function AnalyticsPage() {
   const [
     overviewStats, leadsTrend, conversionsByMonth, sourceDistribution, alerts,
     leadsStats, conversionFunnel, leadsBySourceOverTime, conversionBySource, responseTime, leadsByPropertyType,
+    propertiesStats, inventoryStatus, priceByZone, typeDistribution, pricePerM2, topProperties, priceTrend,
+    financialStats, revenueByMonth, pipeline, commissionsBySource, commissionsByType, topOperations,
+    botStats, botActivityByDay, botFunnel, engagementHeatmap, appointmentOutcomes,
   ] = await Promise.all([
     getOverviewStats(),
     getLeadsTrend(),
@@ -38,7 +59,27 @@ export default async function AnalyticsPage() {
     getConversionBySource(),
     getResponseTimeMetrics(),
     getLeadsByPropertyType(),
+    getPropertiesStats(),
+    getInventoryStatus(),
+    getAvgPriceByZone(),
+    getPropertyTypeDistribution(),
+    getPricePerM2ByZone(),
+    getTopProperties(),
+    getPriceTrendByZone(),
+    getFinancialStats(),
+    getRevenueByMonth(),
+    getPipelineByStage(),
+    getCommissionsBySource(),
+    getCommissionsByOperationType(),
+    getTopOperations(),
+    getBotStats(),
+    getBotActivityByDay(),
+    getBotFunnel(),
+    getEngagementHeatmap(),
+    getAppointmentOutcomes(),
   ])
+
+  const priceTrendZones = Object.keys(priceTrend[0] || {}).filter(k => k !== "date")
 
   return (
     <>
@@ -59,6 +100,9 @@ export default async function AnalyticsPage() {
         <AnalyticsContent
           overviewData={{ stats: overviewStats, leadsTrend, conversionsByMonth, sourceDistribution, alerts }}
           leadsData={{ stats: leadsStats, conversionFunnel, leadsBySourceOverTime, conversionBySource, responseTime, leadsByPropertyType }}
+          propertiesData={{ stats: propertiesStats, inventoryStatus, priceByZone, typeDistribution, pricePerM2, topProperties, priceTrend, priceTrendZones }}
+          financialData={{ stats: financialStats, revenueByMonth, pipeline, commissionsBySource, commissionsByType, topOperations }}
+          botData={{ stats: botStats, activityByDay: botActivityByDay, botFunnel, heatmap: engagementHeatmap, appointmentOutcomes }}
         />
       </div>
     </>
