@@ -8,18 +8,22 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Download, FileSpreadsheet, FileText } from "lucide-react"
+import { exportToPDF, exportToExcel } from "@/lib/utils/export"
 
 interface ExportButtonProps {
   activeTab: string
+  getExportData: () => { title: string; headers: string[]; rows: (string | number)[][] }
 }
 
-export function ExportButton({ activeTab }: ExportButtonProps) {
+export function ExportButton({ activeTab, getExportData }: ExportButtonProps) {
   const handleExportPDF = () => {
-    console.log("Export PDF for", activeTab)
+    const data = getExportData()
+    exportToPDF(data)
   }
 
   const handleExportExcel = () => {
-    console.log("Export Excel for", activeTab)
+    const data = getExportData()
+    exportToExcel(data)
   }
 
   return (
