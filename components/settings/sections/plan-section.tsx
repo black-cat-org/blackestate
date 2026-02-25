@@ -45,11 +45,9 @@ function UsageBar({ label, used, limit }: { label: string; used: number; limit: 
 }
 
 export function PlanSection({ data }: PlanSectionProps) {
-  const renewalDate = new Date(data.renewalDate).toLocaleDateString("es-AR", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  })
+  const MONTHS = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"]
+  const [year, month, day] = data.renewalDate.split("-")
+  const renewalDate = `${parseInt(day)} de ${MONTHS[parseInt(month) - 1]} de ${year}`
 
   return (
     <div className="max-w-2xl space-y-6">
