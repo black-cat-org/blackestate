@@ -121,19 +121,14 @@ export function MarketingKitView({ property }: MarketingKitViewProps) {
         )}
       </section>
 
-      {/* Captions para redes — bloqueados si no hay hashtags */}
+      {/* Captions para redes */}
       <section className="space-y-4">
         <h2 className="text-lg font-semibold">Captions para redes</h2>
-        {!hashtagsContent && (
-          <p className="text-muted-foreground text-sm">
-            Generá los hashtags primero para poder crear los captions de cada red social.
-          </p>
-        )}
         <MarketingKitCaptionGrid
           captions={captionsByPlatform}
           hashtagsText={hashtagsContent?.text}
           onGenerate={(platform) => openGenerator("caption", platform)}
-          locked={!hashtagsContent}
+          hasHashtags={!!hashtagsContent}
         />
       </section>
 

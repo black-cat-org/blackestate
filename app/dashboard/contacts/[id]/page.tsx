@@ -10,8 +10,9 @@ import {
 import { DashboardHeader } from "@/components/dashboard-header"
 import { LeadDetailHeader } from "@/components/contacts/lead-detail-header"
 import { LeadDetailInfo } from "@/components/contacts/lead-detail-info"
-import { getLeadById } from "@/lib/data/leads"
-import { getPropertyById } from "@/lib/data/properties"
+import { LeadSuggestedProperties } from "@/components/contacts/lead-suggested-properties"
+import { getLeadById, getSuggestedProperties } from "@/lib/data/leads"
+import { getPropertyById, getProperties } from "@/lib/data/properties"
 
 export default async function ContactDetailPage({
   params,
@@ -25,7 +26,12 @@ export default async function ContactDetailPage({
     notFound()
   }
 
-  const property = await getPropertyById(lead.propertyId)
+  const [property, allProperties] = await Promise.all([
+    getPropertyById(lead.propertyId),
+    getProperties(),
+  ])
+
+  const suggestedProperties = getSuggestedProperties(lead, allProperties)
 
   return (
     <>
@@ -47,10 +53,18 @@ export default async function ContactDetailPage({
         </Breadcrumb>
       </DashboardHeader>
 
-      <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
+      <div className="flex flex-1 flex-col gap-6 p-4 pt-0">
         <LeadDetailHeader lead={lead} />
-        <div className="max-w-2xl">
-          <LeadDetailInfo lead={lead} property={property} />
+        <div className="grid gap-6 lg:grid-cols-[1fr_1fr]">
+          <div className="max-w-2xl">
+            <LeadDetailInfo lead={lead} property={property} />
+          </div>
+          <div>
+            <LeadSuggestedProperties
+              lead={lead}
+              suggestedProperties={suggestedProperties}
+            />
+          </div>
         </div>
       </div>
     </>

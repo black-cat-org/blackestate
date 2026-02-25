@@ -53,14 +53,14 @@ export function LocationStep({ form }: { form: UseFormReturn<PropertyFormData> }
           {errors.country && <p className="text-sm text-destructive">{errors.country.message}</p>}
         </div>
         <div className="space-y-2">
-          <Label htmlFor="state">Provincia *</Label>
-          <Input id="state" {...register("state")} placeholder="Ej: CABA" />
-          {errors.state && <p className="text-sm text-destructive">{errors.state.message}</p>}
-        </div>
-        <div className="space-y-2">
           <Label htmlFor="city">Ciudad *</Label>
           <Input id="city" {...register("city")} placeholder="Ej: Buenos Aires" />
           {errors.city && <p className="text-sm text-destructive">{errors.city.message}</p>}
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="state">Provincia *</Label>
+          <Input id="state" {...register("state")} placeholder="Ej: CABA" />
+          {errors.state && <p className="text-sm text-destructive">{errors.state.message}</p>}
         </div>
       </div>
 

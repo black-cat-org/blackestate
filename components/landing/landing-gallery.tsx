@@ -1,6 +1,5 @@
 "use client"
 
-import { useState } from "react"
 import Image from "next/image"
 import { cn } from "@/lib/utils"
 import {
@@ -11,6 +10,7 @@ import {
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { ChevronLeftIcon, ChevronRightIcon, ImageIcon, XIcon } from "lucide-react"
+import { useLightbox } from "@/hooks/use-lightbox"
 
 interface LandingGalleryProps {
   photos: string[]
@@ -18,8 +18,8 @@ interface LandingGalleryProps {
 }
 
 export function LandingGallery({ photos, title }: LandingGalleryProps) {
-  const [lightboxOpen, setLightboxOpen] = useState(false)
-  const [currentIndex, setCurrentIndex] = useState(0)
+  const { open, setOpen, currentIndex, openAt, goToPrevious, goToNext, swipeHandlers } =
+    useLightbox({ total: photos.length })
 
   if (photos.length === 0) {
     return (
@@ -32,25 +32,12 @@ export function LandingGallery({ photos, title }: LandingGalleryProps) {
     )
   }
 
-  const openLightbox = (index: number) => {
-    setCurrentIndex(index)
-    setLightboxOpen(true)
-  }
-
-  const goToPrevious = () => {
-    setCurrentIndex((i) => (i === 0 ? photos.length - 1 : i - 1))
-  }
-
-  const goToNext = () => {
-    setCurrentIndex((i) => (i === photos.length - 1 ? 0 : i + 1))
-  }
-
   return (
     <>
       <div className="grid gap-2">
         {/* Hero image */}
         <button
-          onClick={() => openLightbox(0)}
+          onClick={() => openAt(0)}
           className="relative aspect-[4/3] w-full overflow-hidden rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           <Image
@@ -69,7 +56,7 @@ export function LandingGallery({ photos, title }: LandingGalleryProps) {
             {photos.slice(1, 5).map((photo, index) => (
               <button
                 key={index}
-                onClick={() => openLightbox(index + 1)}
+                onClick={() => openAt(index + 1)}
                 className={cn(
                   "relative aspect-square w-20 shrink-0 overflow-hidden rounded-md sm:w-24",
                   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -94,7 +81,7 @@ export function LandingGallery({ photos, title }: LandingGalleryProps) {
       </div>
 
       {/* Lightbox */}
-      <Dialog open={lightboxOpen} onOpenChange={setLightboxOpen}>
+      <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent showCloseButton={false} className="max-h-[90vh] max-w-[90vw] gap-0 overflow-hidden rounded-lg border-none bg-black p-0 sm:max-w-4xl">
           <DialogTitle className="sr-only">
             {title} - Foto {currentIndex + 1} de {photos.length}
@@ -105,7 +92,7 @@ export function LandingGallery({ photos, title }: LandingGalleryProps) {
             <span className="sr-only">Cerrar</span>
           </DialogClose>
 
-          <div className="relative aspect-[4/3]">
+          <div className="relative aspect-[4/3]" {...swipeHandlers}>
             <Image
               src={photos[currentIndex]}
               alt={`${title} - Foto ${currentIndex + 1}`}

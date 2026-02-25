@@ -39,6 +39,24 @@ export const leadColumns: ColumnDef<Lead>[] = [
     header: "Email",
   },
   {
+    accessorKey: "propertyTitle",
+    header: "Propiedad",
+    cell: ({ row }) => {
+      const title = row.original.propertyTitle
+      return title ? (
+        <Link
+          href={`/dashboard/properties/${row.original.propertyId}`}
+          className="max-w-[150px] truncate text-xs hover:underline block"
+          title={title}
+        >
+          {title}
+        </Link>
+      ) : (
+        <span className="text-muted-foreground text-xs">—</span>
+      )
+    },
+  },
+  {
     accessorKey: "source",
     header: "Fuente",
     cell: ({ row }) => <LeadSourceBadge source={row.original.source} />,
