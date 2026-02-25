@@ -66,7 +66,7 @@ const data = {
     },
     {
       title: "Configuración",
-      url: "#",
+      url: "/dashboard/settings",
       icon: Settings2,
     },
   ],
