@@ -5,14 +5,12 @@ import { useRouter } from "next/navigation"
 import { Bell } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { Separator } from "@/components/ui/separator"
 import {
   getNotifications,
   getUnreadNotificationCount,
@@ -73,8 +71,8 @@ export function NotificationBell() {
   }
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
+    <Popover>
+      <PopoverTrigger asChild>
         <Button variant="ghost" size="icon" className="relative size-8">
           <Bell className="size-4" />
           {unreadCount > 0 && (
@@ -83,10 +81,10 @@ export function NotificationBell() {
             </span>
           )}
         </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-80">
-        <DropdownMenuLabel className="flex items-center justify-between">
-          <span>Notificaciones</span>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-80 p-0">
+        <div className="flex items-center justify-between px-3 py-2.5">
+          <span className="text-sm font-semibold">Notificaciones</span>
           {unreadCount > 0 && (
             <Button
               variant="ghost"
@@ -97,18 +95,18 @@ export function NotificationBell() {
               Marcar todas como leídas
             </Button>
           )}
-        </DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        <ScrollArea className="max-h-[350px]">
+        </div>
+        <Separator />
+        <ScrollArea className="h-[350px]">
           {notifications.length === 0 ? (
             <div className="py-6 text-center text-sm text-muted-foreground">
               No hay notificaciones
             </div>
           ) : (
             notifications.map((notification) => (
-              <DropdownMenuItem
+              <div
                 key={notification.id}
-                className="flex items-start gap-2.5 p-3 cursor-pointer"
+                className="flex items-start gap-2.5 p-3 cursor-pointer transition-colors hover:bg-accent"
                 onClick={() => handleClick(notification)}
               >
                 {!notification.read && (
@@ -123,18 +121,18 @@ export function NotificationBell() {
                     {formatRelativeTime(notification.createdAt)}
                   </p>
                 </div>
-              </DropdownMenuItem>
+              </div>
             ))
           )}
         </ScrollArea>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem
-          className="justify-center text-xs text-muted-foreground"
+        <Separator />
+        <button
+          className="w-full py-2.5 text-center text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
           onClick={() => router.push("/dashboard/bot")}
         >
           Ver toda la actividad
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+        </button>
+      </PopoverContent>
+    </Popover>
   )
 }
