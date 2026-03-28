@@ -26,6 +26,7 @@ const locationSchema = z.object({
   googleMapsUrl: z.string().optional(),
   lat: z.string().optional(),
   lng: z.string().optional(),
+  hideExactLocation: z.boolean(),
 })
 
 const featuresSchema = z.object({
@@ -68,8 +69,8 @@ const defaultValues: PropertyFormData = {
   currency: "USD",
   negotiable: false,
   expenses: "",
-  expensesCurrency: "ARS",
-  country: "Argentina",
+  expensesCurrency: "USD",
+  country: "Bolivia",
   state: "",
   city: "",
   neighborhood: "",
@@ -90,6 +91,7 @@ const defaultValues: PropertyFormData = {
   condition: "",
   orientation: "",
   amenities: [],
+  hideExactLocation: true,
   photos: [],
   videoUrl: "",
   virtualTourUrl: "",

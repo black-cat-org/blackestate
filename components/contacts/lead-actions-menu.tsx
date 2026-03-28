@@ -10,9 +10,6 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
 } from "@/components/ui/dropdown-menu"
 import {
   Dialog,
@@ -69,22 +66,26 @@ export function LeadActionsMenu({ lead }: { lead: Lead }) {
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           <DropdownMenuItem asChild>
-            <Link href={`/dashboard/contacts/${lead.id}`}>
+            <Link href={`/dashboard/leads/${lead.id}`}>
               <Eye className="text-muted-foreground" />
               Ver detalle
             </Link>
           </DropdownMenuItem>
-          {transitions.length > 0 && (
-            <DropdownMenuSub>
-              <DropdownMenuSubTrigger>Cambiar estado</DropdownMenuSubTrigger>
-              <DropdownMenuSubContent>
-                {transitions.map((t) => (
-                  <DropdownMenuItem key={t.status} onClick={() => handleStatusChange(t.status)}>
-                    {t.label}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuSubContent>
-            </DropdownMenuSub>
+          {transitions.filter((t) => t.status !== "descartado").map((t) => (
+            <DropdownMenuItem key={t.status} onClick={() => handleStatusChange(t.status)}>
+              {t.label}
+            </DropdownMenuItem>
+          ))}
+          {transitions.some((t) => t.status === "descartado") && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="text-destructive"
+                onClick={() => handleStatusChange("descartado")}
+              >
+                Descartar
+              </DropdownMenuItem>
+            </>
           )}
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={() => setDeleteDialogOpen(true)} className="text-destructive">
@@ -99,7 +100,7 @@ export function LeadActionsMenu({ lead }: { lead: Lead }) {
           <DialogHeader>
             <DialogTitle>Eliminar lead</DialogTitle>
             <DialogDescription>
-              ¿Seguro que querés eliminar a {lead.name}? Esta acción no se puede deshacer.
+              ¿Seguro que quieres eliminar a {lead.name}? Esta acción no se puede deshacer.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

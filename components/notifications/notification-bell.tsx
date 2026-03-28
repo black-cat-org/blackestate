@@ -60,7 +60,7 @@ export function NotificationBell() {
       setUnreadCount((prev) => Math.max(0, prev - 1))
     }
     if (notification.leadId) {
-      router.push(`/dashboard/contacts/${notification.leadId}`)
+      router.push(`/dashboard/leads/${notification.leadId}`)
     }
   }
 

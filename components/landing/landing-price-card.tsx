@@ -30,7 +30,7 @@ export function LandingPriceCard({ property, source }: LandingPriceCardProps) {
     property.garages != null && {
       icon: CarIcon,
       value: property.garages,
-      label: property.garages === 1 ? "cochera" : "cocheras",
+      label: "estacionamiento",
     },
     property.totalArea && {
       icon: RulerIcon,

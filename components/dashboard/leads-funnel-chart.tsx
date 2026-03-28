@@ -29,9 +29,13 @@ const chartConfig = {
     label: "Interesado",
     color: "hsl(142, 71%, 45%)",
   },
-  cerrado: {
-    label: "Cerrado",
-    color: "hsl(271, 91%, 65%)",
+  ganado: {
+    label: "Ganado",
+    color: "hsl(142, 71%, 45%)",
+  },
+  perdido: {
+    label: "Perdido",
+    color: "hsl(0, 72%, 51%)",
   },
   descartado: {
     label: "Descartado",

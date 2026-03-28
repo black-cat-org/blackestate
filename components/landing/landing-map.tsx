@@ -1,43 +1,46 @@
+"use client"
+
 import type { PropertyAddress } from "@/lib/types/property"
-import { Button } from "@/components/ui/button"
-import { MapPinIcon, ExternalLinkIcon } from "lucide-react"
+import { PropertyMap } from "@/components/maps/property-map"
+import { MapPinIcon } from "lucide-react"
 
 interface LandingMapProps {
   address: PropertyAddress
+  hideExactLocation: boolean
 }
 
-export function LandingMap({ address }: LandingMapProps) {
+export function LandingMap({ address, hideExactLocation }: LandingMapProps) {
   const hasCoords = address.lat != null && address.lng != null
-  const googleMapsUrl =
-    address.googleMapsUrl ||
-    (hasCoords
-      ? `https://www.google.com/maps?q=${address.lat},${address.lng}`
-      : `https://www.google.com/maps/search/${encodeURIComponent(
-          `${address.street} ${address.number || ""}, ${address.city}, ${address.state}`
-        )}`)
+
+  if (!hasCoords) {
+    return null
+  }
 
   return (
     <section>
       <h2 className="mb-4 text-lg font-semibold">Ubicación</h2>
-      <div className="flex aspect-[16/9] items-center justify-center rounded-lg border bg-muted">
-        <div className="text-center text-muted-foreground">
-          <MapPinIcon className="mx-auto size-10" />
-          <p className="mt-2 text-sm">
-            {address.street}
-            {address.number ? ` ${address.number}` : ""}
-          </p>
-          <p className="text-sm">
-            {[address.neighborhood, address.city, address.state]
-              .filter(Boolean)
-              .join(", ")}
-          </p>
-          <Button variant="outline" size="sm" className="mt-3" asChild>
-            <a href={googleMapsUrl} target="_blank" rel="noopener noreferrer">
-              <ExternalLinkIcon className="size-3.5" />
-              Ver en Google Maps
-            </a>
-          </Button>
+      <div className="overflow-hidden rounded-lg border">
+        <div className="aspect-[16/9]">
+          <PropertyMap
+            lat={address.lat!}
+            lng={address.lng!}
+            mode={hideExactLocation ? "approximate" : "exact"}
+          />
         </div>
+
+        {!hideExactLocation && (
+          <div className="flex items-center gap-2 border-t bg-muted/50 px-4 py-3">
+            <MapPinIcon className="size-4 text-muted-foreground" />
+            <p className="text-sm text-muted-foreground">
+              {address.street}
+              {address.number ? ` ${address.number}` : ""}
+              {", "}
+              {[address.neighborhood, address.city, address.state]
+                .filter(Boolean)
+                .join(", ")}
+            </p>
+          </div>
+        )}
       </div>
     </section>
   )

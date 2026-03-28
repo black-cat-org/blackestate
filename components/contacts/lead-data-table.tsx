@@ -66,7 +66,7 @@ export function LeadDataTable({ leads }: { leads: Lead[] }) {
             ) : (
               <TableRow>
                 <TableCell colSpan={leadColumns.length} className="h-24 text-center">
-                  No se encontraron contactos
+                  No se encontraron leads
                 </TableCell>
               </TableRow>
             )}
@@ -75,7 +75,7 @@ export function LeadDataTable({ leads }: { leads: Lead[] }) {
       </div>
       <div className="flex items-center justify-between py-4">
         <p className="text-muted-foreground text-sm">
-          {table.getFilteredRowModel().rows.length} contacto(s)
+          {table.getFilteredRowModel().rows.length} leads
         </p>
         <div className="flex gap-2">
           <Button

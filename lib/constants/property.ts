@@ -1,4 +1,10 @@
-import type { PropertyType, OperationType, PropertyStatus, Currency, SurfaceUnit } from "@/lib/types/property"
+import type {
+  Currency,
+  OperationType,
+  PropertyStatus,
+  PropertyType,
+  SurfaceUnit,
+} from "@/lib/types/property";
 
 export const PROPERTY_TYPE_LABELS: Record<PropertyType, string> = {
   house: "Casa",
@@ -9,14 +15,14 @@ export const PROPERTY_TYPE_LABELS: Record<PropertyType, string> = {
   warehouse: "Depósito",
   cabin: "Cabaña",
   ph: "PH",
-}
+};
 
 export const OPERATION_TYPE_LABELS: Record<OperationType, string> = {
   venta: "Venta",
   alquiler: "Alquiler",
   temporal: "Alquiler temporal",
   anticretico: "Anticrético",
-}
+};
 
 export const PROPERTY_STATUS_LABELS: Record<PropertyStatus, string> = {
   borrador: "Borrador",
@@ -26,59 +32,59 @@ export const PROPERTY_STATUS_LABELS: Record<PropertyStatus, string> = {
   vendida: "Vendida",
   alquilada: "Alquilada",
   rechazada: "Rechazada",
-}
+};
 
 export const PROPERTY_STATUS_COLORS: Record<PropertyStatus, string> = {
   borrador: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300",
-  en_revision: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300",
+  en_revision:
+    "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300",
   activa: "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300",
-  pausada: "bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300",
+  pausada:
+    "bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300",
   vendida: "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300",
-  alquilada: "bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300",
+  alquilada:
+    "bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300",
   rechazada: "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300",
-}
+};
 
 export const CURRENCY_LABELS: Record<Currency, string> = {
   USD: "USD",
-  ARS: "ARS",
   BOB: "BOB",
-  EUR: "EUR",
-}
+};
 
 export const CURRENCY_SYMBOLS: Record<Currency, string> = {
   USD: "US$",
-  ARS: "$",
-  BOB: "Bs.",
-  EUR: "€",
-}
+  BOB: "Bs",
+};
 
 export const SURFACE_UNIT_LABELS: Record<SurfaceUnit, string> = {
   m2: "m²",
-  ft2: "ft²",
   ha: "ha",
-  acres: "acres",
-}
+};
 
-export const AMENITIES_OPTIONS = [
-  { value: "pileta", label: "Pileta" },
-  { value: "quincho", label: "Quincho" },
-  { value: "parrilla", label: "Parrilla" },
-  { value: "jardin", label: "Jardín" },
-  { value: "terraza", label: "Terraza" },
-  { value: "balcon", label: "Balcón" },
-  { value: "laundry", label: "Lavadero" },
-  { value: "gym", label: "Gimnasio" },
-  { value: "seguridad", label: "Seguridad 24hs" },
-  { value: "ascensor", label: "Ascensor" },
-  { value: "calefaccion", label: "Calefacción" },
+export const EQUIPMENT_OPTIONS = [
   { value: "aire_acondicionado", label: "Aire acondicionado" },
   { value: "agua_caliente", label: "Agua caliente" },
   { value: "gas_natural", label: "Gas natural" },
-  { value: "sum", label: "SUM" },
-  { value: "playroom", label: "Playroom" },
-  { value: "solarium", label: "Solarium" },
+  { value: "cocina_equipada", label: "Cocina equipada" },
+  { value: "balcon", label: "Balcón" },
+  { value: "terraza", label: "Terraza" },
+  { value: "jardin", label: "Jardín" },
+  { value: "quincho", label: "Parrillero" },
+] as const;
+
+export const AMENITIES_OPTIONS = [
+  { value: "pileta", label: "Piscina" },
+  { value: "gym", label: "Gimnasio" },
+  { value: "playroom", label: "Sala de juegos" },
+  { value: "quincho_compartido", label: "Parrillero" },
+  { value: "jardin_compartido", label: "Jardín" },
+  { value: "laundry", label: "Lavandería" },
+  { value: "ascensor", label: "Ascensor" },
+  { value: "seguridad", label: "Seguridad 24hs" },
   { value: "baulera", label: "Baulera" },
-] as const
+  { value: "sum", label: "Áreas comunes" },
+] as const;
 
 export const CONDITION_OPTIONS = [
   { value: "nueva", label: "A estrenar" },
@@ -86,7 +92,7 @@ export const CONDITION_OPTIONS = [
   { value: "buena", label: "Buena" },
   { value: "regular", label: "Regular" },
   { value: "a_reciclar", label: "A reciclar" },
-] as const
+] as const;
 
 export const ORIENTATION_OPTIONS = [
   { value: "norte", label: "Norte" },
@@ -97,12 +103,13 @@ export const ORIENTATION_OPTIONS = [
   { value: "noroeste", label: "Noroeste" },
   { value: "sureste", label: "Sureste" },
   { value: "suroeste", label: "Suroeste" },
-] as const
+] as const;
 
-export const STATUS_TRANSITIONS: Record<PropertyStatus, { status: PropertyStatus; label: string }[]> = {
-  borrador: [
-    { status: "en_revision", label: "Enviar a revisión" },
-  ],
+export const STATUS_TRANSITIONS: Record<
+  PropertyStatus,
+  { status: PropertyStatus; label: string }[]
+> = {
+  borrador: [{ status: "en_revision", label: "Enviar a revisión" }],
   en_revision: [
     { status: "activa", label: "Activar" },
     { status: "rechazada", label: "Rechazar" },
@@ -112,21 +119,17 @@ export const STATUS_TRANSITIONS: Record<PropertyStatus, { status: PropertyStatus
     { status: "vendida", label: "Marcar como vendida" },
     { status: "alquilada", label: "Marcar como alquilada" },
   ],
-  pausada: [
-    { status: "activa", label: "Reactivar" },
-  ],
+  pausada: [{ status: "activa", label: "Reactivar" }],
   vendida: [],
   alquilada: [],
-  rechazada: [
-    { status: "borrador", label: "Volver a borrador" },
-  ],
-}
+  rechazada: [{ status: "borrador", label: "Volver a borrador" }],
+};
 
 export const WIZARD_STEPS = [
   { id: 1, title: "Datos", description: "Tipo, operación y precio" },
   { id: 2, title: "Ubicación", description: "Dirección y coordenadas" },
-  { id: 3, title: "Características", description: "Superficie y amenities" },
-  { id: 4, title: "Media", description: "Fotos y videos" },
+  { id: 3, title: "Características", description: "Superficie y amenidades" },
+  { id: 4, title: "Multimedia", description: "Fotos y videos" },
   { id: 5, title: "Descripción", description: "Título y descripción con IA" },
   { id: 6, title: "Resumen", description: "Revisión final" },
-] as const
+] as const;

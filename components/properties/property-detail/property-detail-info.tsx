@@ -5,6 +5,7 @@ import { formatPrice, formatSurface } from "@/lib/utils/format"
 import {
   CONDITION_OPTIONS,
   ORIENTATION_OPTIONS,
+  EQUIPMENT_OPTIONS,
   AMENITIES_OPTIONS,
   CURRENCY_SYMBOLS,
 } from "@/lib/constants/property"
@@ -83,7 +84,7 @@ export function PropertyDetailInfo({ property }: { property: Property }) {
             <div className="flex items-center gap-2">
               <DoorOpen className="size-4 text-muted-foreground" />
               <div>
-                <p className="text-muted-foreground">Ambientes</p>
+                <p className="text-muted-foreground">Habitaciones</p>
                 <p className="font-medium">{property.rooms}</p>
               </div>
             </div>
@@ -110,7 +111,7 @@ export function PropertyDetailInfo({ property }: { property: Property }) {
             <div className="flex items-center gap-2">
               <Car className="size-4 text-muted-foreground" />
               <div>
-                <p className="text-muted-foreground">Cocheras</p>
+                <p className="text-muted-foreground">Estacionamiento</p>
                 <p className="font-medium">{property.garages}</p>
               </div>
             </div>
@@ -158,7 +159,9 @@ export function PropertyDetailInfo({ property }: { property: Property }) {
                   key={amenity}
                   className="bg-muted rounded-full px-3 py-1 text-sm"
                 >
-                  {AMENITIES_OPTIONS.find((o) => o.value === amenity)?.label || amenity}
+                  {EQUIPMENT_OPTIONS.find((o) => o.value === amenity)?.label
+                    || AMENITIES_OPTIONS.find((o) => o.value === amenity)?.label
+                    || amenity}
                 </span>
               ))}
             </div>

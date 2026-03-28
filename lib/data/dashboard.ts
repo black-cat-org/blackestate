@@ -21,7 +21,7 @@ export async function getDashboardStats() {
   const pendingAppointmentsCount = appointments.filter(
     (a) => a.status === "solicitada" || a.status === "confirmada"
   ).length
-  const closedCount = leads.filter((l) => l.status === "cerrado").length
+  const closedCount = leads.filter((l) => l.status === "ganado").length
   const conversionRate = totalLeads > 0 ? (closedCount / totalLeads) * 100 : 0
 
   return {
@@ -62,12 +62,13 @@ export async function getLeadsByStatus() {
     counts[lead.status] = (counts[lead.status] || 0) + 1
   }
 
-  const statusOrder: LeadStatus[] = ["nuevo", "contactado", "interesado", "cerrado", "descartado"]
+  const statusOrder: LeadStatus[] = ["nuevo", "contactado", "interesado", "ganado", "perdido", "descartado"]
   const colors: Record<LeadStatus, string> = {
     nuevo: "hsl(217, 91%, 60%)",
     contactado: "hsl(45, 93%, 47%)",
-    interesado: "hsl(142, 71%, 45%)",
-    cerrado: "hsl(271, 91%, 65%)",
+    interesado: "hsl(271, 91%, 65%)",
+    ganado: "hsl(142, 71%, 45%)",
+    perdido: "hsl(0, 72%, 51%)",
     descartado: "hsl(0, 0%, 60%)",
   }
 

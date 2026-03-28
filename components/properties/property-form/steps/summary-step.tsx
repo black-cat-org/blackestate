@@ -10,6 +10,7 @@ import {
   SURFACE_UNIT_LABELS,
   CONDITION_OPTIONS,
   ORIENTATION_OPTIONS,
+  EQUIPMENT_OPTIONS,
   AMENITIES_OPTIONS,
 } from "@/lib/constants/property"
 import type { PropertyFormData, PropertyType, OperationType, Currency, SurfaceUnit } from "@/lib/types/property"
@@ -55,7 +56,17 @@ export function SummaryStep({
 }) {
   const values = form.getValues()
   const currencySymbol = CURRENCY_SYMBOLS[values.currency as Currency] || values.currency
-  const amenityLabels = (values.amenities || [])
+  const allAmenities = values.amenities || []
+  const equipmentValues = EQUIPMENT_OPTIONS.map((o) => o.value as string)
+  const amenityValues = AMENITIES_OPTIONS.map((o) => o.value as string)
+
+  const equipmentLabels = allAmenities
+    .filter((a) => equipmentValues.includes(a))
+    .map((a) => EQUIPMENT_OPTIONS.find((o) => o.value === a)?.label || a)
+    .join(", ")
+
+  const amenityLabels = allAmenities
+    .filter((a) => amenityValues.includes(a))
     .map((a) => AMENITIES_OPTIONS.find((o) => o.value === a)?.label || a)
     .join(", ")
 
@@ -118,10 +129,9 @@ export function SummaryStep({
             value={`${values.coveredArea} ${SURFACE_UNIT_LABELS[values.surfaceUnit as SurfaceUnit]}`}
           />
         )}
-        <SummaryRow label="Ambientes" value={values.rooms || undefined} />
         <SummaryRow label="Dormitorios" value={values.bedrooms || undefined} />
         <SummaryRow label="Baños" value={values.bathrooms || undefined} />
-        <SummaryRow label="Cocheras" value={values.garages || undefined} />
+        <SummaryRow label="Estacionamiento" value={values.garages || undefined} />
         <SummaryRow label="Antigüedad" value={values.age ? `${values.age} años` : undefined} />
         <SummaryRow
           label="Condición"
@@ -131,15 +141,15 @@ export function SummaryStep({
           label="Orientación"
           value={values.orientation ? ORIENTATION_OPTIONS.find((o) => o.value === values.orientation)?.label : undefined}
         />
-        {amenityLabels && <SummaryRow label="Amenities" value={amenityLabels} />}
+        {equipmentLabels && <SummaryRow label="Equipamiento del inmueble" value={equipmentLabels} />}
+        {amenityLabels && <SummaryRow label="Amenidades" value={amenityLabels} />}
       </SummarySection>
 
-      {/* Step 3: Media */}
-      <SummarySection title="Media" stepIndex={3} onEdit={onGoToStep}>
+      {/* Step 3: Contenido multimedia */}
+      <SummarySection title="Contenido multimedia" stepIndex={3} onEdit={onGoToStep}>
         <SummaryRow label="Fotos" value={`${values.photos?.length || 0} archivos`} />
         <SummaryRow label="Video" value={values.videoUrl} />
         <SummaryRow label="Tour virtual" value={values.virtualTourUrl} />
-        <SummaryRow label="Planos" value={`${values.blueprints?.length || 0} archivos`} />
       </SummarySection>
 
       {/* Step 4: Título y descripción */}

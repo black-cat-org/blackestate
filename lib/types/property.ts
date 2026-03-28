@@ -19,9 +19,9 @@ export type PropertyStatus =
   | "alquilada"
   | "rechazada"
 
-export type Currency = "USD" | "ARS" | "BOB" | "EUR"
+export type Currency = "USD" | "BOB"
 
-export type SurfaceUnit = "m2" | "ft2" | "ha" | "acres"
+export type SurfaceUnit = "m2" | "ha"
 
 export interface CurrencyAmount {
   amount: number
@@ -76,6 +76,7 @@ export interface Property {
   condition?: "nueva" | "excelente" | "buena" | "regular" | "a_reciclar"
   orientation?: "norte" | "sur" | "este" | "oeste" | "noreste" | "noroeste" | "sureste" | "suroeste"
   amenities: string[]
+  hideExactLocation: boolean
   media: PropertyMedia
   createdAt: string
   updatedAt: string
@@ -113,6 +114,7 @@ export interface PropertyFormData {
   condition: Property["condition"] | ""
   orientation: Property["orientation"] | ""
   amenities: string[]
+  hideExactLocation: boolean
   photos: string[]
   videoUrl: string
   virtualTourUrl: string

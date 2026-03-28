@@ -47,7 +47,7 @@ export function LeadDetailHeader({ lead }: { lead: Lead }) {
     try {
       await deleteLead(lead.id)
       toast.success("Lead eliminado")
-      router.push("/dashboard/contacts")
+      router.push("/dashboard/leads")
     } catch {
       toast.error("Error al eliminar")
     } finally {
@@ -58,7 +58,7 @@ export function LeadDetailHeader({ lead }: { lead: Lead }) {
   return (
     <div className="space-y-4">
       <Button variant="ghost" size="sm" asChild>
-        <Link href="/dashboard/contacts">
+        <Link href="/dashboard/leads">
           <ArrowLeft className="mr-2 size-4" />
           Volver al listado
         </Link>

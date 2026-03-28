@@ -10,7 +10,8 @@ const chartConfig = {
   nuevo: { label: "Nuevo", color: "hsl(217, 91%, 60%)" },
   contactado: { label: "Contactado", color: "hsl(45, 93%, 47%)" },
   interesado: { label: "Interesado", color: "hsl(142, 71%, 45%)" },
-  cerrado: { label: "Cerrado", color: "hsl(271, 91%, 65%)" },
+  ganado: { label: "Ganado", color: "hsl(142, 71%, 45%)" },
+  perdido: { label: "Perdido", color: "hsl(0, 72%, 51%)" },
   descartado: { label: "Descartado", color: "hsl(0, 0%, 60%)" },
 } satisfies ChartConfig
 

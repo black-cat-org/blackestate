@@ -38,7 +38,7 @@ export function LandingCharacteristics({ property }: LandingCharacteristicsProps
     },
     property.rooms != null && {
       icon: DoorOpenIcon,
-      label: "Ambientes",
+      label: "Habitaciones",
       value: property.rooms,
     },
     property.bedrooms != null && {
@@ -53,7 +53,7 @@ export function LandingCharacteristics({ property }: LandingCharacteristicsProps
     },
     property.garages != null && {
       icon: CarIcon,
-      label: "Cocheras",
+      label: "Estacionamiento",
       value: property.garages,
     },
     property.age != null && {

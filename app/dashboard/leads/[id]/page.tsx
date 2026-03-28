@@ -53,7 +53,7 @@ export default async function ContactDetailPage({
             </BreadcrumbItem>
             <BreadcrumbSeparator className="hidden md:block" />
             <BreadcrumbItem className="hidden md:block">
-              <BreadcrumbLink href="/dashboard/contacts">Leads</BreadcrumbLink>
+              <BreadcrumbLink href="/dashboard/leads">Leads</BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator className="hidden md:block" />
             <BreadcrumbItem>

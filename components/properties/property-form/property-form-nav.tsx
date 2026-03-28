@@ -11,6 +11,7 @@ interface PropertyFormNavProps {
   onPrevious: () => void
   onNext: () => void
   onSave: () => void
+  onPublish?: () => void
   isLastStep: boolean
   saveLabel?: string
 }
@@ -21,6 +22,7 @@ export function PropertyFormNav({
   onPrevious,
   onNext,
   onSave,
+  onPublish,
   isLastStep,
   saveLabel = "Guardar como borrador",
 }: PropertyFormNavProps) {
@@ -73,9 +75,16 @@ export function PropertyFormNav({
           Anterior
         </Button>
         {isLastStep ? (
-          <Button type="button" onClick={onSave}>
-            {saveLabel}
-          </Button>
+          <div className="flex gap-2">
+            <Button type="button" variant="outline" onClick={onSave}>
+              {saveLabel}
+            </Button>
+            {onPublish && (
+              <Button type="button" onClick={onPublish}>
+                Publicar
+              </Button>
+            )}
+          </div>
         ) : (
           <Button type="button" onClick={onNext}>
             Siguiente

@@ -85,7 +85,7 @@ export default async function PropertyLandingPage({ params, searchParams }: Page
               <LandingAmenities amenities={property.amenities} />
             )}
 
-            <LandingMap address={property.address} />
+            <LandingMap address={property.address} hideExactLocation={property.hideExactLocation} />
 
             {/* Contact form - mobile only */}
             <div className="lg:hidden">

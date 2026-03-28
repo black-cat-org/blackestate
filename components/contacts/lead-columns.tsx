@@ -23,7 +23,7 @@ export const leadColumns: ColumnDef<Lead>[] = [
     ),
     cell: ({ row }) => (
       <Link
-        href={`/dashboard/contacts/${row.original.id}`}
+        href={`/dashboard/leads/${row.original.id}`}
         className="font-medium hover:underline"
       >
         {row.getValue("name")}

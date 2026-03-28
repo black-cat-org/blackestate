@@ -2,11 +2,13 @@
 
 import { useState } from "react"
 import { UseFormReturn } from "react-hook-form"
-import { Locate, MapPin, Link2, CheckCircle2 } from "lucide-react"
+import { Locate, MapPin, Link2, CheckCircle2, ShieldCheck } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
+import { Switch } from "@/components/ui/switch"
 import { extractCoordsFromGoogleMapsUrl } from "@/lib/utils/google-maps"
+import { reverseGeocode } from "@/lib/utils/reverse-geocode"
 import type { PropertyFormData } from "@/lib/types/property"
 
 export function LocationStep({ form }: { form: UseFormReturn<PropertyFormData> }) {
@@ -16,6 +18,17 @@ export function LocationStep({ form }: { form: UseFormReturn<PropertyFormData> }
   const lng = watch("lng")
   const hasCoords = lat && lng
 
+  const fillAddressFromCoords = async (lat: number, lng: number) => {
+    const address = await reverseGeocode(lat, lng)
+    const values = form.getValues()
+
+    if (address.country && !values.country) setValue("country", address.country)
+    if (address.state && !values.state) setValue("state", address.state)
+    if (address.city && !values.city) setValue("city", address.city)
+    if (address.neighborhood && !values.neighborhood) setValue("neighborhood", address.neighborhood)
+    if (address.street && !values.street) setValue("street", address.street)
+  }
+
   const handleDetectLocation = () => {
     if (!navigator.geolocation) {
       setGeoStatus("error")
@@ -23,22 +36,25 @@ export function LocationStep({ form }: { form: UseFormReturn<PropertyFormData> }
     }
     setGeoStatus("loading")
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setValue("lat", String(pos.coords.latitude))
-        setValue("lng", String(pos.coords.longitude))
+      async (pos) => {
+        const { latitude, longitude } = pos.coords
+        setValue("lat", String(latitude))
+        setValue("lng", String(longitude))
         setGeoStatus("success")
+        await fillAddressFromCoords(latitude, longitude)
       },
       () => setGeoStatus("error"),
       { enableHighAccuracy: true }
     )
   }
 
-  const handleGoogleMapsUrlChange = (url: string) => {
+  const handleGoogleMapsUrlChange = async (url: string) => {
     setValue("googleMapsUrl", url)
     const coords = extractCoordsFromGoogleMapsUrl(url)
     if (coords) {
       setValue("lat", String(coords.lat))
       setValue("lng", String(coords.lng))
+      await fillAddressFromCoords(coords.lat, coords.lng)
     }
   }
 
@@ -49,17 +65,17 @@ export function LocationStep({ form }: { form: UseFormReturn<PropertyFormData> }
       <div className="grid gap-4 sm:grid-cols-3">
         <div className="space-y-2">
           <Label htmlFor="country">País *</Label>
-          <Input id="country" {...register("country")} placeholder="Argentina" />
+          <Input id="country" {...register("country")} placeholder="Bolivia" />
           {errors.country && <p className="text-sm text-destructive">{errors.country.message}</p>}
         </div>
         <div className="space-y-2">
           <Label htmlFor="city">Ciudad *</Label>
-          <Input id="city" {...register("city")} placeholder="Ej: Buenos Aires" />
+          <Input id="city" {...register("city")} placeholder="Ej: Santa Cruz de la Sierra" />
           {errors.city && <p className="text-sm text-destructive">{errors.city.message}</p>}
         </div>
         <div className="space-y-2">
           <Label htmlFor="state">Provincia *</Label>
-          <Input id="state" {...register("state")} placeholder="Ej: CABA" />
+          <Input id="state" {...register("state")} placeholder="Ej: Santa Cruz" />
           {errors.state && <p className="text-sm text-destructive">{errors.state.message}</p>}
         </div>
       </div>
@@ -67,11 +83,11 @@ export function LocationStep({ form }: { form: UseFormReturn<PropertyFormData> }
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">
           <Label htmlFor="neighborhood">Barrio</Label>
-          <Input id="neighborhood" {...register("neighborhood")} placeholder="Ej: Palermo" />
+          <Input id="neighborhood" {...register("neighborhood")} placeholder="Ej: Equipetrol" />
         </div>
         <div className="space-y-2">
           <Label htmlFor="street">Calle *</Label>
-          <Input id="street" {...register("street")} placeholder="Ej: Av. Santa Fe" />
+          <Input id="street" {...register("street")} placeholder="Ej: Av. San Martín" />
           {errors.street && <p className="text-sm text-destructive">{errors.street.message}</p>}
         </div>
       </div>
@@ -148,6 +164,30 @@ export function LocationStep({ form }: { form: UseFormReturn<PropertyFormData> }
             </a>
           </div>
         )}
+
+        <div className="h-px bg-border" />
+
+        <div className="rounded-lg border border-amber-200 bg-amber-50/60 p-4 dark:border-amber-900/40 dark:bg-amber-950/20">
+          <label htmlFor="hideExactLocation" className="flex cursor-pointer items-start gap-3">
+            <Switch
+              id="hideExactLocation"
+              checked={watch("hideExactLocation")}
+              onCheckedChange={(checked) => setValue("hideExactLocation", checked === true)}
+              className="mt-0.5 shrink-0"
+            />
+            <div className="space-y-1">
+              <span className="flex items-center gap-1.5 text-sm font-medium">
+                <ShieldCheck className="size-4 text-amber-600 dark:text-amber-400" />
+                Ocultar dirección exacta
+              </span>
+              <p className="text-xs leading-relaxed text-muted-foreground">
+                Al activarlo, los visitantes verán solo una zona aproximada en el mapa, protegiendo
+                la ubicación exacta de la propiedad y evitando tratos directos sin tu intermediación.
+                Al desactivarlo, se mostrará la dirección y el punto exacto en el mapa.
+              </p>
+            </div>
+          </label>
+        </div>
       </div>
     </div>
   )

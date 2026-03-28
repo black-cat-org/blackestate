@@ -1,13 +1,14 @@
 import type { Property, PropertyFormData } from "@/lib/types/property"
 import type { AiPlatform } from "@/lib/types/ai-content"
-import { PROPERTY_TYPE_LABELS, OPERATION_TYPE_LABELS, AMENITIES_OPTIONS, SURFACE_UNIT_LABELS } from "@/lib/constants/property"
+import { PROPERTY_TYPE_LABELS, OPERATION_TYPE_LABELS, EQUIPMENT_OPTIONS, AMENITIES_OPTIONS, SURFACE_UNIT_LABELS } from "@/lib/constants/property"
 import { formatPrice, formatSurface } from "@/lib/utils/format"
 
 const delay = () => new Promise((r) => setTimeout(r, 1500))
 
 function getAmenityLabels(amenities: string[]): string[] {
   return amenities
-    .map((a) => AMENITIES_OPTIONS.find((o) => o.value === a)?.label)
+    .map((a) => EQUIPMENT_OPTIONS.find((o) => o.value === a)?.label
+      || AMENITIES_OPTIONS.find((o) => o.value === a)?.label)
     .filter(Boolean) as string[]
 }
 

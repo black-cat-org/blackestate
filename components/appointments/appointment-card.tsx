@@ -37,7 +37,7 @@ export function AppointmentCard({ appointment, onUpdate, compact }: AppointmentC
   return (
     <Card
       className="cursor-pointer gap-0 py-0 transition-colors hover:bg-accent/50"
-      onClick={() => router.push(`/dashboard/contacts/${appointment.leadId}`)}
+      onClick={() => router.push(`/dashboard/leads/${appointment.leadId}`)}
     >
       <CardContent className={compact ? "p-3!" : "p-4!"}>
         <div className="space-y-2">

@@ -28,8 +28,9 @@ const MONTHS_6 = ["Sep", "Oct", "Nov", "Dic", "Ene", "Feb"]
 const STATUS_HSL: Record<LeadStatus, string> = {
   nuevo: "hsl(217, 91%, 60%)",
   contactado: "hsl(45, 93%, 47%)",
-  interesado: "hsl(142, 71%, 45%)",
-  cerrado: "hsl(271, 91%, 65%)",
+  interesado: "hsl(271, 91%, 65%)",
+  ganado: "hsl(142, 71%, 45%)",
+  perdido: "hsl(0, 72%, 51%)",
   descartado: "hsl(0, 0%, 60%)",
 }
 
@@ -46,7 +47,7 @@ export async function getOverviewStats(): Promise<StatCardData[]> {
   const leads = await getLeads()
 
   const newLeads = leads.filter((l) => l.status === "nuevo").length
-  const closedLeads = leads.filter((l) => l.status === "cerrado").length
+  const closedLeads = leads.filter((l) => l.status === "ganado").length
   const total = leads.length
   const conversionRate = total > 0 ? Math.round((closedLeads / total) * 1000) / 10 : 0
 
@@ -89,8 +90,8 @@ export async function getLeadsTrend(): Promise<TimeSeriesPoint[]> {
 export async function getConversionsByMonth(): Promise<TimeSeriesPoint[]> {
   return MONTHS_6.map((date, i) => ({
     date,
-    cerrados: synth(1, i),
-    descartados: synth(2, i, 1),
+    ganados: synth(1, i),
+    perdidos: synth(2, i, 1),
   }))
 }
 
@@ -178,7 +179,7 @@ export async function getAlerts(): Promise<AlertItem[]> {
 export async function getLeadsStats(): Promise<StatCardData[]> {
   const leads = await getLeads()
   const total = leads.length
-  const closed = leads.filter((l) => l.status === "cerrado").length
+  const closed = leads.filter((l) => l.status === "ganado").length
   const closeRate = total > 0 ? Math.round((closed / total) * 1000) / 10 : 0
 
   return [
@@ -197,7 +198,7 @@ export async function getLeadsStats(): Promise<StatCardData[]> {
     {
       title: "Tasa de cierre",
       value: `${closeRate}%`,
-      subtitle: "Leads cerrados",
+      subtitle: "Leads ganados",
       change: 3.2,
     },
     {
@@ -212,7 +213,7 @@ export async function getLeadsStats(): Promise<StatCardData[]> {
 export async function getConversionFunnel(): Promise<FunnelStep[]> {
   const leads = await getLeads()
 
-  const statusOrder: LeadStatus[] = ["nuevo", "contactado", "interesado", "cerrado", "descartado"]
+  const statusOrder: LeadStatus[] = ["nuevo", "contactado", "interesado", "ganado", "perdido", "descartado"]
 
   return statusOrder.map((status) => ({
     label: LEAD_STATUS_LABELS[status],
@@ -241,7 +242,7 @@ export async function getConversionBySource(): Promise<SourceMetric[]> {
       (l) => (l.source ?? "otro") === source
     )
     const count = sourceLeads.length
-    const closed = sourceLeads.filter((l) => l.status === "cerrado").length
+    const closed = sourceLeads.filter((l) => l.status === "ganado").length
     const conversionRate = count > 0 ? Math.round((closed / count) * 1000) / 10 : 0
     // Deterministic mock revenue based on index
     const revenueValues = [18500, 12000, 8500, 4200, 2800]
@@ -585,8 +586,8 @@ export async function getPipelineByStage(): Promise<PipelineStage[]> {
       fill: "hsl(25, 95%, 53%)",
     },
     {
-      stage: "cerrado",
-      label: "Cerrado",
+      stage: "ganado",
+      label: "Ganado",
       value: 120000,
       probability: 100,
       fill: "hsl(271, 91%, 65%)",

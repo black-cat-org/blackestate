@@ -19,7 +19,7 @@ export function DescriptionStep({ form }: { form: UseFormReturn<PropertyFormData
   async function handleGenerateDescription() {
     const values = form.getValues()
     if (!values.type) {
-      toast.warning("Completá al menos el tipo de propiedad para generar la descripción")
+      toast.warning("Completa al menos el tipo de propiedad para generar la descripción")
       return
     }
     setGeneratingDesc(true)
@@ -37,7 +37,7 @@ export function DescriptionStep({ form }: { form: UseFormReturn<PropertyFormData
   async function handleGenerateShortDescription() {
     const values = form.getValues()
     if (!values.type) {
-      toast.warning("Completá al menos el tipo de propiedad para generar la descripción corta")
+      toast.warning("Completa al menos el tipo de propiedad para generar la descripción corta")
       return
     }
     setGeneratingShort(true)
@@ -56,12 +56,12 @@ export function DescriptionStep({ form }: { form: UseFormReturn<PropertyFormData
     <div className="space-y-6">
       <h2 className="text-lg font-semibold">Título y descripción</h2>
       <p className="text-sm text-muted-foreground">
-        Con todos los datos cargados, ahora podés generar el título y las descripciones con ayuda de la IA.
+        Con todos los datos cargados, ahora puedes generar el título y las descripciones con ayuda de la IA.
       </p>
 
       <div className="space-y-2">
         <Label htmlFor="title">Título *</Label>
-        <Input id="title" {...register("title")} placeholder="Ej: Casa moderna en Palermo" />
+        <Input id="title" {...register("title")} placeholder="Ej: Casa moderna en Equipetrol" />
         {errors.title && <p className="text-sm text-destructive">{errors.title.message}</p>}
       </div>
 

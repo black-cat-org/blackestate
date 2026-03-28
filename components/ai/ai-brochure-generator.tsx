@@ -72,8 +72,7 @@ export function AiBrochureGenerator({ property, onGenerated }: AiBrochureGenerat
       if (property.coveredArea) specs.push(["Superficie cubierta", formatSurface(property.coveredArea)])
       if (property.bedrooms) specs.push(["Dormitorios", String(property.bedrooms)])
       if (property.bathrooms) specs.push(["Baños", String(property.bathrooms)])
-      if (property.rooms) specs.push(["Ambientes", String(property.rooms)])
-      if (property.garages) specs.push(["Cocheras", String(property.garages)])
+      if (property.garages) specs.push(["Estacionamiento", String(property.garages)])
       if (property.age !== undefined) specs.push(["Antigüedad", `${property.age} años`])
 
       for (const [label, value] of specs) {

@@ -39,7 +39,7 @@ export function UpcomingAppointments({ appointments }: UpcomingAppointmentsProps
             {appointments.map((apt) => (
               <Link
                 key={apt.id}
-                href={`/dashboard/contacts/${apt.leadId}`}
+                href={`/dashboard/leads/${apt.leadId}`}
                 className="flex items-start gap-3 rounded-lg p-2 -mx-2 hover:bg-accent/50 transition-colors"
               >
                 <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted">

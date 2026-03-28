@@ -11,7 +11,7 @@ export function MediaStep({ form }: { form: UseFormReturn<PropertyFormData> }) {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-lg font-semibold">Media</h2>
+      <h2 className="text-lg font-semibold">Contenido multimedia</h2>
 
       <div className="space-y-2">
         <Label>Fotos</Label>
@@ -45,14 +45,6 @@ export function MediaStep({ form }: { form: UseFormReturn<PropertyFormData> }) {
         </div>
       </div>
 
-      <div className="space-y-2">
-        <Label>Planos</Label>
-        <div className="border-dashed border-2 rounded-lg p-6 flex flex-col items-center justify-center gap-2 text-center">
-          <p className="text-sm text-muted-foreground">
-            Subir planos (disponible con backend)
-          </p>
-        </div>
-      </div>
     </div>
   )
 }

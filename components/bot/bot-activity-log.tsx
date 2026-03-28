@@ -126,7 +126,7 @@ export function BotActivityLog({ activities }: BotActivityLogProps) {
               <div
                 key={activity.id}
                 className="flex gap-3 pb-6 relative cursor-pointer hover:bg-accent/30 rounded-lg -mx-2 px-2 transition-colors"
-                onClick={() => router.push(`/dashboard/contacts/${activity.leadId}`)}
+                onClick={() => router.push(`/dashboard/leads/${activity.leadId}`)}
               >
                 {!isLast && (
                   <div className="absolute left-[23px] top-8 bottom-0 w-px bg-border" />

@@ -11,7 +11,7 @@ const mockProperties: Property[] = [
     status: "activa",
     price: { amount: 450000, currency: "USD" },
     negotiable: true,
-    expenses: { amount: 35000, currency: "ARS" },
+    expenses: { amount: 35000, currency: "BOB" },
     address: {
       street: "Honduras",
       number: "4500",
@@ -32,7 +32,8 @@ const mockProperties: Property[] = [
     age: 5,
     condition: "excelente",
     orientation: "norte",
-    amenities: ["pileta", "quincho", "parrilla", "jardin", "terraza", "calefaccion", "aire_acondicionado"],
+    amenities: ["pileta", "quincho", "jardin", "terraza", "calefaccion", "aire_acondicionado"],
+    hideExactLocation: true,
     media: {
       photos: [
         "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=1200&q=80",
@@ -52,9 +53,9 @@ const mockProperties: Property[] = [
     type: "apartment",
     operationType: "alquiler",
     status: "activa",
-    price: { amount: 650000, currency: "ARS" },
+    price: { amount: 650000, currency: "BOB" },
     negotiable: false,
-    expenses: { amount: 120000, currency: "ARS" },
+    expenses: { amount: 120000, currency: "BOB" },
     address: {
       street: "Cabildo",
       number: "2200",
@@ -78,6 +79,7 @@ const mockProperties: Property[] = [
     condition: "buena",
     orientation: "este",
     amenities: ["balcon", "ascensor", "seguridad", "laundry", "gym"],
+    hideExactLocation: true,
     media: {
       photos: [
         "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=1200&q=80",
@@ -109,6 +111,7 @@ const mockProperties: Property[] = [
     },
     totalArea: { value: 800, unit: "m2" },
     amenities: [],
+    hideExactLocation: true,
     media: {
       photos: [
         "https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=1200&q=80",
@@ -128,7 +131,7 @@ const mockProperties: Property[] = [
     status: "pausada",
     price: { amount: 3500, currency: "USD" },
     negotiable: false,
-    expenses: { amount: 85000, currency: "ARS" },
+    expenses: { amount: 85000, currency: "BOB" },
     address: {
       street: "Av. Santa Fe",
       number: "3200",
@@ -145,6 +148,7 @@ const mockProperties: Property[] = [
     bathrooms: 2,
     condition: "buena",
     amenities: ["aire_acondicionado"],
+    hideExactLocation: true,
     media: {
       photos: [
         "https://images.unsplash.com/photo-1604328698692-f76ea9498e76?w=1200&q=80",
@@ -164,7 +168,7 @@ const mockProperties: Property[] = [
     status: "en_revision",
     price: { amount: 5800, currency: "USD" },
     negotiable: true,
-    expenses: { amount: 250000, currency: "ARS" },
+    expenses: { amount: 250000, currency: "BOB" },
     address: {
       street: "Av. Corrientes",
       number: "456",
@@ -184,6 +188,7 @@ const mockProperties: Property[] = [
     condition: "excelente",
     orientation: "norte",
     amenities: ["ascensor", "seguridad", "aire_acondicionado", "calefaccion"],
+    hideExactLocation: true,
     media: {
       photos: [
         "https://images.unsplash.com/photo-1497366216548-37526070297c?w=1200&q=80",
@@ -223,7 +228,8 @@ const mockProperties: Property[] = [
     age: 60,
     condition: "excelente",
     orientation: "oeste",
-    amenities: ["parrilla", "terraza", "calefaccion"],
+    amenities: ["quincho", "terraza", "calefaccion"],
+    hideExactLocation: false,
     media: {
       photos: [
         "https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?w=1200&q=80",
@@ -257,6 +263,7 @@ const mockProperties: Property[] = [
     bathrooms: 2,
     condition: "regular",
     amenities: [],
+    hideExactLocation: true,
     media: {
       photos: [
         "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=1200&q=80",
@@ -294,7 +301,8 @@ const mockProperties: Property[] = [
     age: 12,
     condition: "excelente",
     orientation: "norte",
-    amenities: ["pileta", "quincho", "parrilla", "jardin", "calefaccion"],
+    amenities: ["pileta", "quincho", "jardin", "calefaccion"],
+    hideExactLocation: true,
     media: {
       photos: [
         "https://images.unsplash.com/photo-1510798831971-661eb04b3739?w=1200&q=80",
@@ -316,7 +324,7 @@ const mockProperties: Property[] = [
     status: "alquilada",
     price: { amount: 1800, currency: "USD" },
     negotiable: false,
-    expenses: { amount: 95000, currency: "ARS" },
+    expenses: { amount: 95000, currency: "BOB" },
     address: {
       street: "Av. Alvear",
       number: "1500",
@@ -340,6 +348,7 @@ const mockProperties: Property[] = [
     condition: "buena",
     orientation: "noreste",
     amenities: ["balcon", "ascensor", "seguridad", "aire_acondicionado", "calefaccion", "gym"],
+    hideExactLocation: true,
     media: {
       photos: [
         "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=1200&q=80",
@@ -360,7 +369,7 @@ const mockProperties: Property[] = [
     status: "rechazada",
     price: { amount: 380000, currency: "USD" },
     negotiable: true,
-    expenses: { amount: 180000, currency: "ARS" },
+    expenses: { amount: 180000, currency: "BOB" },
     address: {
       street: "Los Sauces",
       number: "200",
@@ -380,7 +389,8 @@ const mockProperties: Property[] = [
     age: 10,
     condition: "excelente",
     orientation: "norte",
-    amenities: ["pileta", "quincho", "parrilla", "jardin", "terraza", "seguridad", "calefaccion", "aire_acondicionado"],
+    amenities: ["pileta", "quincho", "jardin", "terraza", "seguridad", "calefaccion", "aire_acondicionado"],
+    hideExactLocation: false,
     media: {
       photos: [
         "https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=1200&q=80",
@@ -438,6 +448,7 @@ export async function createProperty(data: PropertyFormData): Promise<Property> 
     condition: (data.condition as Property["condition"]) || undefined,
     orientation: (data.orientation as Property["orientation"]) || undefined,
     amenities: data.amenities,
+    hideExactLocation: data.hideExactLocation,
     media: {
       photos: data.photos,
       videoUrl: data.videoUrl || undefined,
@@ -489,7 +500,7 @@ export function propertyToFormData(property: Property): PropertyFormData {
     currency: property.price.currency,
     negotiable: property.negotiable,
     expenses: property.expenses?.amount ?? "",
-    expensesCurrency: property.expenses?.currency ?? "ARS",
+    expensesCurrency: property.expenses?.currency ?? "USD",
     country: property.address.country,
     state: property.address.state,
     city: property.address.city,
@@ -511,6 +522,7 @@ export function propertyToFormData(property: Property): PropertyFormData {
     condition: property.condition || "",
     orientation: property.orientation || "",
     amenities: property.amenities,
+    hideExactLocation: property.hideExactLocation,
     photos: property.media.photos,
     videoUrl: property.media.videoUrl || "",
     virtualTourUrl: property.media.virtualTourUrl || "",
