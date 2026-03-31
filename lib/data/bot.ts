@@ -14,13 +14,13 @@ import { DEFAULT_BOT_CONFIG } from "@/lib/constants/bot"
 // ============================================================
 
 const mockMessages: BotMessage[] = [
-  // Lead 1 - María López: bot envía info → pregunta → responde → pide cita → confirma
+  // Lead 1 - Carla Mendoza: bot envía info → pregunta → responde → pide cita → confirma
   {
     id: "m1",
     leadId: "1",
     sender: "bot",
     contentType: "text",
-    text: "¡Hola María! 👋 Soy el asistente virtual de Black Estate. Vi que te interesa la propiedad \"Casa moderna en Palermo\". Te envío toda la información disponible. ¿Tenés alguna consulta?",
+    text: "¡Hola Carla! 👋 Soy el asistente virtual de Black Estate. Vi que te interesa la propiedad \"Casa moderna en Equipetrol\". Te envío toda la información disponible. ¿Tienes alguna consulta?",
     status: "read",
     timestamp: "2026-02-20T14:31:00Z",
   },
@@ -29,7 +29,7 @@ const mockMessages: BotMessage[] = [
     leadId: "1",
     sender: "bot",
     contentType: "property_card",
-    text: "Casa moderna en Palermo — US$ 450.000",
+    text: "Casa moderna en Equipetrol — US$ 450.000",
     propertyId: "1",
     status: "read",
     timestamp: "2026-02-20T14:31:05Z",
@@ -39,7 +39,7 @@ const mockMessages: BotMessage[] = [
     leadId: "1",
     sender: "client",
     contentType: "text",
-    text: "Hola! Sí, me encanta esa casa. ¿Cuántos metros cubiertos tiene? ¿Y el barrio es tranquilo?",
+    text: "Hola! Sí, me encanta esa casa. ¿Cuántos metros cubiertos tiene? ¿Y la zona es tranquila?",
     status: "read",
     timestamp: "2026-02-20T15:10:00Z",
   },
@@ -48,7 +48,7 @@ const mockMessages: BotMessage[] = [
     leadId: "1",
     sender: "bot",
     contentType: "text",
-    text: "La casa tiene 320 m² totales y 280 m² cubiertos. Palermo es una zona muy tranquila, residencial, con excelente acceso a transporte público y comercios. ¿Te gustaría coordinar una visita?",
+    text: "La casa tiene 320 m² totales y 280 m² cubiertos. Equipetrol es una zona muy tranquila, residencial, con excelente acceso a comercios y restaurantes. ¿Te gustaría coordinar una visita?",
     status: "read",
     timestamp: "2026-02-20T15:10:30Z",
   },
@@ -89,13 +89,13 @@ const mockMessages: BotMessage[] = [
     timestamp: "2026-02-20T16:15:30Z",
   },
 
-  // Lead 2 - Carlos Rodríguez: bot envía info → conversa sobre zona → sugerencias
+  // Lead 2 - Fernando Rojas: bot envía info → conversa sobre zona → sugerencias
   {
     id: "m9",
     leadId: "2",
     sender: "bot",
     contentType: "text",
-    text: "¡Hola Carlos! Soy el asistente de Black Estate. Veo que estás interesado en la \"Casa moderna en Palermo\". Te paso los detalles.",
+    text: "¡Hola Fernando! Soy el asistente de Black Estate. Veo que estás interesado en la \"Casa moderna en Equipetrol\". Te paso los detalles.",
     status: "read",
     timestamp: "2026-02-18T09:16:00Z",
   },
@@ -104,7 +104,7 @@ const mockMessages: BotMessage[] = [
     leadId: "2",
     sender: "bot",
     contentType: "property_card",
-    text: "Casa moderna en Palermo — US$ 450.000",
+    text: "Casa moderna en Equipetrol — US$ 450.000",
     propertyId: "1",
     status: "read",
     timestamp: "2026-02-18T09:16:05Z",
@@ -114,7 +114,7 @@ const mockMessages: BotMessage[] = [
     leadId: "2",
     sender: "client",
     contentType: "text",
-    text: "Gracias! Busco algo similar pero en Belgrano también. ¿Tienen opciones por esa zona?",
+    text: "Gracias! Busco algo similar pero en Urubó también. ¿Tienen opciones por esa zona?",
     status: "read",
     timestamp: "2026-02-18T10:30:00Z",
   },
@@ -123,7 +123,7 @@ const mockMessages: BotMessage[] = [
     leadId: "2",
     sender: "bot",
     contentType: "text",
-    text: "¡Claro! Tenemos estas propiedades que podrían interesarte en Belgrano y alrededores:",
+    text: "¡Claro! Tenemos estas propiedades que podrían interesarte en Urubó y alrededores:",
     status: "read",
     timestamp: "2026-02-18T10:30:30Z",
   },
@@ -132,7 +132,7 @@ const mockMessages: BotMessage[] = [
     leadId: "2",
     sender: "bot",
     contentType: "property_card",
-    text: "Departamento 2 amb en Belgrano — US$ 185.000",
+    text: "Departamento 2 amb en Norte — Bs. 650.000",
     propertyId: "2",
     status: "read",
     timestamp: "2026-02-18T10:30:35Z",
@@ -142,8 +142,8 @@ const mockMessages: BotMessage[] = [
     leadId: "2",
     sender: "bot",
     contentType: "property_card",
-    text: "PH reciclado en Villa Crespo — US$ 280.000",
-    propertyId: "5",
+    text: "PH reciclado en Las Palmas — US$ 185.000",
+    propertyId: "6",
     status: "read",
     timestamp: "2026-02-18T10:30:40Z",
   },
@@ -152,7 +152,7 @@ const mockMessages: BotMessage[] = [
     leadId: "2",
     sender: "client",
     contentType: "text",
-    text: "El departamento en Belgrano me interesa, voy a verlo con más detalle. Gracias!",
+    text: "El departamento en Norte me interesa, voy a verlo con más detalle. Gracias!",
     status: "read",
     timestamp: "2026-02-18T11:00:00Z",
   },
@@ -163,7 +163,7 @@ const mockMessages: BotMessage[] = [
     leadId: "7",
     sender: "bot",
     contentType: "text",
-    text: "¡Hola Valentina! Soy el asistente de Black Estate. Te interesa el \"Departamento 2 amb en Belgrano\", ¿no? Acá te paso la info.",
+    text: "¡Hola Valentina! Soy el asistente de Black Estate. Te interesa el \"Departamento 2 amb en Norte\", ¿no? Acá te paso la info.",
     status: "read",
     timestamp: "2026-02-22T07:46:00Z",
   },
@@ -172,7 +172,7 @@ const mockMessages: BotMessage[] = [
     leadId: "7",
     sender: "bot",
     contentType: "property_card",
-    text: "Departamento 2 amb en Belgrano — US$ 185.000",
+    text: "Departamento 2 amb en Norte — Bs. 650.000",
     propertyId: "2",
     status: "read",
     timestamp: "2026-02-22T07:46:05Z",
@@ -204,19 +204,19 @@ let messages: BotMessage[] = [...mockMessages]
 // ============================================================
 
 const mockSentProperties: SentProperty[] = [
-  // Lead 1 — María López
-  { id: "sp1", leadId: "1", propertyId: "1", propertyTitle: "Casa moderna en Palermo", status: "cita_agendada", sentAt: "2026-02-20T14:31:05Z", viewedAt: "2026-02-20T14:35:00Z", respondedAt: "2026-02-20T15:10:00Z" },
-  // Lead 2 — Carlos Rodríguez
-  { id: "sp2", leadId: "2", propertyId: "1", propertyTitle: "Casa moderna en Palermo", status: "vista", sentAt: "2026-02-18T09:16:05Z", viewedAt: "2026-02-18T09:20:00Z" },
-  { id: "sp3", leadId: "2", propertyId: "2", propertyTitle: "Departamento 2 amb en Belgrano", status: "interesado", sentAt: "2026-02-18T10:30:35Z", viewedAt: "2026-02-18T10:45:00Z", respondedAt: "2026-02-18T11:00:00Z" },
-  { id: "sp4", leadId: "2", propertyId: "5", propertyTitle: "PH reciclado en Villa Crespo", status: "enviada", sentAt: "2026-02-18T10:30:40Z" },
+  // Lead 1 — Carla Mendoza
+  { id: "sp1", leadId: "1", propertyId: "1", propertyTitle: "Casa moderna en Equipetrol", status: "cita_agendada", sentAt: "2026-02-20T14:31:05Z", viewedAt: "2026-02-20T14:35:00Z", respondedAt: "2026-02-20T15:10:00Z" },
+  // Lead 2 — Fernando Rojas
+  { id: "sp2", leadId: "2", propertyId: "1", propertyTitle: "Casa moderna en Equipetrol", status: "vista", sentAt: "2026-02-18T09:16:05Z", viewedAt: "2026-02-18T09:20:00Z" },
+  { id: "sp3", leadId: "2", propertyId: "2", propertyTitle: "Departamento 2 amb en Norte", status: "interesado", sentAt: "2026-02-18T10:30:35Z", viewedAt: "2026-02-18T10:45:00Z", respondedAt: "2026-02-18T11:00:00Z" },
+  { id: "sp4", leadId: "2", propertyId: "6", propertyTitle: "PH reciclado en Las Palmas", status: "enviada", sentAt: "2026-02-18T10:30:40Z" },
   // Lead 7 — Valentina Ruiz
-  { id: "sp5", leadId: "7", propertyId: "2", propertyTitle: "Departamento 2 amb en Belgrano", status: "interesado", sentAt: "2026-02-22T07:46:05Z", viewedAt: "2026-02-22T07:50:00Z", respondedAt: "2026-02-22T08:30:00Z" },
-  { id: "sp6", leadId: "7", propertyId: "8", propertyTitle: "Cabaña en Bariloche", status: "enviada", sentAt: "2026-02-22T09:00:00Z" },
-  // Lead 4 — Roberto Fernández
-  { id: "sp7", leadId: "4", propertyId: "3", propertyTitle: "Terreno en Pilar Centro", status: "vista", sentAt: "2026-02-21T16:21:00Z", viewedAt: "2026-02-21T17:00:00Z" },
-  // Lead 5 — Laura Gómez (cerrado)
-  { id: "sp8", leadId: "5", propertyId: "5", propertyTitle: "PH reciclado en Villa Crespo", status: "cita_agendada", sentAt: "2026-01-28T10:01:00Z", viewedAt: "2026-01-28T10:05:00Z", respondedAt: "2026-01-28T10:30:00Z" },
+  { id: "sp5", leadId: "7", propertyId: "2", propertyTitle: "Departamento 2 amb en Norte", status: "interesado", sentAt: "2026-02-22T07:46:05Z", viewedAt: "2026-02-22T07:50:00Z", respondedAt: "2026-02-22T08:30:00Z" },
+  { id: "sp6", leadId: "7", propertyId: "8", propertyTitle: "Cabaña en Samaipata", status: "enviada", sentAt: "2026-02-22T09:00:00Z" },
+  // Lead 4 — Hugo Chávez Peña
+  { id: "sp7", leadId: "4", propertyId: "3", propertyTitle: "Terreno en Urubó", status: "vista", sentAt: "2026-02-21T16:21:00Z", viewedAt: "2026-02-21T17:00:00Z" },
+  // Lead 5 — Lucía Justiniano (ganado)
+  { id: "sp8", leadId: "5", propertyId: "5", propertyTitle: "Oficina premium en Equipetrol Norte", status: "cita_agendada", sentAt: "2026-01-28T10:01:00Z", viewedAt: "2026-01-28T10:05:00Z", respondedAt: "2026-01-28T10:30:00Z" },
 ]
 
 let sentProperties: SentProperty[] = [...mockSentProperties]
@@ -229,15 +229,15 @@ const mockAppointments: Appointment[] = [
   {
     id: "apt1",
     leadId: "5",
-    leadName: "Laura Gómez",
-    leadPhone: "+54 11 8888-7890",
+    leadName: "Lucía Justiniano",
+    leadPhone: "+591 78887890",
     propertyId: "5",
-    propertyTitle: "PH reciclado en Villa Crespo",
+    propertyTitle: "Oficina premium en Equipetrol Norte",
     date: "2026-02-01",
     time: "10:00",
     endTime: "11:00",
     status: "completada",
-    notes: "Visitó y le encantó el PH. Cerró la operación.",
+    notes: "Visitó y le encantó la oficina. Cerró la operación.",
     createdAt: "2026-01-28T11:00:00Z",
     confirmedAt: "2026-01-29T09:00:00Z",
     completedAt: "2026-02-01T11:00:00Z",
@@ -245,10 +245,10 @@ const mockAppointments: Appointment[] = [
   {
     id: "apt2",
     leadId: "1",
-    leadName: "María López",
-    leadPhone: "+54 11 5555-1234",
+    leadName: "Carla Mendoza",
+    leadPhone: "+591 78812345",
     propertyId: "1",
-    propertyTitle: "Casa moderna en Palermo",
+    propertyTitle: "Casa moderna en Equipetrol",
     date: "2026-02-25",
     time: "10:00",
     endTime: "11:00",
@@ -260,9 +260,9 @@ const mockAppointments: Appointment[] = [
     id: "apt3",
     leadId: "7",
     leadName: "Valentina Ruiz",
-    leadPhone: "+54 11 2222-4444",
+    leadPhone: "+591 75524444",
     propertyId: "2",
-    propertyTitle: "Departamento 2 amb en Belgrano",
+    propertyTitle: "Departamento 2 amb en Norte",
     date: "2026-02-26",
     time: "14:00",
     endTime: "15:00",
@@ -272,10 +272,10 @@ const mockAppointments: Appointment[] = [
   {
     id: "apt4",
     leadId: "4",
-    leadName: "Roberto Fernández",
-    leadPhone: "+54 11 7777-3456",
+    leadName: "Hugo Chávez Peña",
+    leadPhone: "+591 71134567",
     propertyId: "3",
-    propertyTitle: "Terreno en Pilar Centro",
+    propertyTitle: "Terreno en Urubó",
     date: "2026-02-27",
     time: "11:00",
     endTime: "12:00",
@@ -285,10 +285,10 @@ const mockAppointments: Appointment[] = [
   {
     id: "apt5",
     leadId: "6",
-    leadName: "Diego Herrera",
-    leadPhone: "+54 11 3333-2222",
+    leadName: "Andrés Salvatierra",
+    leadPhone: "+591 69932222",
     propertyId: "4",
-    propertyTitle: "Local comercial en Microcentro",
+    propertyTitle: "Local comercial sobre Av. San Martín",
     date: "2026-02-15",
     time: "16:00",
     endTime: "17:00",
@@ -307,50 +307,50 @@ let appointmentCounter = mockAppointments.length
 // ============================================================
 
 const mockActivities: BotActivity[] = [
-  // Lead 1 — María López
-  { id: "act1", leadId: "1", leadName: "María López", type: "lead_created", description: "María López se registró como lead desde Facebook", timestamp: "2026-02-20T14:30:00Z" },
-  { id: "act2", leadId: "1", leadName: "María López", type: "message_sent", description: "Bot envió mensaje de bienvenida a María López", messageId: "m1", timestamp: "2026-02-20T14:31:00Z" },
-  { id: "act3", leadId: "1", leadName: "María López", type: "property_sent", description: "Bot envió info de \"Casa moderna en Palermo\" a María López", propertyId: "1", messageId: "m2", timestamp: "2026-02-20T14:31:05Z" },
-  { id: "act4", leadId: "1", leadName: "María López", type: "property_viewed", description: "María López vio la propiedad \"Casa moderna en Palermo\"", propertyId: "1", timestamp: "2026-02-20T14:35:00Z" },
-  { id: "act5", leadId: "1", leadName: "María López", type: "message_received", description: "María López preguntó sobre metros cubiertos y barrio", messageId: "m3", timestamp: "2026-02-20T15:10:00Z" },
-  { id: "act6", leadId: "1", leadName: "María López", type: "message_sent", description: "Bot respondió con detalles de la casa", messageId: "m4", timestamp: "2026-02-20T15:10:30Z" },
-  { id: "act7", leadId: "1", leadName: "María López", type: "appointment_requested", description: "María López solicitó una visita para el fin de semana", appointmentId: "apt2", timestamp: "2026-02-20T16:15:00Z" },
-  { id: "act8", leadId: "1", leadName: "María López", type: "appointment_confirmed", description: "Cita confirmada con María López para el 25/02 a las 10:00", appointmentId: "apt2", timestamp: "2026-02-20T18:00:00Z" },
-  { id: "act9", leadId: "1", leadName: "María López", type: "reminder_sent", description: "Recordatorio enviado a María López para la cita de mañana", appointmentId: "apt2", timestamp: "2026-02-24T08:00:00Z" },
+  // Lead 1 — Carla Mendoza
+  { id: "act1", leadId: "1", leadName: "Carla Mendoza", type: "lead_created", description: "Carla Mendoza se registró como lead desde Facebook", timestamp: "2026-02-20T14:30:00Z" },
+  { id: "act2", leadId: "1", leadName: "Carla Mendoza", type: "message_sent", description: "Bot envió mensaje de bienvenida a Carla Mendoza", messageId: "m1", timestamp: "2026-02-20T14:31:00Z" },
+  { id: "act3", leadId: "1", leadName: "Carla Mendoza", type: "property_sent", description: "Bot envió info de \"Casa moderna en Equipetrol\" a Carla Mendoza", propertyId: "1", messageId: "m2", timestamp: "2026-02-20T14:31:05Z" },
+  { id: "act4", leadId: "1", leadName: "Carla Mendoza", type: "property_viewed", description: "Carla Mendoza vio la propiedad \"Casa moderna en Equipetrol\"", propertyId: "1", timestamp: "2026-02-20T14:35:00Z" },
+  { id: "act5", leadId: "1", leadName: "Carla Mendoza", type: "message_received", description: "Carla Mendoza preguntó sobre metros cubiertos y la zona", messageId: "m3", timestamp: "2026-02-20T15:10:00Z" },
+  { id: "act6", leadId: "1", leadName: "Carla Mendoza", type: "message_sent", description: "Bot respondió con detalles de la casa", messageId: "m4", timestamp: "2026-02-20T15:10:30Z" },
+  { id: "act7", leadId: "1", leadName: "Carla Mendoza", type: "appointment_requested", description: "Carla Mendoza solicitó una visita para el fin de semana", appointmentId: "apt2", timestamp: "2026-02-20T16:15:00Z" },
+  { id: "act8", leadId: "1", leadName: "Carla Mendoza", type: "appointment_confirmed", description: "Cita confirmada con Carla Mendoza para el 25/02 a las 10:00", appointmentId: "apt2", timestamp: "2026-02-20T18:00:00Z" },
+  { id: "act9", leadId: "1", leadName: "Carla Mendoza", type: "reminder_sent", description: "Recordatorio enviado a Carla Mendoza para la cita de mañana", appointmentId: "apt2", timestamp: "2026-02-24T08:00:00Z" },
 
-  // Lead 2 — Carlos Rodríguez
-  { id: "act10", leadId: "2", leadName: "Carlos Rodríguez", type: "lead_created", description: "Carlos Rodríguez se registró como lead desde Instagram", timestamp: "2026-02-18T09:15:00Z" },
-  { id: "act11", leadId: "2", leadName: "Carlos Rodríguez", type: "message_sent", description: "Bot envió mensaje de bienvenida a Carlos Rodríguez", messageId: "m9", timestamp: "2026-02-18T09:16:00Z" },
-  { id: "act12", leadId: "2", leadName: "Carlos Rodríguez", type: "property_sent", description: "Bot envió info de \"Casa moderna en Palermo\" a Carlos Rodríguez", propertyId: "1", messageId: "m10", timestamp: "2026-02-18T09:16:05Z" },
-  { id: "act13", leadId: "2", leadName: "Carlos Rodríguez", type: "property_viewed", description: "Carlos Rodríguez vio la propiedad \"Casa moderna en Palermo\"", propertyId: "1", timestamp: "2026-02-18T09:20:00Z" },
-  { id: "act14", leadId: "2", leadName: "Carlos Rodríguez", type: "message_received", description: "Carlos Rodríguez preguntó por opciones en Belgrano", messageId: "m11", timestamp: "2026-02-18T10:30:00Z" },
-  { id: "act15", leadId: "2", leadName: "Carlos Rodríguez", type: "property_sent", description: "Bot envió \"Departamento 2 amb en Belgrano\" a Carlos Rodríguez", propertyId: "2", messageId: "m13", timestamp: "2026-02-18T10:30:35Z" },
-  { id: "act16", leadId: "2", leadName: "Carlos Rodríguez", type: "property_sent", description: "Bot envió \"PH reciclado en Villa Crespo\" a Carlos Rodríguez", propertyId: "5", messageId: "m14", timestamp: "2026-02-18T10:30:40Z" },
-  { id: "act17", leadId: "2", leadName: "Carlos Rodríguez", type: "property_viewed", description: "Carlos Rodríguez vio \"Departamento 2 amb en Belgrano\"", propertyId: "2", timestamp: "2026-02-18T10:45:00Z" },
+  // Lead 2 — Fernando Rojas
+  { id: "act10", leadId: "2", leadName: "Fernando Rojas", type: "lead_created", description: "Fernando Rojas se registró como lead desde Instagram", timestamp: "2026-02-18T09:15:00Z" },
+  { id: "act11", leadId: "2", leadName: "Fernando Rojas", type: "message_sent", description: "Bot envió mensaje de bienvenida a Fernando Rojas", messageId: "m9", timestamp: "2026-02-18T09:16:00Z" },
+  { id: "act12", leadId: "2", leadName: "Fernando Rojas", type: "property_sent", description: "Bot envió info de \"Casa moderna en Equipetrol\" a Fernando Rojas", propertyId: "1", messageId: "m10", timestamp: "2026-02-18T09:16:05Z" },
+  { id: "act13", leadId: "2", leadName: "Fernando Rojas", type: "property_viewed", description: "Fernando Rojas vio la propiedad \"Casa moderna en Equipetrol\"", propertyId: "1", timestamp: "2026-02-18T09:20:00Z" },
+  { id: "act14", leadId: "2", leadName: "Fernando Rojas", type: "message_received", description: "Fernando Rojas preguntó por opciones en Urubó", messageId: "m11", timestamp: "2026-02-18T10:30:00Z" },
+  { id: "act15", leadId: "2", leadName: "Fernando Rojas", type: "property_sent", description: "Bot envió \"Departamento 2 amb en Norte\" a Fernando Rojas", propertyId: "2", messageId: "m13", timestamp: "2026-02-18T10:30:35Z" },
+  { id: "act16", leadId: "2", leadName: "Fernando Rojas", type: "property_sent", description: "Bot envió \"PH reciclado en Las Palmas\" a Fernando Rojas", propertyId: "6", messageId: "m14", timestamp: "2026-02-18T10:30:40Z" },
+  { id: "act17", leadId: "2", leadName: "Fernando Rojas", type: "property_viewed", description: "Fernando Rojas vio \"Departamento 2 amb en Norte\"", propertyId: "2", timestamp: "2026-02-18T10:45:00Z" },
 
   // Lead 7 — Valentina Ruiz
   { id: "act18", leadId: "7", leadName: "Valentina Ruiz", type: "lead_created", description: "Valentina Ruiz se registró como lead desde Facebook", timestamp: "2026-02-22T07:45:00Z" },
   { id: "act19", leadId: "7", leadName: "Valentina Ruiz", type: "message_sent", description: "Bot envió mensaje de bienvenida a Valentina Ruiz", messageId: "m16", timestamp: "2026-02-22T07:46:00Z" },
-  { id: "act20", leadId: "7", leadName: "Valentina Ruiz", type: "property_sent", description: "Bot envió info de \"Departamento 2 amb en Belgrano\" a Valentina Ruiz", propertyId: "2", messageId: "m17", timestamp: "2026-02-22T07:46:05Z" },
-  { id: "act21", leadId: "7", leadName: "Valentina Ruiz", type: "property_viewed", description: "Valentina Ruiz vio \"Departamento 2 amb en Belgrano\"", propertyId: "2", timestamp: "2026-02-22T07:50:00Z" },
+  { id: "act20", leadId: "7", leadName: "Valentina Ruiz", type: "property_sent", description: "Bot envió info de \"Departamento 2 amb en Norte\" a Valentina Ruiz", propertyId: "2", messageId: "m17", timestamp: "2026-02-22T07:46:05Z" },
+  { id: "act21", leadId: "7", leadName: "Valentina Ruiz", type: "property_viewed", description: "Valentina Ruiz vio \"Departamento 2 amb en Norte\"", propertyId: "2", timestamp: "2026-02-22T07:50:00Z" },
   { id: "act22", leadId: "7", leadName: "Valentina Ruiz", type: "message_received", description: "Valentina Ruiz solicitó agendar una visita", messageId: "m18", timestamp: "2026-02-22T08:30:00Z" },
-  { id: "act23", leadId: "7", leadName: "Valentina Ruiz", type: "appointment_requested", description: "Valentina Ruiz solicitó cita para \"Departamento 2 amb en Belgrano\"", appointmentId: "apt3", timestamp: "2026-02-22T08:30:30Z" },
-  { id: "act24", leadId: "7", leadName: "Valentina Ruiz", type: "property_sent", description: "Bot envió \"Cabaña en Bariloche\" como sugerencia a Valentina Ruiz", propertyId: "8", timestamp: "2026-02-22T09:00:00Z" },
+  { id: "act23", leadId: "7", leadName: "Valentina Ruiz", type: "appointment_requested", description: "Valentina Ruiz solicitó cita para \"Departamento 2 amb en Norte\"", appointmentId: "apt3", timestamp: "2026-02-22T08:30:30Z" },
+  { id: "act24", leadId: "7", leadName: "Valentina Ruiz", type: "property_sent", description: "Bot envió \"Cabaña en Samaipata\" como sugerencia a Valentina Ruiz", propertyId: "8", timestamp: "2026-02-22T09:00:00Z" },
 
-  // Lead 4 — Roberto Fernández
-  { id: "act25", leadId: "4", leadName: "Roberto Fernández", type: "lead_created", description: "Roberto Fernández se registró como lead desde WhatsApp", timestamp: "2026-02-21T16:20:00Z" },
-  { id: "act26", leadId: "4", leadName: "Roberto Fernández", type: "property_sent", description: "Bot envió info de \"Terreno en Pilar Centro\" a Roberto Fernández", propertyId: "3", timestamp: "2026-02-21T16:21:00Z" },
-  { id: "act27", leadId: "4", leadName: "Roberto Fernández", type: "property_viewed", description: "Roberto Fernández vio \"Terreno en Pilar Centro\"", propertyId: "3", timestamp: "2026-02-21T17:00:00Z" },
-  { id: "act28", leadId: "4", leadName: "Roberto Fernández", type: "appointment_requested", description: "Roberto Fernández solicitó cita para \"Terreno en Pilar Centro\"", appointmentId: "apt4", timestamp: "2026-02-22T10:00:00Z" },
+  // Lead 4 — Hugo Chávez Peña
+  { id: "act25", leadId: "4", leadName: "Hugo Chávez Peña", type: "lead_created", description: "Hugo Chávez Peña se registró como lead desde WhatsApp", timestamp: "2026-02-21T16:20:00Z" },
+  { id: "act26", leadId: "4", leadName: "Hugo Chávez Peña", type: "property_sent", description: "Bot envió info de \"Terreno en Urubó\" a Hugo Chávez Peña", propertyId: "3", timestamp: "2026-02-21T16:21:00Z" },
+  { id: "act27", leadId: "4", leadName: "Hugo Chávez Peña", type: "property_viewed", description: "Hugo Chávez Peña vio \"Terreno en Urubó\"", propertyId: "3", timestamp: "2026-02-21T17:00:00Z" },
+  { id: "act28", leadId: "4", leadName: "Hugo Chávez Peña", type: "appointment_requested", description: "Hugo Chávez Peña solicitó cita para \"Terreno en Urubó\"", appointmentId: "apt4", timestamp: "2026-02-22T10:00:00Z" },
 
-  // Lead 5 — Laura Gómez (cerrado)
-  { id: "act29", leadId: "5", leadName: "Laura Gómez", type: "lead_created", description: "Laura Gómez se registró como lead desde Instagram", timestamp: "2026-01-28T10:00:00Z" },
-  { id: "act30", leadId: "5", leadName: "Laura Gómez", type: "property_sent", description: "Bot envió info de \"PH reciclado en Villa Crespo\" a Laura Gómez", propertyId: "5", timestamp: "2026-01-28T10:01:00Z" },
-  { id: "act31", leadId: "5", leadName: "Laura Gómez", type: "appointment_confirmed", description: "Cita confirmada con Laura Gómez para el 01/02", appointmentId: "apt1", timestamp: "2026-01-29T09:00:00Z" },
-  { id: "act32", leadId: "5", leadName: "Laura Gómez", type: "appointment_completed", description: "Cita con Laura Gómez completada. Cerró la operación.", appointmentId: "apt1", timestamp: "2026-02-01T11:00:00Z" },
+  // Lead 5 — Lucía Justiniano (ganado)
+  { id: "act29", leadId: "5", leadName: "Lucía Justiniano", type: "lead_created", description: "Lucía Justiniano se registró como lead desde Instagram", timestamp: "2026-01-28T10:00:00Z" },
+  { id: "act30", leadId: "5", leadName: "Lucía Justiniano", type: "property_sent", description: "Bot envió info de \"Oficina premium en Equipetrol Norte\" a Lucía Justiniano", propertyId: "5", timestamp: "2026-01-28T10:01:00Z" },
+  { id: "act31", leadId: "5", leadName: "Lucía Justiniano", type: "appointment_confirmed", description: "Cita confirmada con Lucía Justiniano para el 01/02", appointmentId: "apt1", timestamp: "2026-01-29T09:00:00Z" },
+  { id: "act32", leadId: "5", leadName: "Lucía Justiniano", type: "appointment_completed", description: "Cita con Lucía Justiniano completada. Cerró la operación.", appointmentId: "apt1", timestamp: "2026-02-01T11:00:00Z" },
 
-  // Lead 6 — Diego Herrera (cancelado)
-  { id: "act33", leadId: "6", leadName: "Diego Herrera", type: "appointment_cancelled", description: "Diego Herrera canceló su cita para \"Local comercial en Microcentro\"", appointmentId: "apt5", timestamp: "2026-02-14T08:00:00Z" },
+  // Lead 6 — Andrés Salvatierra (cancelado)
+  { id: "act33", leadId: "6", leadName: "Andrés Salvatierra", type: "appointment_cancelled", description: "Andrés Salvatierra canceló su cita para \"Local comercial sobre Av. San Martín\"", appointmentId: "apt5", timestamp: "2026-02-14T08:00:00Z" },
 ]
 
 let activities: BotActivity[] = [...mockActivities]
@@ -365,7 +365,7 @@ const mockNotifications: AgentNotification[] = [
     id: "n1",
     type: "appointment_requested",
     title: "Nueva solicitud de cita",
-    description: "Valentina Ruiz solicitó una cita para Departamento 2 amb en Belgrano",
+    description: "Valentina Ruiz solicitó una cita para Departamento 2 amb en Norte",
     leadId: "7",
     appointmentId: "apt3",
     read: false,
@@ -375,7 +375,7 @@ const mockNotifications: AgentNotification[] = [
     id: "n2",
     type: "appointment_requested",
     title: "Nueva solicitud de cita",
-    description: "Roberto Fernández solicitó una cita para Terreno en Pilar Centro",
+    description: "Hugo Chávez Peña solicitó una cita para Terreno en Urubó",
     leadId: "4",
     appointmentId: "apt4",
     read: false,
@@ -395,7 +395,7 @@ const mockNotifications: AgentNotification[] = [
     id: "n4",
     type: "appointment_confirmed",
     title: "Cita confirmada",
-    description: "Cita con María López confirmada para el 25/02 a las 10:00",
+    description: "Cita con Carla Mendoza confirmada para el 25/02 a las 10:00",
     leadId: "1",
     appointmentId: "apt2",
     read: true,
@@ -405,7 +405,7 @@ const mockNotifications: AgentNotification[] = [
     id: "n5",
     type: "reminder_sent",
     title: "Recordatorio enviado",
-    description: "Se envió recordatorio a María López para la cita de mañana",
+    description: "Se envió recordatorio a Carla Mendoza para la cita de mañana",
     leadId: "1",
     appointmentId: "apt2",
     read: true,
@@ -415,7 +415,7 @@ const mockNotifications: AgentNotification[] = [
     id: "n6",
     type: "lead_created",
     title: "Nuevo lead",
-    description: "Valentina Ruiz se registró desde Facebook interesada en Departamento 2 amb en Belgrano",
+    description: "Valentina Ruiz se registró desde Facebook interesada en Departamento 2 amb en Norte",
     leadId: "7",
     read: true,
     createdAt: "2026-02-22T07:45:00Z",
@@ -424,7 +424,7 @@ const mockNotifications: AgentNotification[] = [
     id: "n7",
     type: "appointment_completed",
     title: "Cita completada",
-    description: "La cita con Laura Gómez se completó exitosamente",
+    description: "La cita con Lucía Justiniano se completó exitosamente",
     leadId: "5",
     appointmentId: "apt1",
     read: true,
@@ -434,7 +434,7 @@ const mockNotifications: AgentNotification[] = [
     id: "n8",
     type: "appointment_cancelled",
     title: "Cita cancelada",
-    description: "Diego Herrera canceló su cita para Local comercial en Microcentro",
+    description: "Andrés Salvatierra canceló su cita para Local comercial sobre Av. San Martín",
     leadId: "6",
     appointmentId: "apt5",
     read: true,
