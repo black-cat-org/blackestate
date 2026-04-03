@@ -1,4 +1,4 @@
-import type { Lead, PropertyVisit } from "@/lib/types/lead"
+import type { Lead, PropertyVisit, CatalogTracking, QueueStatus, PropertyQueueItem } from "@/lib/types/lead"
 import type { Property } from "@/lib/types/property"
 import { PROPERTY_TYPE_LABELS } from "@/lib/constants/property"
 
@@ -251,6 +251,107 @@ export function getSuggestedProperties(lead: Lead, allProperties: Property[]): P
     .sort((a, b) => b.score - a.score)
     .slice(0, 5)
     .map((s) => s.property)
+}
+
+// ============================================================
+// Catalog & Queue
+// ============================================================
+
+const mockCatalogTracking: Record<string, CatalogTracking> = {
+  "1": { sentWithOrigin: true, openedAt: null },
+  "2": { sentWithOrigin: true, openedAt: "2026-02-18T10:15:00Z" },
+  "3": { sentWithOrigin: true, openedAt: null },
+  "4": { sentWithOrigin: true, openedAt: null },
+  "5": { sentWithOrigin: true, openedAt: "2026-01-28T11:00:00Z" },
+  "6": { sentWithOrigin: true, openedAt: null },
+  "7": { sentWithOrigin: true, openedAt: null },
+  "8": { sentWithOrigin: true, openedAt: null },
+}
+
+const mockQueueStatuses: Record<string, QueueStatus> = {
+  "1": { status: "pausada_cita" },
+  "2": { status: "inactiva_catalogo" },
+  "3": { status: "activa" },
+  "4": { status: "en_espera" },
+  "5": { status: "inactiva_ganado" },
+  "6": { status: "inactiva_descartado" },
+  "7": { status: "pausada_conversacion" },
+  "8": { status: "en_espera" },
+}
+
+const mockPropertyQueues: Record<string, PropertyQueueItem[]> = {
+  "1": [
+    { id: "q1", propertyId: "6", propertyTitle: "PH reciclado en Las Palmas", status: "enviada", sentAt: "2026-02-21T10:00:00Z", addedAt: "2026-02-20T15:00:00Z" },
+    { id: "q2", propertyId: "2", propertyTitle: "Departamento 2 amb en Norte", status: "pausada", estimatedSendAt: "2026-02-26T10:00:00Z", addedAt: "2026-02-20T15:00:00Z" },
+    { id: "q3", propertyId: "3", propertyTitle: "Terreno en Urubó", status: "pausada", estimatedSendAt: "2026-02-27T10:00:00Z", addedAt: "2026-02-20T15:00:00Z" },
+  ],
+  "2": [
+    { id: "q8", propertyId: "6", propertyTitle: "PH reciclado en Las Palmas", status: "enviada", sentAt: "2026-02-18T12:00:00Z", addedAt: "2026-02-18T10:00:00Z" },
+  ],
+  "3": [
+    { id: "q4", propertyId: "1", propertyTitle: "Casa moderna en Equipetrol", status: "pendiente", estimatedSendAt: "2026-03-31T11:45:00Z", addedAt: "2026-02-15T12:00:00Z" },
+    { id: "q5", propertyId: "6", propertyTitle: "PH reciclado en Las Palmas", status: "pendiente", estimatedSendAt: "2026-04-01T11:45:00Z", addedAt: "2026-02-15T12:00:00Z" },
+  ],
+  "7": [
+    { id: "q6", propertyId: "1", propertyTitle: "Casa moderna en Equipetrol", status: "pausada", estimatedSendAt: "2026-02-23T08:30:00Z", addedAt: "2026-02-22T08:00:00Z" },
+    { id: "q7", propertyId: "6", propertyTitle: "PH reciclado en Las Palmas", status: "pausada", estimatedSendAt: "2026-02-24T08:30:00Z", addedAt: "2026-02-22T08:00:00Z" },
+  ],
+}
+
+let catalogTracking = { ...mockCatalogTracking }
+let queueStatuses = { ...mockQueueStatuses }
+let propertyQueues: Record<string, PropertyQueueItem[]> = JSON.parse(JSON.stringify(mockPropertyQueues))
+let queueItemCounter = 8
+
+export async function getCatalogTracking(leadId: string): Promise<CatalogTracking> {
+  return Promise.resolve(catalogTracking[leadId] || { sentWithOrigin: false, openedAt: null })
+}
+
+export async function getQueueStatus(leadId: string): Promise<QueueStatus> {
+  return Promise.resolve(queueStatuses[leadId] || { status: "en_espera" })
+}
+
+export async function getPropertyQueue(leadId: string): Promise<PropertyQueueItem[]> {
+  return Promise.resolve([...(propertyQueues[leadId] || [])])
+}
+
+export async function addToQueue(leadId: string, propertyId: string, propertyTitle: string): Promise<PropertyQueueItem> {
+  const queue = propertyQueues[leadId] || []
+  const lastItem = queue[queue.length - 1]
+  const baseTime = lastItem?.estimatedSendAt || new Date().toISOString()
+  const estimated = new Date(new Date(baseTime).getTime() + 24 * 60 * 60 * 1000).toISOString()
+
+  const item: PropertyQueueItem = {
+    id: `q${++queueItemCounter}`,
+    propertyId,
+    propertyTitle,
+    status: "pendiente",
+    estimatedSendAt: estimated,
+    addedAt: new Date().toISOString(),
+  }
+  propertyQueues[leadId] = [...queue, item]
+  return Promise.resolve(item)
+}
+
+export async function removeFromQueue(leadId: string, queueItemId: string): Promise<void> {
+  propertyQueues[leadId] = (propertyQueues[leadId] || []).filter((q) => q.id !== queueItemId)
+  return Promise.resolve()
+}
+
+export async function sendQueueItemNow(leadId: string, queueItemId: string): Promise<PropertyQueueItem> {
+  const queue = propertyQueues[leadId] || []
+  const index = queue.findIndex((q) => q.id === queueItemId)
+  if (index === -1) throw new Error("Queue item not found")
+  queue[index] = { ...queue[index], status: "enviada", sentAt: new Date().toISOString() }
+  propertyQueues[leadId] = [...queue]
+  return Promise.resolve(queue[index])
+}
+
+export async function reorderQueue(leadId: string, itemIds: string[]): Promise<PropertyQueueItem[]> {
+  const queue = propertyQueues[leadId] || []
+  const reordered = itemIds.map((id) => queue.find((q) => q.id === id)!).filter(Boolean)
+  propertyQueues[leadId] = reordered
+  return Promise.resolve([...reordered])
 }
 
 function parseBudgetRange(budget?: string): { min: number; max: number } | null {

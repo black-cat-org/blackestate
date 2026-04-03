@@ -10,10 +10,14 @@ import {
 import { DashboardHeader } from "@/components/dashboard-header"
 import { LeadDetailHeader } from "@/components/contacts/lead-detail-header"
 import { LeadDetailInfo } from "@/components/contacts/lead-detail-info"
-import { LeadSuggestedProperties } from "@/components/contacts/lead-suggested-properties"
-import { LeadSentProperties } from "@/components/contacts/lead-sent-properties"
+import { LeadBotTimeline } from "@/components/contacts/lead-bot-timeline"
 import { LeadTimeline } from "@/components/contacts/lead-timeline"
-import { getLeadById, getSuggestedProperties } from "@/lib/data/leads"
+import {
+  getLeadById,
+  getCatalogTracking,
+  getQueueStatus,
+  getPropertyQueue,
+} from "@/lib/data/leads"
 import { getPropertyById, getProperties } from "@/lib/data/properties"
 import {
   getMessagesByLead,
@@ -33,15 +37,27 @@ export default async function ContactDetailPage({
     notFound()
   }
 
-  const [property, allProperties, messages, activities, sentProperties] = await Promise.all([
+  const [
+    property,
+    allProperties,
+    messages,
+    activities,
+    sentProperties,
+    catalogTracking,
+    queueStatus,
+    propertyQueue,
+  ] = await Promise.all([
     getPropertyById(lead.propertyId),
     getProperties(),
     getMessagesByLead(id),
     getActivitiesByLead(id),
     getSentPropertiesByLead(id),
+    getCatalogTracking(id),
+    getQueueStatus(id),
+    getPropertyQueue(id),
   ])
 
-  const suggestedProperties = getSuggestedProperties(lead, allProperties)
+  const originSentInfo = sentProperties.find((sp) => sp.propertyId === lead.propertyId)
 
   return (
     <>
@@ -69,15 +85,16 @@ export default async function ContactDetailPage({
           <div className="max-w-2xl">
             <LeadDetailInfo lead={lead} property={property} />
           </div>
-          <div className="space-y-6">
-            <LeadSentProperties
-              sentProperties={sentProperties}
-              properties={allProperties}
-            />
-            <LeadSuggestedProperties
-              lead={lead}
-              suggestedProperties={suggestedProperties}
+          <div>
+            <LeadBotTimeline
+              leadId={id}
+              property={property}
+              originSentInfo={originSentInfo}
+              catalogTracking={catalogTracking}
+              queueStatus={queueStatus}
+              initialQueue={propertyQueue}
               allProperties={allProperties}
+              leadPropertyId={lead.propertyId}
             />
           </div>
         </div>

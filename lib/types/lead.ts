@@ -30,3 +30,35 @@ export interface PropertyVisit {
   source: string | null
   timestamp: string
 }
+
+export interface CatalogTracking {
+  sentWithOrigin: boolean
+  openedAt: string | null
+}
+
+export type QueueStatusId =
+  | "en_espera"
+  | "activa"
+  | "pausada_conversacion"
+  | "pausada_cita"
+  | "inactiva_catalogo"
+  | "inactiva_cita_completada"
+  | "inactiva_ganado"
+  | "inactiva_perdido"
+  | "inactiva_descartado"
+
+export interface QueueStatus {
+  status: QueueStatusId
+}
+
+export type QueueItemStatus = "pendiente" | "enviada" | "pausada"
+
+export interface PropertyQueueItem {
+  id: string
+  propertyId: string
+  propertyTitle: string
+  status: QueueItemStatus
+  estimatedSendAt?: string
+  sentAt?: string
+  addedAt: string
+}
