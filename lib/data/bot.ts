@@ -569,6 +569,10 @@ let botConfig: BotConfig = { ...DEFAULT_BOT_CONFIG }
 // ============================================================
 
 // Messages
+export async function getAllMessages(): Promise<BotMessage[]> {
+  return Promise.resolve([...messages])
+}
+
 export async function getMessagesByLead(leadId: string): Promise<BotMessage[]> {
   return Promise.resolve(
     messages.filter((m) => m.leadId === leadId).sort((a, b) => a.timestamp.localeCompare(b.timestamp))

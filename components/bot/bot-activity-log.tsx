@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useMemo } from "react"
 import { useRouter } from "next/navigation"
 import {
   Send,
@@ -13,17 +13,11 @@ import {
   Bell,
   Eye,
   UserPlus,
-  Search,
 } from "lucide-react"
-import { Input } from "@/components/ui/input"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import { BOT_ACTIVITY_LABELS } from "@/lib/constants/bot"
+import { Badge } from "@/components/ui/badge"
+import { getLeadColor } from "@/lib/utils/lead-colors"
+import { formatRelativeTime, formatCalendarTime } from "@/lib/utils/relative-time"
+import { BOT_ACTIVITY_LABELS, BOT_ACTIVITY_COLORS } from "@/lib/constants/bot"
 import type { BotActivity, BotActivityType } from "@/lib/types/bot"
 
 const ICON_MAP: Record<BotActivityType, React.ComponentType<{ className?: string }>> = {
@@ -39,115 +33,76 @@ const ICON_MAP: Record<BotActivityType, React.ComponentType<{ className?: string
   lead_created: UserPlus,
 }
 
-const ACTIVITY_TYPES = Object.keys(BOT_ACTIVITY_LABELS) as BotActivityType[]
-
-function formatRelativeTime(timestamp: string): string {
-  const date = new Date(timestamp)
-  const now = new Date()
-  const diffMs = now.getTime() - date.getTime()
-  const diffMins = Math.floor(diffMs / 60000)
-  const diffHours = Math.floor(diffMs / 3600000)
-  const diffDays = Math.floor(diffMs / 86400000)
-
-  if (diffMins < 1) return "Justo ahora"
-  if (diffMins < 60) return `Hace ${diffMins} min`
-  if (diffHours < 24) return `Hace ${diffHours}h`
-  if (diffDays === 1) {
-    return `Ayer a las ${date.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" })}`
-  }
-  if (diffDays < 7) return `Hace ${diffDays} días`
-  return date.toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })
-}
-
 interface BotActivityLogProps {
   activities: BotActivity[]
 }
 
+function getDateGroup(timestamp: string): string {
+  return timestamp.slice(0, 10)
+}
+
 export function BotActivityLog({ activities }: BotActivityLogProps) {
   const router = useRouter()
-  const [typeFilter, setTypeFilter] = useState<string>("all")
-  const [searchQuery, setSearchQuery] = useState("")
 
-  const filtered = useMemo(() => {
-    let result = activities
-    if (typeFilter !== "all") {
-      result = result.filter((a) => a.type === typeFilter)
+  const grouped = useMemo(() => {
+    const map = new Map<string, BotActivity[]>()
+    for (const a of activities) {
+      const key = getDateGroup(a.timestamp)
+      const arr = map.get(key) || []
+      arr.push(a)
+      map.set(key, arr)
     }
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase()
-      result = result.filter(
-        (a) =>
-          a.leadName.toLowerCase().includes(q) ||
-          a.description.toLowerCase().includes(q)
-      )
-    }
-    return result
-  }, [activities, typeFilter, searchQuery])
+    return [...map.entries()].sort(([a], [b]) => b.localeCompare(a))
+  }, [activities])
+
+  if (activities.length === 0) {
+    return (
+      <div className="rounded-lg border border-dashed p-6 text-center">
+        <Bot className="mx-auto size-8 text-muted-foreground/50 mb-2" />
+        <p className="text-muted-foreground text-sm">No se encontró actividad.</p>
+      </div>
+    )
+  }
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col gap-3 sm:flex-row">
-        <Select value={typeFilter} onValueChange={setTypeFilter}>
-          <SelectTrigger className="h-9 w-full sm:w-[200px]">
-            <SelectValue placeholder="Tipo de evento" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos los tipos</SelectItem>
-            {ACTIVITY_TYPES.map((type) => (
-              <SelectItem key={type} value={type}>
-                {BOT_ACTIVITY_LABELS[type]}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Buscar por lead..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="h-9 pl-9"
-          />
-        </div>
-      </div>
+    <div className="space-y-5">
+      {grouped.map(([dateKey, items]) => (
+        <div key={dateKey} className="space-y-1">
+          <p className="text-xs font-semibold text-muted-foreground capitalize sticky top-0 bg-background py-1">
+            {formatCalendarTime(dateKey + "T12:00:00")}
+          </p>
+          <div className="space-y-0.5">
+            {items.map((activity) => {
+              const Icon = ICON_MAP[activity.type]
+              const leadColor = getLeadColor(activity.leadId)
 
-      {filtered.length === 0 ? (
-        <div className="rounded-lg border border-dashed p-6 text-center">
-          <Bot className="mx-auto size-8 text-muted-foreground/50 mb-2" />
-          <p className="text-muted-foreground text-sm">No se encontró actividad.</p>
-        </div>
-      ) : (
-        <div className="space-y-0">
-          {filtered.map((activity, index) => {
-            const Icon = ICON_MAP[activity.type]
-            const isLast = index === filtered.length - 1
-
-            return (
-              <div
-                key={activity.id}
-                className="flex gap-3 pb-6 relative cursor-pointer hover:bg-accent/30 rounded-lg -mx-2 px-2 transition-colors"
-                onClick={() => router.push(`/dashboard/leads/${activity.leadId}`)}
-              >
-                {!isLast && (
-                  <div className="absolute left-[23px] top-8 bottom-0 w-px bg-border" />
-                )}
-                <div className="size-8 rounded-full bg-muted flex items-center justify-center shrink-0 z-10">
-                  <Icon className="size-4" />
-                </div>
-                <div className="min-w-0 pt-1 flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-semibold text-primary">{activity.leadName}</span>
+              return (
+                <button
+                  key={activity.id}
+                  type="button"
+                  className="flex w-full items-center gap-2.5 rounded-md px-2 py-2 text-left transition-colors hover:bg-accent/50"
+                  onClick={() => router.push(`/dashboard/leads/${activity.leadId}`)}
+                >
+                  <div className="size-7 rounded-full bg-muted flex items-center justify-center shrink-0">
+                    <Icon className="size-3.5" />
                   </div>
-                  <p className="text-sm">{activity.description}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    {formatRelativeTime(activity.timestamp)}
-                  </p>
-                </div>
-              </div>
-            )
-          })}
+                  <span className="size-2 shrink-0 rounded-full" style={{ backgroundColor: leadColor }} />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-medium">{activity.leadName}</span>
+                      <Badge className={`text-[9px] px-1 py-0 border-0 ${BOT_ACTIVITY_COLORS[activity.type]}`}>{BOT_ACTIVITY_LABELS[activity.type]}</Badge>
+                      <span className="text-[10px] text-muted-foreground">
+                        {new Date(activity.timestamp).toLocaleTimeString("es-BO", { hour: "2-digit", minute: "2-digit" })}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground truncate">{activity.description}</p>
+                  </div>
+                </button>
+              )
+            })}
+          </div>
         </div>
-      )}
+      ))}
     </div>
   )
 }

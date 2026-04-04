@@ -8,10 +8,13 @@ import {
 } from "@/components/ui/breadcrumb"
 import { DashboardHeader } from "@/components/dashboard-header"
 import { BotView } from "@/components/bot/bot-view"
-import { getAllActivities } from "@/lib/data/bot"
+import { getAllActivities, getAllMessages } from "@/lib/data/bot"
 
 export default async function BotPage() {
-  const activities = await getAllActivities()
+  const [activities, messages] = await Promise.all([
+    getAllActivities(),
+    getAllMessages(),
+  ])
 
   return (
     <>
@@ -30,7 +33,7 @@ export default async function BotPage() {
       </DashboardHeader>
 
       <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-        <BotView activities={activities} />
+        <BotView activities={activities} messages={messages} />
       </div>
     </>
   )
