@@ -16,7 +16,7 @@ import {
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { getLeadColor } from "@/lib/utils/lead-colors"
-import { formatRelativeTime, formatCalendarTime } from "@/lib/utils/relative-time"
+import { formatCalendarTime } from "@/lib/utils/relative-time"
 import { BOT_ACTIVITY_LABELS, BOT_ACTIVITY_COLORS } from "@/lib/constants/bot"
 import type { BotActivity, BotActivityType } from "@/lib/types/bot"
 

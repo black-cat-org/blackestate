@@ -26,6 +26,8 @@ interface SourceDonutChartProps {
 }
 
 export function SourceDonutChart({ data }: SourceDonutChartProps) {
+  const total = data.reduce((sum, d) => sum + d.count, 0)
+
   return (
     <Card>
       <CardHeader className="pb-2">
@@ -40,6 +42,12 @@ export function SourceDonutChart({ data }: SourceDonutChartProps) {
                 <Cell key={entry.source} fill={SOURCE_COLORS[entry.source] || SOURCE_COLORS.otro} />
               ))}
             </Pie>
+            <text x="50%" y="46%" textAnchor="middle" dominantBaseline="middle" className="fill-foreground text-2xl font-bold">
+              {total}
+            </text>
+            <text x="50%" y="58%" textAnchor="middle" dominantBaseline="middle" className="fill-muted-foreground text-xs">
+              leads
+            </text>
           </PieChart>
         </ChartContainer>
         <div className="mt-2 flex flex-wrap justify-center gap-3">
@@ -47,7 +55,8 @@ export function SourceDonutChart({ data }: SourceDonutChartProps) {
             <div key={entry.source} className="flex items-center gap-1.5 text-xs">
               <div className="size-2.5 rounded-full" style={{ backgroundColor: SOURCE_COLORS[entry.source] || SOURCE_COLORS.otro }} />
               <span className="text-muted-foreground">{entry.label}</span>
-              <span className="font-medium">{entry.percentage}%</span>
+              <span className="font-medium">{entry.count}</span>
+              <span className="text-muted-foreground">({entry.percentage}%)</span>
             </div>
           ))}
         </div>

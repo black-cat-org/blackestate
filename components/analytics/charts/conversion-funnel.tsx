@@ -1,6 +1,6 @@
 "use client"
 
-import { Bar, BarChart, XAxis, YAxis, Cell } from "recharts"
+import { Bar, BarChart, XAxis, YAxis, Cell, LabelList } from "recharts"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart"
 import type { FunnelStep } from "@/lib/types/analytics"
@@ -35,6 +35,7 @@ export function ConversionFunnel({ data }: ConversionFunnelProps) {
               {data.map((entry) => (
                 <Cell key={entry.label} fill={entry.fill} />
               ))}
+              <LabelList dataKey="value" position="right" className="fill-foreground text-xs font-medium" />
             </Bar>
           </BarChart>
         </ChartContainer>

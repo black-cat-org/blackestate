@@ -14,14 +14,15 @@ interface OverviewTabProps {
   conversionsByMonth: TimeSeriesPoint[]
   sourceDistribution: { source: string; label: string; count: number; percentage: number }[]
   alerts: AlertItem[]
+  highlights: string[]
 }
 
 const STAT_ICONS = [Users, TrendingUp, DollarSign, Target]
 
-export function OverviewTab({ stats, leadsTrend, conversionsByMonth, sourceDistribution, alerts }: OverviewTabProps) {
+export function OverviewTab({ stats, leadsTrend, conversionsByMonth, sourceDistribution, alerts, highlights }: OverviewTabProps) {
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-4">
         {stats.map((stat, i) => (
           <AnalyticsStatCard
             key={stat.title}
@@ -30,6 +31,8 @@ export function OverviewTab({ stats, leadsTrend, conversionsByMonth, sourceDistr
             subtitle={stat.subtitle}
             change={stat.change}
             icon={STAT_ICONS[i]}
+            helpText={stat.helpText}
+            contextLine={stat.contextLine}
           />
         ))}
       </div>
@@ -41,7 +44,7 @@ export function OverviewTab({ stats, leadsTrend, conversionsByMonth, sourceDistr
 
       <div className="grid gap-4 md:grid-cols-2">
         <SourceDonutChart data={sourceDistribution} />
-        <AlertsPanel alerts={alerts} />
+        <AlertsPanel alerts={alerts} highlights={highlights} />
       </div>
     </div>
   )

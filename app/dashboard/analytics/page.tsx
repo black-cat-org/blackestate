@@ -14,6 +14,7 @@ import {
   getConversionsByMonth,
   getLeadsSourceDistribution,
   getAlerts,
+  getHighlights,
   getLeadsStats,
   getConversionFunnel,
   getLeadsBySourceOverTime,
@@ -42,7 +43,7 @@ import {
 
 export default async function AnalyticsPage() {
   const [
-    overviewStats, leadsTrend, conversionsByMonth, sourceDistribution, alerts,
+    overviewStats, leadsTrend, conversionsByMonth, sourceDistribution, alerts, highlights,
     leadsStats, conversionFunnel, leadsBySourceOverTime, conversionBySource, responseTime, leadsByPropertyType,
     propertiesStats, inventoryStatus, priceByZone, typeDistribution, pricePerM2, topProperties, priceTrend,
     financialStats, revenueByMonth, pipeline, commissionsBySource, commissionsByType, topOperations,
@@ -53,6 +54,7 @@ export default async function AnalyticsPage() {
     getConversionsByMonth(),
     getLeadsSourceDistribution(),
     getAlerts(),
+    getHighlights(),
     getLeadsStats(),
     getConversionFunnel(),
     getLeadsBySourceOverTime(),
@@ -98,7 +100,7 @@ export default async function AnalyticsPage() {
       </DashboardHeader>
       <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
         <AnalyticsContent
-          overviewData={{ stats: overviewStats, leadsTrend, conversionsByMonth, sourceDistribution, alerts }}
+          overviewData={{ stats: overviewStats, leadsTrend, conversionsByMonth, sourceDistribution, alerts, highlights }}
           leadsData={{ stats: leadsStats, conversionFunnel, leadsBySourceOverTime, conversionBySource, responseTime, leadsByPropertyType }}
           propertiesData={{ stats: propertiesStats, inventoryStatus, priceByZone, typeDistribution, pricePerM2, topProperties, priceTrend, priceTrendZones }}
           financialData={{ stats: financialStats, revenueByMonth, pipeline, commissionsBySource, commissionsByType, topOperations }}

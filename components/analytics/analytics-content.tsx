@@ -17,6 +17,7 @@ interface OverviewData {
   conversionsByMonth: TimeSeriesPoint[]
   sourceDistribution: { source: string; label: string; count: number; percentage: number }[]
   alerts: AlertItem[]
+  highlights: string[]
 }
 
 interface LeadsData {

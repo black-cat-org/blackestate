@@ -19,6 +19,10 @@ export function ConversionsByMonthChart({ data }: ConversionsByMonthChartProps) 
     <Card>
       <CardHeader className="pb-2">
         <CardTitle className="text-base">Conversiones por mes</CardTitle>
+        <div className="flex items-center gap-4 text-xs text-muted-foreground">
+          <span className="flex items-center gap-1.5"><span className="size-2.5 rounded-full bg-green-500" />Ganado</span>
+          <span className="flex items-center gap-1.5"><span className="size-2.5 rounded-full bg-red-500" />Perdido</span>
+        </div>
       </CardHeader>
       <CardContent>
         <ChartContainer config={chartConfig} className="h-[200px] w-full">

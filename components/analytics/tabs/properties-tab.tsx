@@ -26,7 +26,7 @@ const STAT_ICONS = [Building2, Clock, DollarSign, Percent]
 export function PropertiesTab({ stats, inventoryStatus, priceByZone, typeDistribution, pricePerM2, topProperties, priceTrend, priceTrendZones }: PropertiesTabProps) {
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-4">
         {stats.map((stat, i) => (
           <AnalyticsStatCard key={stat.title} title={stat.title} value={stat.value} subtitle={stat.subtitle} change={stat.change} icon={STAT_ICONS[i]} />
         ))}

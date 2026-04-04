@@ -10,6 +10,8 @@ export interface StatCardData {
   value: string | number
   subtitle?: string
   change?: number // percentage change vs previous period
+  helpText?: string
+  contextLine?: string
 }
 
 export interface FunnelStep {
@@ -83,4 +85,5 @@ export interface AlertItem {
   title: string
   description: string
   actionUrl?: string
+  actionLabel?: string
 }

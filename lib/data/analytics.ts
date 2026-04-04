@@ -51,30 +51,43 @@ export async function getOverviewStats(): Promise<StatCardData[]> {
   const total = leads.length
   const conversionRate = total > 0 ? Math.round((closedLeads / total) * 1000) / 10 : 0
 
+  const pipelineValue = 1200000
+  const commissionRate = 0.03
+  const commissionValue = Math.round(pipelineValue * commissionRate)
+  const leadsPerSale = conversionRate > 0 ? Math.round(100 / conversionRate) : 0
+
   return [
     {
       title: "Leads nuevos",
       value: newLeads,
       subtitle: "Últimos 30 días",
       change: 12.5,
+      helpText: "Son las personas que se contactaron contigo en este período. Cada vez que alguien escribe al bot o llena el formulario de una propiedad, se cuenta como un lead nuevo. Por ejemplo, si en los últimos 30 días 8 personas preguntaron por tus propiedades, tu número es 8. El porcentaje muestra si recibes más o menos consultas que en el período anterior.",
+      contextLine: `${newLeads} personas preguntaron por tus propiedades este mes`,
     },
     {
       title: "Tasa de conversión",
       value: `${conversionRate}%`,
-      subtitle: "Cerrados / total",
+      subtitle: "Ganados / total",
       change: 3.2,
+      helpText: "De cada 100 personas que se contactaron contigo, cuántas terminaron comprando o alquilando. Si tuviste 8 leads y cerraste 1 venta, tu tasa es 12.5%. Un número más alto significa que estás convirtiendo mejor tus consultas en ventas reales.",
+      contextLine: leadsPerSale > 0 ? `1 de cada ${leadsPerSale} leads termina en venta` : "Aún no tienes ventas cerradas",
     },
     {
       title: "Valor del pipeline",
-      value: "$1.2M",
+      value: `US$ ${(pipelineValue / 1000).toLocaleString("es-BO")}K`,
       subtitle: "Oportunidades activas",
       change: -5.1,
+      helpText: "Es la suma del precio de todas las propiedades que tienen interesados activos en este momento. Si tienes 3 leads interesados en propiedades de $200k, $300k y $400k, tu valor en negociación es $900k. No es dinero que ya ganaste, es el potencial de lo que está en juego ahora mismo.",
+      contextLine: `tienes US$ ${(pipelineValue / 1000).toLocaleString("es-BO")}K en propiedades con interesados activos`,
     },
     {
       title: "Comisiones estimadas",
-      value: "$36K",
-      subtitle: "Acumulado del mes",
+      value: `US$ ${(commissionValue / 1000).toLocaleString("es-BO")}K`,
+      subtitle: `${(commissionRate * 100)}% sobre negociación`,
       change: 8.3,
+      helpText: "Es una estimación de cuánto ganarías si cierras todas las negociaciones activas, calculado sobre el porcentaje de comisión que configuraste en tu perfil. Es una estimación, no un número garantizado. Te ayuda a visualizar el valor de tu cartera actual.",
+      contextLine: `podrías ganar US$ ${(commissionValue / 1000).toLocaleString("es-BO")}K si cierras todo lo que tienes hoy`,
     },
   ]
 }
@@ -118,16 +131,15 @@ export async function getLeadsSourceDistribution(): Promise<
 }
 
 export async function getAlerts(): Promise<AlertItem[]> {
-  const [leads, appointments, properties] = await Promise.all([
+  const [leads, appointments] = await Promise.all([
     getLeads(),
     getAppointments(),
-    getProperties(),
   ])
 
   const alerts: AlertItem[] = []
 
   // Leads in "nuevo" status created >48h ago
-  const now = new Date("2026-02-25T12:00:00Z") // deterministic "now"
+  const now = new Date()
   const threshold48h = new Date(now.getTime() - 48 * 60 * 60 * 1000)
   const staleLeads = leads.filter(
     (l) => l.status === "nuevo" && new Date(l.createdAt) < threshold48h
@@ -137,8 +149,9 @@ export async function getAlerts(): Promise<AlertItem[]> {
       id: `alert-lead-${lead.id}`,
       type: "warning",
       title: "Lead sin contactar",
-      description: `${lead.name} lleva más de 48hs en estado "Nuevo" sin ser contactado.`,
-      actionUrl: `/leads/${lead.id}`,
+      description: `${lead.name} lleva más de 48hs sin ser contactado`,
+      actionUrl: `/dashboard/leads/${lead.id}`,
+      actionLabel: "Ver lead",
     })
   }
 
@@ -148,28 +161,45 @@ export async function getAlerts(): Promise<AlertItem[]> {
     alerts.push({
       id: `alert-apt-${apt.id}`,
       type: "urgent",
-      title: "Cita pendiente de confirmación",
-      description: `${apt.leadName} solicitó una cita para "${apt.propertyTitle}" el ${apt.date}.`,
-      actionUrl: `/bot`,
-    })
-  }
-
-  // Properties with 0 leads
-  const propertyIdsWithLeads = new Set(leads.map((l) => l.propertyId))
-  const activePropsNoLeads = properties.filter(
-    (p) => p.status === "activa" && !propertyIdsWithLeads.has(p.id)
-  )
-  for (const prop of activePropsNoLeads) {
-    alerts.push({
-      id: `alert-prop-${prop.id}`,
-      type: "info",
-      title: "Propiedad sin leads",
-      description: `"${prop.title}" está activa pero no tiene leads asociados.`,
-      actionUrl: `/propiedades/${prop.id}`,
+      title: "Cita por confirmar",
+      description: `${apt.leadName} pidió visitar "${apt.propertyTitle}"`,
+      actionUrl: "/dashboard/appointments",
+      actionLabel: "Ver cita",
     })
   }
 
   return alerts
+}
+
+export async function getHighlights(): Promise<string[]> {
+  const [leads, appointments] = await Promise.all([
+    getLeads(),
+    getAppointments(),
+  ])
+
+  const highlights: string[] = []
+
+  const ganados = leads.filter((l) => l.status === "ganado").length
+  if (ganados > 0) highlights.push(`Cerraste ${ganados} venta${ganados > 1 ? "s" : ""} este período`)
+
+  const sources: Record<string, number> = {}
+  for (const l of leads) {
+    const s = l.source ?? "otro"
+    sources[s] = (sources[s] || 0) + 1
+  }
+  const topSource = Object.entries(sources).sort((a, b) => b[1] - a[1])[0]
+  if (topSource) {
+    const sourceNames: Record<string, string> = { facebook: "Facebook", instagram: "Instagram", whatsapp: "WhatsApp", tiktok: "TikTok", otro: "Otro" }
+    highlights.push(`Tu mejor fuente fue ${sourceNames[topSource[0]] || topSource[0]} con ${topSource[1]} leads`)
+  }
+
+  const botAppointments = appointments.filter((a) => a.status === "confirmada" || a.status === "completada").length
+  if (botAppointments > 0) highlights.push(`El bot agendó ${botAppointments} cita${botAppointments > 1 ? "s" : ""} sin tu intervención`)
+
+  const interesados = leads.filter((l) => l.status === "interesado").length
+  if (interesados > 0) highlights.push(`Tienes ${interesados} lead${interesados > 1 ? "s" : ""} activamente interesado${interesados > 1 ? "s" : ""}`)
+
+  return highlights
 }
 
 // ============================================================
@@ -178,41 +208,56 @@ export async function getAlerts(): Promise<AlertItem[]> {
 
 export async function getLeadsStats(): Promise<StatCardData[]> {
   const leads = await getLeads()
-  const total = leads.length
-  const closed = leads.filter((l) => l.status === "ganado").length
+  const activeLeads = leads.filter((l) => l.status !== "descartado")
+  const total = activeLeads.length
+  const closed = activeLeads.filter((l) => l.status === "ganado").length
   const closeRate = total > 0 ? Math.round((closed / total) * 1000) / 10 : 0
+
+  const avgCloseDays = 12
+  const leadsPerClose = closeRate > 0 ? Math.round(100 / closeRate) : 0
+  const contacted = activeLeads.filter((l) => l.status !== "nuevo").length
+  const responded = activeLeads.filter((l) => l.status === "contactado" || l.status === "interesado" || l.status === "ganado").length
+  const responseRate = contacted > 0 ? Math.round((responded / contacted) * 1000) / 10 : 0
+  const responsePer10 = contacted > 0 ? Math.round((responded / contacted) * 10) : 0
 
   return [
     {
       title: "Total leads",
       value: total,
-      subtitle: "Todos los períodos",
+      subtitle: "Sin contar descartados",
       change: 15.0,
+      helpText: "Incluye todos los leads que tienen potencial de negocio: nuevos, contactados, interesados, ganados y perdidos. No incluye los que descartaste manualmente porque ya no representan una oportunidad. Por ejemplo, si llegaron 10 personas y descartaste 2, tu total es 8.",
+      contextLine: `${total} personas con potencial de negocio este período`,
     },
     {
       title: "Tiempo promedio de cierre",
-      value: "12 días",
+      value: `${avgCloseDays} días`,
       subtitle: "Desde contacto hasta cierre",
       change: -8.0,
+      helpText: "Es el promedio de días que pasaron desde que un lead llegó hasta que se cerró la venta o el alquiler. Si un lead llegó el 1 de enero y cerraste el 13 de enero, ese lead tardó 12 días. Un número más bajo significa que estás cerrando más rápido.",
+      contextLine: `tus ventas tardan en promedio ${avgCloseDays} días en cerrarse`,
     },
     {
       title: "Tasa de cierre",
       value: `${closeRate}%`,
       subtitle: "Leads ganados",
       change: 3.2,
+      helpText: "De cada 100 leads con potencial, cuántos terminaron en una venta o alquiler cerrado. No cuenta los descartados en el cálculo. Si tuviste 7 leads activos y cerraste 1, tu tasa es 14.3%. Un número más alto significa que estás convirtiendo mejor.",
+      contextLine: leadsPerClose > 0 ? `1 de cada ${leadsPerClose} leads termina en venta o alquiler` : "Aún no tienes cierres registrados",
     },
     {
-      title: "Costo por lead",
-      value: "$12.50",
-      subtitle: "Promedio por canal",
-      change: -2.1,
+      title: "Tasa de respuesta",
+      value: `${responseRate}%`,
+      subtitle: "Respondieron al bot",
+      change: 5.4,
+      helpText: "De cada 100 personas que el bot contactó, cuántas respondieron al menos un mensaje. Si el bot contactó a 8 leads y 6 respondieron, tu tasa es 75%. Un número bajo puede significar que los leads no son de buena calidad o que el mensaje inicial del bot no está enganchando.",
+      contextLine: `${responsePer10} de cada 10 personas que el bot contacta responden`,
     },
   ]
 }
 
 export async function getConversionFunnel(): Promise<FunnelStep[]> {
   const leads = await getLeads()
-
   const statusOrder: LeadStatus[] = ["nuevo", "contactado", "interesado", "ganado", "perdido", "descartado"]
 
   return statusOrder.map((status) => ({

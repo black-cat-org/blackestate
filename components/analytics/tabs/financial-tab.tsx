@@ -23,7 +23,7 @@ const STAT_ICONS = [DollarSign, TrendingUp, Briefcase, Calculator]
 export function FinancialTab({ stats, revenueByMonth, pipeline, commissionsBySource, commissionsByType, topOperations }: FinancialTabProps) {
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-4">
         {stats.map((stat, i) => (
           <AnalyticsStatCard key={stat.title} title={stat.title} value={stat.value} subtitle={stat.subtitle} change={stat.change} icon={STAT_ICONS[i]} />
         ))}
