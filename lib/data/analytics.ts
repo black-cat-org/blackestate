@@ -304,18 +304,35 @@ export async function getConversionBySource(): Promise<SourceMetric[]> {
   })
 }
 
-export async function getResponseTimeMetrics(): Promise<{
-  average: number
-  meta: number
-  distribution: { fast: number; medium: number; slow: number }
+export async function getPipelineVelocity(): Promise<
+  { label: string; days: number; fill: string }[]
+> {
+  return [
+    { label: "Nuevo → Contactado", days: 1, fill: "hsl(217, 91%, 60%)" },
+    { label: "Contactado → Interesado", days: 4, fill: "hsl(45, 93%, 47%)" },
+    { label: "Interesado → Ganado", days: 7, fill: "hsl(142, 71%, 45%)" },
+  ]
+}
+
+export async function getPipelineExits(): Promise<
+  { label: string; avgDays: number; fill: string }[]
+> {
+  return [
+    { label: "Perdido", avgDays: 10, fill: "hsl(0, 72%, 51%)" },
+    { label: "Descartado", avgDays: 3, fill: "hsl(0, 0%, 60%)" },
+  ]
+}
+
+export async function getBotEngagement(): Promise<{
+  engagementRate: number
+  distribution: { interacted: number; viewedOnly: number; noResponse: number }
 }> {
   return {
-    average: 8,
-    meta: 5,
+    engagementRate: 72,
     distribution: {
-      fast: 60,
-      medium: 25,
-      slow: 15,
+      interacted: 72,
+      viewedOnly: 15,
+      noResponse: 13,
     },
   }
 }

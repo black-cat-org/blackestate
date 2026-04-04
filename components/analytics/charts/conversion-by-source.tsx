@@ -1,8 +1,6 @@
 "use client"
 
-import { Bar, BarChart, XAxis, YAxis, Cell, LabelList } from "recharts"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
-import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart"
 import { ChartHeader } from "@/components/analytics/chart-header"
 import type { SourceMetric } from "@/lib/types/analytics"
 
@@ -14,15 +12,14 @@ const SOURCE_COLORS: Record<string, string> = {
   otro: "hsl(0, 0%, 60%)",
 }
 
-const chartConfig = {
-  conversionRate: { label: "Conversión" },
-} satisfies ChartConfig
-
 interface ConversionBySourceProps {
   data: SourceMetric[]
 }
 
 export function ConversionBySource({ data }: ConversionBySourceProps) {
+  const maxRate = Math.max(...data.map((d) => d.conversionRate), 1)
+  const sorted = [...data].sort((a, b) => b.conversionRate - a.conversionRate)
+
   return (
     <Card>
       <CardHeader className="pb-2">
@@ -33,26 +30,25 @@ export function ConversionBySource({ data }: ConversionBySourceProps) {
         />
       </CardHeader>
       <CardContent>
-        <ChartContainer config={chartConfig} className="h-[200px] w-full">
-          <BarChart data={data} layout="vertical" margin={{ left: 0, right: 45 }}>
-            <YAxis dataKey="label" type="category" tickLine={false} axisLine={false} width={80} fontSize={12} />
-            <XAxis type="number" hide />
-            <ChartTooltip
-              content={<ChartTooltipContent formatter={(value) => `${value}%`} />}
-            />
-            <Bar dataKey="conversionRate" radius={4}>
-              {data.map((entry) => (
-                <Cell key={entry.source} fill={SOURCE_COLORS[entry.source] || SOURCE_COLORS.otro} />
-              ))}
-              <LabelList
-                dataKey="conversionRate"
-                position="right"
-                className="fill-foreground text-xs font-medium"
-                formatter={(value: number) => `${value}%`}
-              />
-            </Bar>
-          </BarChart>
-        </ChartContainer>
+        <div className="space-y-3">
+          {sorted.map((entry, i) => {
+            const color = SOURCE_COLORS[entry.source] || SOURCE_COLORS.otro
+            const widthPct = (entry.conversionRate / maxRate) * 100
+
+            return (
+              <div key={entry.source} className="flex items-center gap-3">
+                <span className="w-5 text-xs font-medium text-muted-foreground text-right">{i + 1}</span>
+                <span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: color }} />
+                <span className="w-20 text-sm shrink-0">{entry.label}</span>
+                <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
+                  <div className="h-full rounded-full transition-all" style={{ width: `${widthPct}%`, backgroundColor: color }} />
+                </div>
+                <span className="w-12 text-right text-sm font-semibold">{entry.conversionRate}%</span>
+                <span className="w-16 text-right text-xs text-muted-foreground">{entry.count} leads</span>
+              </div>
+            )
+          })}
+        </div>
       </CardContent>
     </Card>
   )

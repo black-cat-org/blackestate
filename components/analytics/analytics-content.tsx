@@ -25,7 +25,6 @@ interface LeadsData {
   conversionFunnel: FunnelStep[]
   leadsBySourceOverTime: TimeSeriesPoint[]
   conversionBySource: SourceMetric[]
-  responseTime: { average: number; meta: number; distribution: { fast: number; medium: number; slow: number } }
   leadsByPropertyType: { type: string; label: string; count: number }[]
 }
 
@@ -55,6 +54,7 @@ interface BotData {
   botFunnel: BotFunnelStep[]
   heatmap: HeatmapCell[]
   appointmentOutcomes: { status: string; label: string; count: number; percentage: number; fill: string }[]
+  botEngagement: { engagementRate: number; distribution: { interacted: number; viewedOnly: number; noResponse: number } }
 }
 
 interface AnalyticsContentProps {

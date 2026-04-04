@@ -1,20 +1,8 @@
 "use client"
 
-import { Bar, BarChart, XAxis, YAxis, Cell, LabelList } from "recharts"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
-import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart"
 import { ChartHeader } from "@/components/analytics/chart-header"
 import type { FunnelStep } from "@/lib/types/analytics"
-
-const chartConfig = {
-  value: { label: "Leads" },
-  nuevo: { label: "Nuevo", color: "hsl(217, 91%, 60%)" },
-  contactado: { label: "Contactado", color: "hsl(45, 93%, 47%)" },
-  interesado: { label: "Interesado", color: "hsl(271, 91%, 65%)" },
-  ganado: { label: "Ganado", color: "hsl(142, 71%, 45%)" },
-  perdido: { label: "Perdido", color: "hsl(0, 72%, 51%)" },
-  descartado: { label: "Descartado", color: "hsl(0, 0%, 60%)" },
-} satisfies ChartConfig
 
 interface ConversionFunnelProps {
   data: FunnelStep[]
@@ -22,6 +10,7 @@ interface ConversionFunnelProps {
 
 export function ConversionFunnel({ data }: ConversionFunnelProps) {
   const total = data.reduce((sum, d) => sum + d.value, 0)
+  const maxValue = Math.max(...data.map((d) => d.value), 1)
 
   return (
     <Card>
@@ -33,19 +22,24 @@ export function ConversionFunnel({ data }: ConversionFunnelProps) {
         />
       </CardHeader>
       <CardContent>
-        <ChartContainer config={chartConfig} className="h-[220px] w-full">
-          <BarChart data={data} layout="vertical" margin={{ left: 0, right: 40 }}>
-            <YAxis dataKey="label" type="category" tickLine={false} axisLine={false} width={90} fontSize={12} />
-            <XAxis type="number" hide />
-            <ChartTooltip content={<ChartTooltipContent />} />
-            <Bar dataKey="value" radius={4}>
-              {data.map((entry) => (
-                <Cell key={entry.label} fill={entry.fill} />
-              ))}
-              <LabelList dataKey="value" position="right" className="fill-foreground text-xs font-medium" />
-            </Bar>
-          </BarChart>
-        </ChartContainer>
+        <div className="space-y-3">
+          {data.map((entry) => {
+            const widthPct = (entry.value / maxValue) * 100
+            const pctOfTotal = total > 0 ? Math.round((entry.value / total) * 100) : 0
+
+            return (
+              <div key={entry.label} className="flex items-center gap-3">
+                <span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: entry.fill }} />
+                <span className="w-24 text-sm shrink-0">{entry.label}</span>
+                <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
+                  <div className="h-full rounded-full transition-all" style={{ width: `${widthPct}%`, backgroundColor: entry.fill }} />
+                </div>
+                <span className="w-8 text-right text-sm font-semibold">{entry.value}</span>
+                <span className="w-10 text-right text-xs text-muted-foreground">{pctOfTotal}%</span>
+              </div>
+            )
+          })}
+        </div>
       </CardContent>
     </Card>
   )

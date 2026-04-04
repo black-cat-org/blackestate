@@ -19,7 +19,6 @@ import {
   getConversionFunnel,
   getLeadsBySourceOverTime,
   getConversionBySource,
-  getResponseTimeMetrics,
   getLeadsByPropertyType,
   getPropertiesStats,
   getInventoryStatus,
@@ -39,15 +38,16 @@ import {
   getBotFunnel,
   getEngagementHeatmap,
   getAppointmentOutcomes,
+  getBotEngagement,
 } from "@/lib/data/analytics"
 
 export default async function AnalyticsPage() {
   const [
     overviewStats, leadsTrend, conversionsByMonth, sourceDistribution, alerts, highlights,
-    leadsStats, conversionFunnel, leadsBySourceOverTime, conversionBySource, responseTime, leadsByPropertyType,
+    leadsStats, conversionFunnel, leadsBySourceOverTime, conversionBySource, leadsByPropertyType,
     propertiesStats, inventoryStatus, priceByZone, typeDistribution, pricePerM2, topProperties, priceTrend,
     financialStats, revenueByMonth, pipeline, commissionsBySource, commissionsByType, topOperations,
-    botStats, botActivityByDay, botFunnel, engagementHeatmap, appointmentOutcomes,
+    botStats, botActivityByDay, botFunnel, engagementHeatmap, appointmentOutcomes, botEngagement,
   ] = await Promise.all([
     getOverviewStats(),
     getLeadsTrend(),
@@ -59,7 +59,6 @@ export default async function AnalyticsPage() {
     getConversionFunnel(),
     getLeadsBySourceOverTime(),
     getConversionBySource(),
-    getResponseTimeMetrics(),
     getLeadsByPropertyType(),
     getPropertiesStats(),
     getInventoryStatus(),
@@ -79,6 +78,7 @@ export default async function AnalyticsPage() {
     getBotFunnel(),
     getEngagementHeatmap(),
     getAppointmentOutcomes(),
+    getBotEngagement(),
   ])
 
   const priceTrendZones = Object.keys(priceTrend[0] || {}).filter(k => k !== "date")
@@ -101,10 +101,10 @@ export default async function AnalyticsPage() {
       <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
         <AnalyticsContent
           overviewData={{ stats: overviewStats, leadsTrend, conversionsByMonth, sourceDistribution, alerts, highlights }}
-          leadsData={{ stats: leadsStats, conversionFunnel, leadsBySourceOverTime, conversionBySource, responseTime, leadsByPropertyType }}
+          leadsData={{ stats: leadsStats, conversionFunnel, leadsBySourceOverTime, conversionBySource, leadsByPropertyType }}
           propertiesData={{ stats: propertiesStats, inventoryStatus, priceByZone, typeDistribution, pricePerM2, topProperties, priceTrend, priceTrendZones }}
           financialData={{ stats: financialStats, revenueByMonth, pipeline, commissionsBySource, commissionsByType, topOperations }}
-          botData={{ stats: botStats, activityByDay: botActivityByDay, botFunnel, heatmap: engagementHeatmap, appointmentOutcomes }}
+          botData={{ stats: botStats, activityByDay: botActivityByDay, botFunnel, heatmap: engagementHeatmap, appointmentOutcomes, botEngagement }}
         />
       </div>
     </>

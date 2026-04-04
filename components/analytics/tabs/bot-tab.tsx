@@ -4,6 +4,7 @@ import { MessageSquare, Percent, Calendar, Send } from "lucide-react"
 import { AnalyticsStatCard } from "@/components/analytics/analytics-stat-card"
 import { BotActivityArea } from "@/components/analytics/charts/bot-activity-area"
 import { BotFunnel } from "@/components/analytics/charts/bot-funnel"
+import { BotEngagementGauge } from "@/components/analytics/charts/bot-engagement-gauge"
 import { EngagementHeatmap } from "@/components/analytics/charts/engagement-heatmap"
 import { AppointmentOutcomesDonut } from "@/components/analytics/charts/appointment-outcomes-donut"
 import type {
@@ -25,6 +26,10 @@ interface BotTabProps {
     percentage: number
     fill: string
   }[]
+  botEngagement: {
+    engagementRate: number
+    distribution: { interacted: number; viewedOnly: number; noResponse: number }
+  }
 }
 
 const STAT_ICONS = [MessageSquare, Percent, Calendar, Send]
@@ -35,6 +40,7 @@ export function BotTab({
   botFunnel,
   heatmap,
   appointmentOutcomes,
+  botEngagement,
 }: BotTabProps) {
   return (
     <div className="flex flex-col gap-4">
@@ -58,7 +64,10 @@ export function BotTab({
         <AppointmentOutcomesDonut data={appointmentOutcomes} />
       </div>
 
-      <EngagementHeatmap data={heatmap} />
+      <div className="grid gap-4 md:grid-cols-2">
+        <BotEngagementGauge data={botEngagement} />
+        <EngagementHeatmap data={heatmap} />
+      </div>
     </div>
   )
 }
