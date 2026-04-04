@@ -1,6 +1,7 @@
 "use client"
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader } from "@/components/ui/card"
+import { ChartHeader } from "@/components/analytics/chart-header"
 import { cn } from "@/lib/utils"
 
 interface ResponseTimeGaugeProps {
@@ -17,7 +18,11 @@ export function ResponseTimeGauge({ data }: ResponseTimeGaugeProps) {
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-base">Tiempo de respuesta</CardTitle>
+        <ChartHeader
+          title="Tiempo de respuesta"
+          helpText="Muestra qué tan rápido responden tus leads cuando el bot les envía un mensaje. Un tiempo de respuesta bajo significa que el lead está muy interesado. Si la mayoría tarda más de 30 minutos en responder puede significar que el mensaje inicial del bot no está enganchando lo suficiente."
+          subtitle="qué tan rápido responden tus leads al bot"
+        />
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex items-baseline gap-2">
@@ -38,9 +43,9 @@ export function ResponseTimeGauge({ data }: ResponseTimeGaugeProps) {
             <div className="bg-red-500" style={{ width: `${data.distribution.slow}%` }} />
           </div>
           <div className="mt-1.5 flex justify-between text-xs text-muted-foreground">
-            <span>&lt;5 min ({data.distribution.fast}%)</span>
-            <span>5-30 min ({data.distribution.medium}%)</span>
-            <span>&gt;30 min ({data.distribution.slow}%)</span>
+            <span>&lt; 5 min ({data.distribution.fast}%)</span>
+            <span>5 - 30 min ({data.distribution.medium}%)</span>
+            <span>&gt; 30 min ({data.distribution.slow}%)</span>
           </div>
         </div>
       </CardContent>

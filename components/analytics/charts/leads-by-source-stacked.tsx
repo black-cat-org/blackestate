@@ -1,8 +1,9 @@
 "use client"
 
-import { Bar, BarChart, XAxis, YAxis } from "recharts"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Bar, BarChart, XAxis, YAxis, LabelList } from "recharts"
+import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent, type ChartConfig } from "@/components/ui/chart"
+import { ChartHeader } from "@/components/analytics/chart-header"
 import type { TimeSeriesPoint } from "@/lib/types/analytics"
 
 const chartConfig = {
@@ -21,11 +22,15 @@ export function LeadsBySourceStacked({ data }: LeadsBySourceStackedProps) {
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-base">Leads por fuente (mensual)</CardTitle>
+        <ChartHeader
+          title="Leads por fuente"
+          helpText="Muestra de dónde vienen tus leads cada mes. Si ves que Facebook crece cada mes significa que tu presencia ahí está funcionando. Úsalo para decidir dónde poner más energía."
+          subtitle="evolución mensual de tus canales de captación"
+        />
       </CardHeader>
       <CardContent>
         <ChartContainer config={chartConfig} className="h-[220px] w-full">
-          <BarChart data={data} margin={{ left: 0 }}>
+          <BarChart data={data} margin={{ left: 0, top: 20 }}>
             <XAxis dataKey="date" tickLine={false} axisLine={false} fontSize={12} />
             <YAxis hide />
             <ChartTooltip content={<ChartTooltipContent />} />
@@ -34,7 +39,16 @@ export function LeadsBySourceStacked({ data }: LeadsBySourceStackedProps) {
             <Bar dataKey="instagram" stackId="a" fill="var(--color-instagram)" />
             <Bar dataKey="whatsapp" stackId="a" fill="var(--color-whatsapp)" />
             <Bar dataKey="tiktok" stackId="a" fill="var(--color-tiktok)" />
-            <Bar dataKey="otro" stackId="a" fill="var(--color-otro)" radius={[4, 4, 0, 0]} />
+            <Bar dataKey="otro" stackId="a" fill="var(--color-otro)" radius={[4, 4, 0, 0]}>
+              <LabelList
+                valueAccessor={(entry: TimeSeriesPoint) => {
+                  const keys = ["facebook", "instagram", "whatsapp", "tiktok", "otro"]
+                  return keys.reduce((sum, k) => sum + (Number(entry[k]) || 0), 0)
+                }}
+                position="top"
+                className="fill-foreground text-[10px] font-medium"
+              />
+            </Bar>
           </BarChart>
         </ChartContainer>
       </CardContent>
