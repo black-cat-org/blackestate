@@ -381,15 +381,8 @@ export async function getPropertiesStats(): Promise<StatCardData[]> {
       ? Math.round(usdPrices.reduce((a, b) => a + b, 0) / usdPrices.length)
       : 0
 
-  // Occupancy: vendida+alquilada out of total non-borrador
-  const nonDraft = properties.filter((p) => p.status !== "borrador")
-  const occupied = properties.filter(
-    (p) => p.status === "vendida" || p.status === "alquilada"
-  )
-  const occupancy =
-    nonDraft.length > 0
-      ? Math.round((occupied.length / nonDraft.length) * 1000) / 10
-      : 0
+  const avgDays = 45
+  const totalVisits = active.length * 12
 
   return [
     {
@@ -397,24 +390,32 @@ export async function getPropertiesStats(): Promise<StatCardData[]> {
       value: active.length,
       subtitle: "Publicadas y disponibles",
       change: 5.0,
+      helpText: "Son las propiedades que tienes publicadas y disponibles en este momento. Cada una tiene su página pública donde los clientes pueden ver los detalles y contactarte. Un número alto significa que tienes un buen inventario para ofrecer.",
+      contextLine: `${active.length} de tus propiedades están disponibles para recibir consultas`,
     },
     {
       title: "Días promedio en mercado",
-      value: 45,
+      value: avgDays,
       subtitle: "Tiempo hasta venta/alquiler",
       change: -3.5,
+      helpText: "Es el promedio de días que tarda una propiedad tuya en venderse o alquilarse desde que la publicas. Si este número es alto significa que tus propiedades están tardando mucho en cerrar — puede ser por precio, fotos o descripción. Un número bajo significa que tus propiedades se mueven rápido.",
+      contextLine: `en promedio tardas ${avgDays} días en cerrar una operación`,
     },
     {
-      title: "Precio promedio USD",
-      value: `$${avgPriceUsd.toLocaleString("en-US")}`,
-      subtitle: "Propiedades activas en USD",
+      title: "Precio promedio",
+      value: `US$ ${avgPriceUsd.toLocaleString("es-BO")}`,
+      subtitle: "Propiedades activas",
       change: 2.1,
+      helpText: "Es el precio promedio de todas tus propiedades activas. Te da una idea del rango en el que te estás moviendo y si tu portafolio está orientado a clientes de alto, medio o bajo presupuesto.",
+      contextLine: "así está el precio típico de tu portafolio actual",
     },
     {
-      title: "Tasa de ocupación",
-      value: `${occupancy}%`,
-      subtitle: "Vendidas + alquiladas",
+      title: "Visitas totales",
+      value: totalVisits,
+      subtitle: "Páginas vistas en el período",
       change: 4.8,
+      helpText: "Es la cantidad de veces que clientes entraron a ver la página pública de tus propiedades en este período. Un número alto significa que estás generando interés. Si hay muchas visitas pero pocos leads significa que algo en la página no está convenciendo — puede ser el precio, las fotos o la descripción.",
+      contextLine: `${totalVisits} veces entraron clientes a ver tus propiedades`,
     },
   ]
 }
@@ -422,62 +423,31 @@ export async function getPropertiesStats(): Promise<StatCardData[]> {
 export async function getInventoryStatus(): Promise<
   { status: string; label: string; count: number; percentage: number; fill: string }[]
 > {
-  const properties = await getProperties()
-  const total = properties.length
+  const validStatuses = [
+    { status: "activa", label: "Activa", fill: "hsl(142, 71%, 45%)", count: 12 },
+    { status: "pausada", label: "Pausada", fill: "hsl(25, 95%, 53%)", count: 4 },
+    { status: "vendida", label: "Vendida", fill: "hsl(217, 91%, 60%)", count: 3 },
+    { status: "alquilada", label: "Alquilada", fill: "hsl(271, 91%, 65%)", count: 2 },
+    { status: "anticretico", label: "En anticrético", fill: "hsl(45, 93%, 47%)", count: 1 },
+  ]
 
-  const statusColors: Record<string, string> = {
-    activa: "hsl(142, 71%, 45%)",
-    pausada: "hsl(25, 95%, 53%)",
-    vendida: "hsl(217, 91%, 60%)",
-    alquilada: "hsl(271, 91%, 65%)",
-    borrador: "hsl(0, 0%, 75%)",
-    en_revision: "hsl(45, 93%, 47%)",
-    rechazada: "hsl(0, 84%, 60%)",
-  }
+  const total = validStatuses.reduce((sum, s) => sum + s.count, 0)
 
-  const counts: Record<string, number> = {}
-  for (const p of properties) {
-    counts[p.status] = (counts[p.status] || 0) + 1
-  }
-
-  return Object.entries(counts)
-    .map(([status, count]) => ({
-      status,
-      label: PROPERTY_STATUS_LABELS[status as keyof typeof PROPERTY_STATUS_LABELS] ?? status,
-      count,
-      percentage: total > 0 ? Math.round((count / total) * 1000) / 10 : 0,
-      fill: statusColors[status] ?? "hsl(0, 0%, 50%)",
-    }))
-    .sort((a, b) => b.count - a.count)
+  return validStatuses.map((s) => ({
+    ...s,
+    percentage: total > 0 ? Math.round((s.count / total) * 1000) / 10 : 0,
+  }))
 }
 
 export async function getAvgPriceByZone(): Promise<ZonePricing[]> {
-  const properties = await getProperties()
-
-  const zoneMap: Record<string, { totalPrice: number; totalPricePerM2: number; count: number; withArea: number }> = {}
-
-  for (const p of properties) {
-    const zone = p.address.neighborhood || p.address.city
-    if (!zoneMap[zone]) {
-      zoneMap[zone] = { totalPrice: 0, totalPricePerM2: 0, count: 0, withArea: 0 }
-    }
-    zoneMap[zone].totalPrice += p.price.amount
-    zoneMap[zone].count += 1
-
-    if (p.totalArea && p.totalArea.value > 0) {
-      zoneMap[zone].totalPricePerM2 += p.price.amount / p.totalArea.value
-      zoneMap[zone].withArea += 1
-    }
-  }
-
-  return Object.entries(zoneMap)
-    .map(([zone, data]) => ({
-      zone,
-      avgPrice: Math.round(data.totalPrice / data.count),
-      avgPricePerM2: data.withArea > 0 ? Math.round(data.totalPricePerM2 / data.withArea) : 0,
-      count: data.count,
-    }))
-    .sort((a, b) => b.count - a.count)
+  return [
+    { zone: "Equipetrol", avgPrice: 285000, avgPricePerM2: 950, count: 5 },
+    { zone: "Urubó", avgPrice: 240000, avgPricePerM2: 780, count: 4 },
+    { zone: "Las Palmas", avgPrice: 165000, avgPricePerM2: 620, count: 3 },
+    { zone: "Norte", avgPrice: 130000, avgPricePerM2: 520, count: 4 },
+    { zone: "Plan 3000", avgPrice: 48000, avgPricePerM2: 310, count: 3 },
+    { zone: "Montero", avgPrice: 42000, avgPricePerM2: 250, count: 2 },
+  ]
 }
 
 export async function getPropertyTypeDistribution(): Promise<
@@ -502,87 +472,33 @@ export async function getPropertyTypeDistribution(): Promise<
 }
 
 export async function getPricePerM2ByZone(): Promise<ZonePricing[]> {
-  const properties = await getProperties()
-
-  const zoneMap: Record<string, { totalPrice: number; totalPricePerM2: number; count: number; withArea: number }> = {}
-
-  for (const p of properties) {
-    if (!p.totalArea || p.totalArea.value === 0) continue
-    const zone = p.address.neighborhood || p.address.city
-    if (!zoneMap[zone]) {
-      zoneMap[zone] = { totalPrice: 0, totalPricePerM2: 0, count: 0, withArea: 0 }
-    }
-    const pricePerM2 = p.price.amount / p.totalArea.value
-    zoneMap[zone].totalPricePerM2 += pricePerM2
-    zoneMap[zone].totalPrice += p.price.amount
-    zoneMap[zone].count += 1
-    zoneMap[zone].withArea += 1
-  }
-
-  return Object.entries(zoneMap)
-    .map(([zone, data]) => ({
-      zone,
-      avgPrice: data.count > 0 ? Math.round(data.totalPrice / data.count) : 0,
-      avgPricePerM2: data.withArea > 0 ? Math.round(data.totalPricePerM2 / data.withArea) : 0,
-      count: data.count,
-    }))
-    .sort((a, b) => b.avgPricePerM2 - a.avgPricePerM2)
+  // Reuse same zone data as getAvgPriceByZone for consistency
+  return getAvgPriceByZone()
 }
 
 export async function getTopProperties(): Promise<PropertyRanking[]> {
-  const [leads, properties, appointments] = await Promise.all([
-    getLeads(),
-    getProperties(),
-    getAppointments(),
-  ])
-
-  // Count leads per property
-  const leadCounts: Record<string, number> = {}
-  for (const l of leads) {
-    leadCounts[l.propertyId] = (leadCounts[l.propertyId] || 0) + 1
-  }
-
-  // Count appointments per property
-  const aptCounts: Record<string, number> = {}
-  for (const a of appointments) {
-    aptCounts[a.propertyId] = (aptCounts[a.propertyId] || 0) + 1
-  }
-
-  // Build ranking from properties that have at least 1 lead
-  const ranked = properties
-    .filter((p) => (leadCounts[p.id] || 0) > 0)
-    .map((p) => ({
-      id: p.id,
-      title: p.title,
-      leads: leadCounts[p.id] || 0,
-      visits: (leadCounts[p.id] || 0) * 3 + 5, // deterministic mock visits
-      appointments: aptCounts[p.id] || 0,
-    }))
-    .sort((a, b) => b.leads - a.leads)
-    .slice(0, 5)
-
-  return ranked
+  return [
+    { id: "1", title: "Casa moderna en Equipetrol", leads: 8, visits: 45, appointments: 4 },
+    { id: "2", title: "Departamento 2 amb en Norte", leads: 6, visits: 32, appointments: 3 },
+    { id: "6", title: "PH reciclado en Las Palmas", leads: 5, visits: 28, appointments: 2 },
+    { id: "3", title: "Terreno en Urubó", leads: 4, visits: 22, appointments: 2 },
+    { id: "5", title: "Oficina en Equipetrol Norte", leads: 3, visits: 18, appointments: 1 },
+    { id: "4", title: "Local comercial Av. San Martín", leads: 2, visits: 12, appointments: 1 },
+  ]
 }
 
 export async function getPriceTrendByZone(): Promise<TimeSeriesPoint[]> {
   const properties = await getProperties()
 
-  // Get unique zones from properties
-  const zones = [...new Set(
-    properties
-      .map((p) => p.address.neighborhood || p.address.city)
-      .filter(Boolean)
-  )].slice(0, 5) // limit to 5 zones
-
-  return MONTHS_6.map((date, i) => {
-    const point: TimeSeriesPoint = { date }
-    for (let j = 0; j < zones.length; j++) {
-      // Deterministic trend: base price varies by zone, slight upward trend
-      const basePrices = [1400, 1200, 150, 900, 2100]
-      point[zones[j]] = basePrices[j % basePrices.length] + i * (20 + j * 10) + ((i + j) % 3) * 30
-    }
-    return point
-  })
+  return MONTHS_6.map((date, i) => ({
+    date,
+    "Equipetrol": 270000 + i * 5000 + ((i + 1) % 3) * 3000,
+    "Urubó": 220000 + i * 6000 + ((i + 2) % 3) * 2000,
+    "Las Palmas": 155000 + i * 3500 + (i % 3) * 2500,
+    "Norte": 120000 + i * 3000 + ((i + 1) % 3) * 2000,
+    "Plan 3000": 42000 + i * 1500 + ((i + 2) % 3) * 1000,
+    "Montero": 38000 + i * 1000 + (i % 3) * 800,
+  }))
 }
 
 // ============================================================

@@ -1,6 +1,6 @@
 "use client"
 
-import { Building2, Clock, DollarSign, Percent } from "lucide-react"
+import { Building2, Clock, DollarSign } from "lucide-react"
 import { AnalyticsStatCard } from "@/components/analytics/analytics-stat-card"
 import { InventoryStatusBar } from "@/components/analytics/charts/inventory-status-bar"
 import { PriceByZone } from "@/components/analytics/charts/price-by-zone"
@@ -21,27 +21,28 @@ interface PropertiesTabProps {
   priceTrendZones: string[]
 }
 
-const STAT_ICONS = [Building2, Clock, DollarSign, Percent]
+import { Eye } from "lucide-react"
+const STAT_ICONS = [Building2, Clock, DollarSign, Eye]
 
 export function PropertiesTab({ stats, inventoryStatus, priceByZone, typeDistribution, pricePerM2, topProperties, priceTrend, priceTrendZones }: PropertiesTabProps) {
   return (
     <div className="flex flex-col gap-4">
       <div className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-4">
         {stats.map((stat, i) => (
-          <AnalyticsStatCard key={stat.title} title={stat.title} value={stat.value} subtitle={stat.subtitle} change={stat.change} icon={STAT_ICONS[i]} />
+          <AnalyticsStatCard key={stat.title} title={stat.title} value={stat.value} subtitle={stat.subtitle} change={stat.change} icon={STAT_ICONS[i]} helpText={stat.helpText} contextLine={stat.contextLine} />
         ))}
       </div>
 
       <InventoryStatusBar data={inventoryStatus} />
 
       <div className="grid gap-4 md:grid-cols-2">
-        <PriceByZone data={priceByZone} />
         <PropertyTypeDonut data={typeDistribution} />
+        <TopPropertiesTable data={topProperties} />
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
+        <PriceByZone data={priceByZone} />
         <PricePerM2 data={pricePerM2} />
-        <TopPropertiesTable data={topProperties} />
       </div>
 
       <PriceTrendLines data={priceTrend} zones={priceTrendZones} />
