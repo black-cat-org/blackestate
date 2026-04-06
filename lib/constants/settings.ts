@@ -37,6 +37,7 @@ export const DEFAULT_BUSINESS_SETTINGS: BusinessSettings = {
   taxRate: 21,
   fiscalId: "20-12345678-9",
   defaultOperationType: "venta",
+  monthlyGrowthTarget: 10,
 }
 
 export const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreferences = {

@@ -92,6 +92,19 @@ export function BusinessSection({ data: initialData }: BusinessSectionProps) {
           <Label htmlFor="fiscal">CUIT / RFC / NIT</Label>
           <Input id="fiscal" value={data.fiscalId} onChange={(e) => update("fiscalId", e.target.value)} />
         </div>
+        <div className="space-y-2">
+          <Label htmlFor="growth">Crecimiento mensual objetivo (%)</Label>
+          <Input
+            id="growth"
+            type="number"
+            min={0}
+            max={100}
+            step={1}
+            value={data.monthlyGrowthTarget}
+            onChange={(e) => update("monthlyGrowthTarget", Number(e.target.value))}
+          />
+          <p className="text-xs text-muted-foreground">Se usa para calcular la línea de meta en la gráfica de ingresos</p>
+        </div>
         <div className="space-y-2 sm:col-span-2">
           <Label htmlFor="operation-type">Tipo de operación por defecto</Label>
           <Select value={data.defaultOperationType} onValueChange={(v) => update("defaultOperationType", v)}>

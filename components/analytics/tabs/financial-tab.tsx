@@ -1,6 +1,6 @@
 "use client"
 
-import { DollarSign, TrendingUp, Briefcase, Calculator } from "lucide-react"
+import { DollarSign, Clock, Briefcase, Calculator } from "lucide-react"
 import { AnalyticsStatCard } from "@/components/analytics/analytics-stat-card"
 import { RevenueByMonth } from "@/components/analytics/charts/revenue-by-month"
 import { PipelineFunnel } from "@/components/analytics/charts/pipeline-funnel"
@@ -18,14 +18,14 @@ interface FinancialTabProps {
   topOperations: FinancialOperation[]
 }
 
-const STAT_ICONS = [DollarSign, TrendingUp, Briefcase, Calculator]
+const STAT_ICONS = [DollarSign, Clock, Briefcase, Calculator]
 
 export function FinancialTab({ stats, revenueByMonth, pipeline, commissionsBySource, commissionsByType, topOperations }: FinancialTabProps) {
   return (
     <div className="flex flex-col gap-4">
       <div className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-4">
         {stats.map((stat, i) => (
-          <AnalyticsStatCard key={stat.title} title={stat.title} value={stat.value} subtitle={stat.subtitle} change={stat.change} icon={STAT_ICONS[i]} />
+          <AnalyticsStatCard key={stat.title} title={stat.title} value={stat.value} subtitle={stat.subtitle} change={stat.change} icon={STAT_ICONS[i]} helpText={stat.helpText} contextLine={stat.contextLine} />
         ))}
       </div>
 

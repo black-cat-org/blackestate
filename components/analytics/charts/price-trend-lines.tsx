@@ -2,7 +2,7 @@
 
 import { Line, LineChart, XAxis, YAxis, CartesianGrid } from "recharts"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
-import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent, type ChartConfig } from "@/components/ui/chart"
+import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, type ChartConfig } from "@/components/ui/chart"
 import { ChartHeader } from "@/components/analytics/chart-header"
 import type { TimeSeriesPoint } from "@/lib/types/analytics"
 

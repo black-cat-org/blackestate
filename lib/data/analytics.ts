@@ -3,7 +3,7 @@ import { getProperties } from "@/lib/data/properties"
 import { getAppointments, getSentPropertiesAll } from "@/lib/data/bot"
 import { LEAD_STATUS_LABELS } from "@/lib/constants/lead"
 import { SOURCE_LABELS } from "@/lib/constants/sources"
-import { PROPERTY_TYPE_LABELS, PROPERTY_STATUS_LABELS, OPERATION_TYPE_LABELS } from "@/lib/constants/property"
+import { PROPERTY_TYPE_LABELS, OPERATION_TYPE_LABELS } from "@/lib/constants/property"
 import type {
   StatCardData,
   FunnelStep,
@@ -488,8 +488,6 @@ export async function getTopProperties(): Promise<PropertyRanking[]> {
 }
 
 export async function getPriceTrendByZone(): Promise<TimeSeriesPoint[]> {
-  const properties = await getProperties()
-
   return MONTHS_6.map((date, i) => ({
     date,
     "Equipetrol": 270000 + i * 5000 + ((i + 1) % 3) * 3000,
@@ -506,69 +504,102 @@ export async function getPriceTrendByZone(): Promise<TimeSeriesPoint[]> {
 // ============================================================
 
 export async function getFinancialStats(): Promise<StatCardData[]> {
+  const commissionRate = 0.03
+  const commissionsCobradas = 36000
+  const pipelineValue = 1200000
+  const pendingCommissions = Math.round(pipelineValue * commissionRate)
+  const closedOps = 8
+  const avgCommission = Math.round(commissionsCobradas / closedOps)
+
   return [
     {
       title: "Comisiones cobradas",
-      value: "$36K",
+      value: `US$ ${(commissionsCobradas / 1000).toFixed(0)}K`,
       subtitle: "Acumulado del período",
       change: 8.0,
+      helpText: "Es el dinero que ya ganaste en este período — la suma de todas las comisiones que registraste como cobradas. Si cerraste una venta de $200k con 3% de comisión y la registraste, esos $6k aparecen aquí. Solo cuenta lo que tú registras manualmente.",
+      contextLine: "lo que ya ganaste en comisiones este período",
     },
     {
-      title: "Ingreso proyectado",
-      value: "$52K",
-      subtitle: "Próximos 90 días",
+      title: "Comisiones pendientes",
+      value: `US$ ${(pendingCommissions / 1000).toFixed(0)}K`,
+      subtitle: `${(commissionRate * 100)}% sobre interesados`,
       change: 12.5,
+      helpText: "Es el dinero que podrías ganar si cierras los leads que tienes activos ahora mismo en estado Interesado. No es dinero garantizado — es una estimación basada en el precio de las propiedades y tu porcentaje de comisión configurado. Te ayuda a visualizar cuánto tienes en juego.",
+      contextLine: "podrías ganar esto si cierras lo que tienes activo hoy",
     },
     {
       title: "Valor del pipeline",
-      value: "$1.2M",
+      value: `US$ ${(pipelineValue / 1000000).toFixed(1)}M`,
       subtitle: "Oportunidades abiertas",
       change: -5.1,
+      helpText: "Es la suma del precio total de todas las propiedades que tienen leads interesados activos. Si tienes 3 leads interesados en propiedades de $100k, $200k y $300k, tu pipeline vale $600k. No es dinero que ya ganaste, es el valor de las oportunidades abiertas.",
+      contextLine: "en propiedades con interesados activos ahora mismo",
     },
     {
       title: "Comisión promedio",
-      value: "$4.5K",
+      value: `US$ ${(avgCommission / 1000).toFixed(1)}K`,
       subtitle: "Por operación cerrada",
       change: 3.7,
+      helpText: "Es el promedio de lo que ganas por cada operación cerrada. Se calcula dividiendo el total de comisiones cobradas entre el número de ventas o alquileres cerrados en el período. Un número alto significa que estás cerrando operaciones de mayor valor.",
+      contextLine: "lo que ganas en promedio por cada operación que cierras",
     },
   ]
 }
 
 export async function getRevenueByMonth(): Promise<TimeSeriesPoint[]> {
-  return MONTHS_6.map((date, i) => ({
-    date,
-    ingreso: synth(3000, i * 800, i),
-    meta: 8000 + i * 500,
-  }))
+  const { getBusinessSettings } = await import("@/lib/data/settings")
+  const settings = await getBusinessSettings()
+  const growthRate = settings.monthlyGrowthTarget / 100
+
+  // Realistic monthly revenue for a Bolivian real estate agent (in USD)
+  const revenues = [4200, 5800, 3500, 6100, 4800, 7200]
+
+  return MONTHS_6.map((date, i) => {
+    const ingreso = revenues[i]
+    // Meta = previous month * (1 + growthRate), no meta for first month
+    const meta = i > 0 ? Math.round(revenues[i - 1] * (1 + growthRate)) : undefined
+
+    return {
+      date,
+      ingreso,
+      ...(meta !== undefined ? { meta } : {}),
+    }
+  })
 }
 
 export async function getPipelineByStage(): Promise<PipelineStage[]> {
+  // Average commission per closed operation by type
+  // Venta: ~US$ 285K property * 3% = ~US$ 8.5K avg ticket
+  // Anticrético: ~US$ 120K property * 3% = ~US$ 3.6K avg ticket
+  // Alquiler: ~US$ 650/month * 12 * 3% = ~US$ 234, rounded to realistic mock
+  // Temporal: ~US$ 1.8K/month * 3 months * 3% = ~US$ 162
   return [
     {
-      stage: "interesado",
-      label: "Interesado",
-      value: 580000,
-      probability: 30,
-      fill: "hsl(142, 71%, 45%)",
+      stage: "venta",
+      label: "Venta",
+      value: 8500,
+      probability: 100,
+      fill: "hsl(217, 91%, 60%)",
     },
     {
-      stage: "negociacion",
-      label: "Negociación",
-      value: 320000,
-      probability: 50,
+      stage: "anticretico",
+      label: "Anticrético",
+      value: 3600,
+      probability: 100,
       fill: "hsl(45, 93%, 47%)",
     },
     {
-      stage: "cierre_proximo",
-      label: "Cierre próximo",
-      value: 180000,
-      probability: 80,
-      fill: "hsl(25, 95%, 53%)",
+      stage: "alquiler",
+      label: "Alquiler",
+      value: 1200,
+      probability: 100,
+      fill: "hsl(142, 71%, 45%)",
     },
     {
-      stage: "ganado",
-      label: "Ganado",
-      value: 120000,
+      stage: "temporal",
+      label: "Temporal",
+      value: 480,
       probability: 100,
       fill: "hsl(271, 91%, 65%)",
     },
@@ -579,11 +610,11 @@ export async function getCommissionsBySource(): Promise<
   { source: string; label: string; amount: number }[]
 > {
   return [
-    { source: "facebook", label: "Facebook", amount: 14500 },
-    { source: "instagram", label: "Instagram", amount: 9800 },
-    { source: "whatsapp", label: "WhatsApp", amount: 6200 },
-    { source: "tiktok", label: "TikTok", amount: 3500 },
-    { source: "otro", label: "Otro", amount: 2000 },
+    { source: "facebook", label: "Facebook", amount: 12800 },
+    { source: "instagram", label: "Instagram", amount: 8500 },
+    { source: "whatsapp", label: "WhatsApp", amount: 7200 },
+    { source: "tiktok", label: "TikTok", amount: 4800 },
+    { source: "otro", label: "Otro", amount: 2700 },
   ]
 }
 
@@ -594,20 +625,26 @@ export async function getCommissionsByOperationType(): Promise<
     {
       type: "venta",
       label: OPERATION_TYPE_LABELS["venta"],
-      amount: 23400,
-      percentage: 65,
+      amount: 19800,
+      percentage: 55,
+    },
+    {
+      type: "anticretico",
+      label: OPERATION_TYPE_LABELS["anticretico"],
+      amount: 7200,
+      percentage: 20,
     },
     {
       type: "alquiler",
       label: OPERATION_TYPE_LABELS["alquiler"],
-      amount: 9000,
-      percentage: 25,
+      amount: 6500,
+      percentage: 18,
     },
     {
       type: "temporal",
       label: OPERATION_TYPE_LABELS["temporal"],
-      amount: 3600,
-      percentage: 10,
+      amount: 2500,
+      percentage: 7,
     },
   ]
 }
@@ -616,48 +653,57 @@ export async function getTopOperations(): Promise<FinancialOperation[]> {
   return [
     {
       id: "op1",
-      propertyTitle: "Casa moderna en Palermo",
-      operationType: "venta",
-      propertyValue: 450000,
-      commission: 13500, // 3%
+      propertyTitle: "Casa moderna en Equipetrol",
+      operationType: "Venta",
+      propertyValue: 285000,
+      commission: 8550,
       source: "facebook",
-      closedAt: "2026-02-15T10:00:00Z",
+      closedAt: "2026-03-15T10:00:00Z",
     },
     {
       id: "op2",
-      propertyTitle: "PH reciclado en Villa Crespo",
-      operationType: "venta",
-      propertyValue: 185000,
-      commission: 5550, // 3%
+      propertyTitle: "Terreno en Urubó",
+      operationType: "Venta",
+      propertyValue: 240000,
+      commission: 7200,
       source: "instagram",
-      closedAt: "2026-02-01T11:00:00Z",
+      closedAt: "2026-02-28T11:00:00Z",
     },
     {
       id: "op3",
-      propertyTitle: "Dpto 3 amb temporal en Recoleta",
-      operationType: "temporal",
-      propertyValue: 1800,
-      commission: 1800, // 1 month rent
+      propertyTitle: "Departamento en Norte",
+      operationType: "Anticrético",
+      propertyValue: 120000,
+      commission: 3600,
       source: "whatsapp",
-      closedAt: "2026-01-20T14:00:00Z",
+      closedAt: "2026-03-05T14:00:00Z",
     },
     {
       id: "op4",
-      propertyTitle: "Departamento 2 amb en Belgrano",
-      operationType: "alquiler",
-      propertyValue: 650000,
-      commission: 650000, // 1 month rent (ARS)
+      propertyTitle: "PH en Las Palmas",
+      operationType: "Alquiler",
+      propertyValue: 850,
+      commission: 850,
       source: "facebook",
-      closedAt: "2026-01-10T09:00:00Z",
+      closedAt: "2026-02-10T09:00:00Z",
     },
     {
       id: "op5",
-      propertyTitle: "Cabaña en Bariloche con vista al lago",
-      operationType: "venta",
-      propertyValue: 290000,
-      commission: 8700, // 3%
+      propertyTitle: "Oficina en Equipetrol Norte",
+      operationType: "Alquiler",
+      propertyValue: 1200,
+      commission: 1200,
+      source: "tiktok",
+      closedAt: "2026-01-20T16:00:00Z",
+    },
+    {
+      id: "op6",
+      propertyTitle: "Dpto amueblado en Norte",
+      operationType: "Temporal",
+      propertyValue: 650,
+      commission: 650,
       source: "instagram",
-      closedAt: "2025-12-18T16:00:00Z",
+      closedAt: "2026-03-01T10:00:00Z",
     },
   ]
 }

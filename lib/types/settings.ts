@@ -16,6 +16,7 @@ export interface BusinessSettings {
   taxRate: number
   fiscalId: string
   defaultOperationType: string
+  monthlyGrowthTarget: number
 }
 
 export interface NotificationPreferences {
