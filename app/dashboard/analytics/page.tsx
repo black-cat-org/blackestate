@@ -39,6 +39,10 @@ import {
   getEngagementHeatmap,
   getAppointmentOutcomes,
   getBotEngagement,
+  getAgentManualStats,
+  getAgentActivityByDay,
+  getAgentFunnel,
+  getAgentHeatmap,
 } from "@/lib/data/analytics"
 
 export default async function AnalyticsPage() {
@@ -48,6 +52,7 @@ export default async function AnalyticsPage() {
     propertiesStats, inventoryStatus, priceByZone, typeDistribution, pricePerM2, topProperties, priceTrend,
     financialStats, revenueByMonth, pipeline, commissionsBySource, commissionsByType, topOperations,
     botStats, botActivityByDay, botFunnel, engagementHeatmap, appointmentOutcomes, botEngagement,
+    agentStats, agentActivityByDay, agentFunnel, agentHeatmap,
   ] = await Promise.all([
     getOverviewStats(),
     getLeadsTrend(),
@@ -79,6 +84,10 @@ export default async function AnalyticsPage() {
     getEngagementHeatmap(),
     getAppointmentOutcomes(),
     getBotEngagement(),
+    getAgentManualStats(),
+    getAgentActivityByDay(),
+    getAgentFunnel(),
+    getAgentHeatmap(),
   ])
 
   const priceTrendZones = Object.keys(priceTrend[0] || {}).filter(k => k !== "date")
@@ -104,7 +113,8 @@ export default async function AnalyticsPage() {
           leadsData={{ stats: leadsStats, conversionFunnel, leadsBySourceOverTime, conversionBySource, leadsByPropertyType }}
           propertiesData={{ stats: propertiesStats, inventoryStatus, priceByZone, typeDistribution, pricePerM2, topProperties, priceTrend, priceTrendZones }}
           financialData={{ stats: financialStats, revenueByMonth, pipeline, commissionsBySource, commissionsByType, topOperations }}
-          botData={{ stats: botStats, activityByDay: botActivityByDay, botFunnel, heatmap: engagementHeatmap, appointmentOutcomes, botEngagement }}
+          botData={{ stats: botStats, activityByDay: botActivityByDay, botFunnel, heatmap: engagementHeatmap, botEngagement }}
+          myActivityData={{ stats: agentStats, activityByDay: agentActivityByDay, funnel: agentFunnel, appointmentOutcomes, heatmap: agentHeatmap }}
         />
       </div>
     </>

@@ -9,6 +9,7 @@ import { LeadsTab } from "@/components/analytics/tabs/leads-tab"
 import { PropertiesTab } from "@/components/analytics/tabs/properties-tab"
 import { FinancialTab } from "@/components/analytics/tabs/financial-tab"
 import { BotTab } from "@/components/analytics/tabs/bot-tab"
+import { MyActivityTab } from "@/components/analytics/tabs/my-activity-tab"
 import type { DateRangePreset, StatCardData, TimeSeriesPoint, AlertItem, FunnelStep, SourceMetric, ZonePricing, PropertyRanking, PipelineStage, FinancialOperation, BotFunnelStep, HeatmapCell } from "@/lib/types/analytics"
 
 interface OverviewData {
@@ -53,8 +54,15 @@ interface BotData {
   activityByDay: TimeSeriesPoint[]
   botFunnel: BotFunnelStep[]
   heatmap: HeatmapCell[]
-  appointmentOutcomes: { status: string; label: string; count: number; percentage: number; fill: string }[]
   botEngagement: { engagementRate: number; distribution: { interacted: number; viewedOnly: number; noResponse: number } }
+}
+
+interface MyActivityData {
+  stats: StatCardData[]
+  activityByDay: TimeSeriesPoint[]
+  funnel: BotFunnelStep[]
+  appointmentOutcomes: { status: string; label: string; count: number; percentage: number; fill: string }[]
+  heatmap: HeatmapCell[]
 }
 
 interface AnalyticsContentProps {
@@ -63,6 +71,7 @@ interface AnalyticsContentProps {
   propertiesData: PropertiesData
   financialData: FinancialData
   botData: BotData
+  myActivityData: MyActivityData
 }
 
 function formatStatChange(change?: number): string {
@@ -71,7 +80,7 @@ function formatStatChange(change?: number): string {
   return `${sign}${change}%`
 }
 
-export function AnalyticsContent({ overviewData, leadsData, propertiesData, financialData, botData }: AnalyticsContentProps) {
+export function AnalyticsContent({ overviewData, leadsData, propertiesData, financialData, botData, myActivityData }: AnalyticsContentProps) {
   const [dateRange, setDateRange] = useState<DateRangePreset>("30d")
   const [activeTab, setActiveTab] = useState("overview")
 
@@ -221,17 +230,20 @@ export function AnalyticsContent({ overviewData, leadsData, propertiesData, fina
           rows.push([step.label, step.value, `${step.percentage}%`])
         }
 
-        // Appointment outcomes
-        rows.push(["", "", ""])
-        rows.push(["Resultados de citas", "", ""])
-        rows.push(["Estado", "Cantidad", "Porcentaje"])
-
-        for (const outcome of botData.appointmentOutcomes) {
-          rows.push([outcome.label, outcome.count, `${outcome.percentage}%`])
-        }
-
         return {
           title: "Analítica del Bot",
+          headers: ["Métrica", "Valor", "Cambio"],
+          rows,
+        }
+      }
+
+      case "my-activity": {
+        const rows: (string | number)[][] = []
+        for (const stat of myActivityData.stats) {
+          rows.push([stat.title, String(stat.value), formatStatChange(stat.change)])
+        }
+        return {
+          title: "Mi Actividad",
           headers: ["Métrica", "Valor", "Cambio"],
           rows,
         }
@@ -244,7 +256,7 @@ export function AnalyticsContent({ overviewData, leadsData, propertiesData, fina
           rows: [],
         }
     }
-  }, [activeTab, overviewData, leadsData, propertiesData, financialData, botData])
+  }, [activeTab, overviewData, leadsData, propertiesData, financialData, botData, myActivityData])
 
   return (
     <div className="flex flex-1 flex-col gap-4">
@@ -260,6 +272,7 @@ export function AnalyticsContent({ overviewData, leadsData, propertiesData, fina
           <TabsTrigger value="properties">Propiedades</TabsTrigger>
           <TabsTrigger value="financial">Financiero</TabsTrigger>
           <TabsTrigger value="bot">Bot</TabsTrigger>
+          <TabsTrigger value="my-activity">Mi Actividad</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="mt-4">
@@ -276,6 +289,9 @@ export function AnalyticsContent({ overviewData, leadsData, propertiesData, fina
         </TabsContent>
         <TabsContent value="bot" className="mt-4">
           <BotTab {...botData} />
+        </TabsContent>
+        <TabsContent value="my-activity" className="mt-4">
+          <MyActivityTab {...myActivityData} />
         </TabsContent>
       </Tabs>
     </div>

@@ -1,10 +1,10 @@
 "use client"
 
-import { MessageSquare, Percent, Calendar, Send } from "lucide-react"
+import { MessageCircle, CalendarPlus, Home, UserCheck } from "lucide-react"
 import { AnalyticsStatCard } from "@/components/analytics/analytics-stat-card"
 import { BotActivityArea } from "@/components/analytics/charts/bot-activity-area"
 import { BotFunnel } from "@/components/analytics/charts/bot-funnel"
-import { BotEngagementGauge } from "@/components/analytics/charts/bot-engagement-gauge"
+import { AppointmentOutcomesDonut } from "@/components/analytics/charts/appointment-outcomes-donut"
 import { EngagementHeatmap } from "@/components/analytics/charts/engagement-heatmap"
 import type {
   StatCardData,
@@ -13,26 +13,29 @@ import type {
   HeatmapCell,
 } from "@/lib/types/analytics"
 
-interface BotTabProps {
+interface MyActivityTabProps {
   stats: StatCardData[]
   activityByDay: TimeSeriesPoint[]
-  botFunnel: BotFunnelStep[]
+  funnel: BotFunnelStep[]
+  appointmentOutcomes: {
+    status: string
+    label: string
+    count: number
+    percentage: number
+    fill: string
+  }[]
   heatmap: HeatmapCell[]
-  botEngagement: {
-    engagementRate: number
-    distribution: { interacted: number; viewedOnly: number; noResponse: number }
-  }
 }
 
-const STAT_ICONS = [MessageSquare, Percent, Calendar, Send]
+const STAT_ICONS = [MessageCircle, CalendarPlus, Home, UserCheck]
 
-export function BotTab({
+export function MyActivityTab({
   stats,
   activityByDay,
-  botFunnel,
+  funnel,
+  appointmentOutcomes,
   heatmap,
-  botEngagement,
-}: BotTabProps) {
+}: MyActivityTabProps) {
   return (
     <div className="flex flex-col gap-4">
       <div className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-4">
@@ -53,8 +56,8 @@ export function BotTab({
       <BotActivityArea data={activityByDay} />
 
       <div className="grid gap-4 md:grid-cols-2">
-        <BotFunnel data={botFunnel} />
-        <BotEngagementGauge data={botEngagement} />
+        <BotFunnel data={funnel} />
+        <AppointmentOutcomesDonut data={appointmentOutcomes} />
       </div>
 
       <EngagementHeatmap data={heatmap} />

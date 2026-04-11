@@ -11,12 +11,14 @@ interface BotEngagementGaugeProps {
 }
 
 export function BotEngagementGauge({ data }: BotEngagementGaugeProps) {
+  const per10 = Math.round(data.engagementRate / 10)
+
   return (
     <Card>
       <CardHeader className="pb-2">
         <ChartHeader
           title="Engagement del bot"
-          helpText="De todos los leads que el bot contactó, cuántos realmente interactuaron. Si un lead responde un mensaje, ve una propiedad o pide una cita, cuenta como interacción. Un número bajo puede significar que el mensaje del bot no está enganchando o que los leads no son de buena calidad."
+          helpText="Muestra qué tan bien está funcionando el primer mensaje de tu bot. Interactuaron son los leads que respondieron al menos un mensaje. Solo vieron son los que abrieron el mensaje pero no respondieron. Sin respuesta son los que nunca abrieron el mensaje. Un porcentaje alto de Interactuaron significa que tu bot está haciendo un buen trabajo enganchando a los clientes desde el primer contacto."
           subtitle="qué tan bien engancha tu bot a los leads nuevos"
         />
       </CardHeader>
@@ -27,6 +29,7 @@ export function BotEngagementGauge({ data }: BotEngagementGaugeProps) {
           </span>
           <span className="text-sm text-muted-foreground">de los leads interactuaron</span>
         </div>
+        <p className="text-xs text-muted-foreground italic">{per10} de cada 10 leads que el bot contacta termina respondiendo</p>
 
         <div>
           <div className="mb-1.5 flex justify-between text-xs text-muted-foreground">

@@ -1,7 +1,8 @@
 "use client"
 
 import { Area, AreaChart, XAxis, YAxis, CartesianGrid } from "recharts"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader } from "@/components/ui/card"
+import { ChartHeader } from "@/components/analytics/chart-header"
 import {
   ChartContainer,
   ChartTooltip,
@@ -25,7 +26,11 @@ export function BotActivityArea({ data }: BotActivityAreaProps) {
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-base">Actividad del bot por día</CardTitle>
+        <ChartHeader
+          title="Actividad del bot por día"
+          helpText="Muestra cuántos mensajes envió el bot y cuántas propiedades compartió cada día. Los picos altos significan días con mucha actividad — generalmente cuando llegaron leads nuevos o el bot activó la cola de propiedades. Te ayuda a entender cuándo trabaja más tu bot."
+          subtitle="mensajes y propiedades que el bot envió cada día en este período"
+        />
       </CardHeader>
       <CardContent>
         <ChartContainer config={chartConfig} className="h-[250px] w-full">

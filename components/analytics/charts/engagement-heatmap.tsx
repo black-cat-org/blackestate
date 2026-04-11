@@ -1,6 +1,7 @@
 "use client"
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader } from "@/components/ui/card"
+import { ChartHeader } from "@/components/analytics/chart-header"
 import type { HeatmapCell } from "@/lib/types/analytics"
 
 const DAYS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"]
@@ -20,9 +21,11 @@ export function EngagementHeatmap({ data }: EngagementHeatmapProps) {
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-base">
-          Horarios de mayor engagement
-        </CardTitle>
+        <ChartHeader
+          title="Horarios de mayor engagement"
+          helpText="Muestra en qué días y horarios tus leads responden más al bot. Los cuadros más oscuros significan más respuestas en ese horario. Úsalo para saber cuándo enviar tus mensajes manuales o para entender cuándo están más activos tus clientes. Si ves que los martes a las 12h hay mucha actividad significa que ese es un buen momento para contactar leads nuevos."
+          subtitle="en qué días y horarios responden más tus leads"
+        />
       </CardHeader>
       <CardContent>
         <div className="overflow-x-auto">

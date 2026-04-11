@@ -713,30 +713,50 @@ export async function getTopOperations(): Promise<FinancialOperation[]> {
 // ============================================================
 
 export async function getBotStats(): Promise<StatCardData[]> {
+  const messagesSent = 156
+  const responseRate = 72
+  const appointmentsBooked = 18
+  const propertiesSent = 43
+  const totalLeads = 24
+  const days = 30
+
+  const avgMessagesPerDay = Math.round(messagesSent / days)
+  const responsePer10 = Math.round(responseRate / 10)
+  const appointmentsPer10 = Math.round((appointmentsBooked / totalLeads) * 10)
+  const propertiesPerLead = Math.round(propertiesSent / totalLeads)
+
   return [
     {
       title: "Mensajes enviados",
-      value: 156,
+      value: messagesSent,
       subtitle: "Últimos 30 días",
       change: 22.5,
+      helpText: "Es el total de mensajes que el bot envió a tus leads en este período. Incluye mensajes de bienvenida, información de propiedades, respuestas automáticas y recordatorios de citas. Un número alto significa que el bot está trabajando activamente por ti.",
+      contextLine: `en promedio el bot envió ${avgMessagesPerDay} mensajes por día`,
     },
     {
       title: "Tasa de respuesta",
-      value: "72%",
+      value: `${responseRate}%`,
       subtitle: "Clientes que respondieron",
       change: 5.3,
+      helpText: "De cada 100 personas que el bot contactó, cuántas respondieron al menos un mensaje. Un número alto significa que el bot está generando conversaciones reales. Si es bajo puede significar que el mensaje inicial no está enganchando o que los leads no son de buena calidad.",
+      contextLine: `${responsePer10} de cada 10 personas que el bot contacta responden`,
     },
     {
       title: "Citas agendadas",
-      value: 18,
+      value: appointmentsBooked,
       subtitle: "Por el bot",
       change: 15.0,
+      helpText: "Es el número de citas que el bot agendó solo, sin que tú tuvieras que intervenir. Cada cita agendada por el bot es tiempo que te ahorró y una oportunidad de venta que no habrías tenido que gestionar manualmente.",
+      contextLine: `el bot agendó ${appointmentsPer10} citas por cada 10 leads que contactó`,
     },
     {
       title: "Propiedades enviadas",
-      value: 43,
+      value: propertiesSent,
       subtitle: "Fichas compartidas",
       change: 31.2,
+      helpText: "Es el total de fichas de propiedades que el bot compartió con tus leads en este período. Incluye la propiedad de origen y todas las propiedades de la cola enviadas automáticamente. Más propiedades enviadas significa más oportunidades de encontrar la propiedad ideal para cada lead.",
+      contextLine: `el bot compartió en promedio ${propertiesPerLead} propiedades por lead`,
     },
   ]
 }
@@ -761,57 +781,17 @@ export async function getBotActivityByDay(): Promise<TimeSeriesPoint[]> {
 }
 
 export async function getBotFunnel(): Promise<BotFunnelStep[]> {
-  const sentProperties = await getSentPropertiesAll()
-
-  const statusCounts = {
-    enviada: 0,
-    vista: 0,
-    interesado: 0,
-    cita_agendada: 0,
-  }
-
-  for (const sp of sentProperties) {
-    // Each status represents progression: a "vista" was also "enviada", etc.
-    statusCounts.enviada++
-    if (sp.status === "vista" || sp.status === "interesado" || sp.status === "cita_agendada") {
-      statusCounts.vista++
-    }
-    if (sp.status === "interesado" || sp.status === "cita_agendada") {
-      statusCounts.interesado++
-    }
-    if (sp.status === "cita_agendada") {
-      statusCounts.cita_agendada++
-    }
-  }
-
-  const total = statusCounts.enviada
-
-  return [
-    {
-      label: "Enviadas",
-      value: statusCounts.enviada,
-      percentage: 100,
-      fill: "hsl(217, 91%, 60%)",
-    },
-    {
-      label: "Vistas",
-      value: statusCounts.vista,
-      percentage: total > 0 ? Math.round((statusCounts.vista / total) * 1000) / 10 : 0,
-      fill: "hsl(45, 93%, 47%)",
-    },
-    {
-      label: "Interesados",
-      value: statusCounts.interesado,
-      percentage: total > 0 ? Math.round((statusCounts.interesado / total) * 1000) / 10 : 0,
-      fill: "hsl(142, 71%, 45%)",
-    },
-    {
-      label: "Cita agendada",
-      value: statusCounts.cita_agendada,
-      percentage: total > 0 ? Math.round((statusCounts.cita_agendada / total) * 1000) / 10 : 0,
-      fill: "hsl(271, 91%, 65%)",
-    },
+  const steps = [
+    { label: "Registrado", value: 45, fill: "hsl(217, 91%, 60%)" },
+    { label: "Prop. enviada", value: 38, fill: "hsl(45, 93%, 47%)" },
+    { label: "Prop. vista", value: 28, fill: "hsl(142, 71%, 45%)" },
+    { label: "Cita agendada", value: 12, fill: "hsl(271, 91%, 65%)" },
   ]
+
+  return steps.map((step, i) => ({
+    ...step,
+    percentage: i === 0 ? 100 : Math.round((step.value / steps[i - 1].value) * 100),
+  }))
 }
 
 export async function getEngagementHeatmap(): Promise<HeatmapCell[]> {
@@ -839,6 +819,95 @@ export async function getEngagementHeatmap(): Promise<HeatmapCell[]> {
     }
   }
 
+  return cells
+}
+
+export async function getAgentManualStats(): Promise<StatCardData[]> {
+  const manualMessages = 12
+  const manualAppointments = 5
+  const manualProperties = 7
+  const manualLeads = 3
+  const days = 30
+
+  return [
+    {
+      title: "Mensajes enviados",
+      value: manualMessages,
+      subtitle: "Últimos 30 días",
+      change: 10.0,
+      helpText: "Son los mensajes que tú enviaste directamente a leads por WhatsApp fuera del flujo automático del bot. Cuando intervienes en una conversación que el bot estaba manejando, esos mensajes cuentan aquí.",
+      contextLine: `en promedio enviaste ${Math.round(manualMessages / (days / 7))} mensajes por semana`,
+    },
+    {
+      title: "Citas agendadas",
+      value: manualAppointments,
+      subtitle: "Últimos 30 días",
+      change: -5.0,
+      helpText: "Son las citas que tú creaste directamente en el sistema, sin que el bot las agendara automáticamente. Por ejemplo cuando coordinas una visita por teléfono o WhatsApp y la registras tú mismo.",
+      contextLine: `en promedio agendaste ${Math.round(manualAppointments / (days / 7))} citas por semana`,
+    },
+    {
+      title: "Propiedades enviadas",
+      value: manualProperties,
+      subtitle: "Últimos 30 días",
+      change: 15.0,
+      helpText: "Son las propiedades que tú enviaste directamente a un lead usando el botón de envío manual en la cola, sin esperar la cadencia automática del bot.",
+      contextLine: `enviaste en promedio ${Math.round(manualProperties / (days / 7))} propiedades por semana`,
+    },
+    {
+      title: "Leads registrados",
+      value: manualLeads,
+      subtitle: "Últimos 30 días",
+      change: 0,
+      helpText: "Son los leads que tú agregaste directamente al sistema, sin que llegaran por el bot o por el formulario público de una propiedad. Por ejemplo cuando alguien te contacta por teléfono o en persona y tú lo registras manualmente.",
+      contextLine: `${manualLeads} leads que registraste tú directamente este período`,
+    },
+  ]
+}
+
+export async function getAgentActivityByDay(): Promise<TimeSeriesPoint[]> {
+  const points: TimeSeriesPoint[] = []
+  for (let i = 0; i < 30; i++) {
+    const day = 27 + i
+    const month = day > 31 ? 2 : 1
+    const dayOfMonth = day > 31 ? day - 31 : day
+    const dateStr = `${month === 1 ? "Ene" : "Feb"} ${dayOfMonth}`
+    const dayOfWeek = (i + 1) % 7
+    const isWeekend = dayOfWeek >= 5
+    const mensajes = isWeekend ? 0 : (i % 3 === 0 ? 2 : i % 2)
+    const propiedades = isWeekend ? 0 : (i % 4 === 0 ? 1 : 0)
+    points.push({ date: dateStr, mensajes, propiedades })
+  }
+  return points
+}
+
+export async function getAgentFunnel(): Promise<BotFunnelStep[]> {
+  const steps = [
+    { label: "Contactados", value: 12, fill: "hsl(217, 91%, 60%)" },
+    { label: "Prop. enviada", value: 7, fill: "hsl(45, 93%, 47%)" },
+    { label: "Prop. vista", value: 5, fill: "hsl(142, 71%, 45%)" },
+    { label: "Cita agendada", value: 3, fill: "hsl(271, 91%, 65%)" },
+  ]
+  return steps.map((step, i) => ({
+    ...step,
+    percentage: i === 0 ? 100 : Math.round((step.value / steps[i - 1].value) * 100),
+  }))
+}
+
+export async function getAgentHeatmap(): Promise<HeatmapCell[]> {
+  const cells: HeatmapCell[] = []
+  for (let day = 0; day < 7; day++) {
+    for (let hour = 8; hour <= 20; hour++) {
+      const isWeekday = day < 5
+      const isMorning = hour >= 9 && hour <= 12
+      const isAfternoon = hour >= 14 && hour <= 17
+      let value = 0
+      if (isWeekday && isMorning) value = 3 + (day % 2) + ((hour - 9) % 3)
+      else if (isWeekday && isAfternoon) value = 2 + ((day + hour) % 3)
+      else if (isWeekday) value = 1
+      cells.push({ day, hour, value })
+    }
+  }
   return cells
 }
 
