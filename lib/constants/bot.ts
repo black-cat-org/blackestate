@@ -75,7 +75,6 @@ export const APPOINTMENT_STATUS_TRANSITIONS: Record<AppointmentStatus, { status:
     { status: "cancelada", label: "Cancelar" },
   ],
   confirmada: [
-    { status: "completada", label: "Completar" },
     { status: "cancelada", label: "Cancelar" },
   ],
   completada: [],

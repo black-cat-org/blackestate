@@ -12,9 +12,17 @@ const chartConfig = {
 
 interface BotFunnelProps {
   data: BotFunnelStep[]
+  title?: string
+  helpText?: string
+  subtitleTemplate?: string
 }
 
-export function BotFunnel({ data }: BotFunnelProps) {
+export function BotFunnel({
+  data,
+  title = "Efectividad del bot",
+  helpText = "Muestra qué tan efectivo es tu bot en cada paso del proceso. De cada 100 leads que se registran, cuántos vieron una propiedad, cuántos solicitaron una cita y cuántos la completaron. Si ves que muchos leads ven propiedades pero pocos solicitan cita puede significar que el bot está enviando propiedades que no coinciden con lo que busca el cliente.",
+  subtitleTemplate,
+}: BotFunnelProps) {
   const first = data[0]?.value || 1
   const last = data[data.length - 1]?.value || 0
   const overallRate = Math.round((last / first) * 100)
@@ -23,9 +31,9 @@ export function BotFunnel({ data }: BotFunnelProps) {
     <Card>
       <CardHeader className="pb-2">
         <ChartHeader
-          title="Efectividad del bot"
-          helpText="Muestra qué tan efectivo es tu bot en cada paso del proceso. De cada 100 leads que se registran, cuántos vieron una propiedad, cuántos solicitaron una cita y cuántos la completaron. Si ves que muchos leads ven propiedades pero pocos solicitan cita puede significar que el bot está enviando propiedades que no coinciden con lo que busca el cliente."
-          subtitle={`de cada 100 leads registrados, ${overallRate} terminan en una cita completada`}
+          title={title}
+          helpText={helpText}
+          subtitle={subtitleTemplate || `de cada 100 leads registrados, ${overallRate} terminan en una cita completada`}
         />
       </CardHeader>
       <CardContent>

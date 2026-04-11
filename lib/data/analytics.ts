@@ -774,8 +774,9 @@ export async function getBotActivityByDay(): Promise<TimeSeriesPoint[]> {
     const isWeekend = dayOfWeek >= 5
     const mensajes = isWeekend ? 2 + (i % 3) : 5 + (i % 4) * 2 + ((i + 1) % 3)
     const propiedades = isWeekend ? 1 + (i % 2) : 2 + (i % 3) + ((i + 2) % 2)
+    const citas = isWeekend ? 0 : (i % 5 === 0 ? 2 : i % 3 === 0 ? 1 : 0)
 
-    points.push({ date: dateStr, mensajes, propiedades })
+    points.push({ date: dateStr, mensajes, propiedades, citas })
   }
   return points
 }
@@ -839,12 +840,12 @@ export async function getAgentManualStats(): Promise<StatCardData[]> {
       contextLine: `en promedio enviaste ${Math.round(manualMessages / (days / 7))} mensajes por semana`,
     },
     {
-      title: "Citas agendadas",
+      title: "Citas confirmadas",
       value: manualAppointments,
       subtitle: "Últimos 30 días",
       change: -5.0,
-      helpText: "Son las citas que tú creaste directamente en el sistema, sin que el bot las agendara automáticamente. Por ejemplo cuando coordinas una visita por teléfono o WhatsApp y la registras tú mismo.",
-      contextLine: `en promedio agendaste ${Math.round(manualAppointments / (days / 7))} citas por semana`,
+      helpText: "Son las citas que tú confirmaste en el período. Cada vez que un lead solicita una cita — ya sea por el bot o manualmente — tú eres quien decide confirmarla o cancelarla. Este número refleja cuántas decidiste confirmar.",
+      contextLine: `confirmaste ${manualAppointments} citas este período`,
     },
     {
       title: "Propiedades enviadas",
@@ -876,7 +877,8 @@ export async function getAgentActivityByDay(): Promise<TimeSeriesPoint[]> {
     const isWeekend = dayOfWeek >= 5
     const mensajes = isWeekend ? 0 : (i % 3 === 0 ? 2 : i % 2)
     const propiedades = isWeekend ? 0 : (i % 4 === 0 ? 1 : 0)
-    points.push({ date: dateStr, mensajes, propiedades })
+    const citas = isWeekend ? 0 : (i % 6 === 0 ? 1 : 0)
+    points.push({ date: dateStr, mensajes, propiedades, citas })
   }
   return points
 }
@@ -887,6 +889,7 @@ export async function getAgentFunnel(): Promise<BotFunnelStep[]> {
     { label: "Prop. enviada", value: 7, fill: "hsl(45, 93%, 47%)" },
     { label: "Prop. vista", value: 5, fill: "hsl(142, 71%, 45%)" },
     { label: "Cita agendada", value: 3, fill: "hsl(271, 91%, 65%)" },
+    { label: "Confirmada", value: 2, fill: "hsl(330, 70%, 50%)" },
   ]
   return steps.map((step, i) => ({
     ...step,

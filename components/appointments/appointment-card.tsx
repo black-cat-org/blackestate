@@ -27,6 +27,8 @@ export function AppointmentCard({ appointment, onUpdate, showDate }: Appointment
   const [notesOpen, setNotesOpen] = useState(false)
   const leadColor = getLeadColor(appointment.leadId)
   const isActionable = appointment.status === "solicitada" || appointment.status === "confirmada"
+  const canConfirm = appointment.status === "solicitada"
+  const canCancel = appointment.status === "solicitada" || appointment.status === "confirmada"
   const hasNotes = !!appointment.notes
 
   async function handleTransition(newStatus: AppointmentStatus) {
@@ -96,25 +98,17 @@ export function AppointmentCard({ appointment, onUpdate, showDate }: Appointment
           <div className="flex items-center gap-2 pt-1">
             {isActionable && (
               <>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-7 text-xs"
-                  onClick={() => handleTransition("cancelada")}
-                >
-                  Cancelar
-                </Button>
-                {appointment.status === "confirmada" && (
+                {canCancel && (
                   <Button
-                    variant="default"
+                    variant="outline"
                     size="sm"
                     className="h-7 text-xs"
-                    onClick={() => handleTransition("completada")}
+                    onClick={() => handleTransition("cancelada")}
                   >
-                    Completar
+                    Cancelar
                   </Button>
                 )}
-                {appointment.status === "solicitada" && (
+                {canConfirm && (
                   <Button
                     variant="default"
                     size="sm"
