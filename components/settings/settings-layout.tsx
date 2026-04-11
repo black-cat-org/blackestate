@@ -2,45 +2,37 @@
 
 import { useState } from "react"
 import { SETTINGS_SECTIONS } from "@/lib/constants/settings"
-import { ProfileSection } from "@/components/settings/sections/profile-section"
 import { BusinessSection } from "@/components/settings/sections/business-section"
 import { NotificationsSection } from "@/components/settings/sections/notifications-section"
 import { IntegrationsSection } from "@/components/settings/sections/integrations-section"
-import { MarketingSection } from "@/components/settings/sections/marketing-section"
 import { PlanSection } from "@/components/settings/sections/plan-section"
 import { BotConfigPanel } from "@/components/bot/bot-config-panel"
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
 import type { SettingsSection } from "@/lib/types/settings"
 import type {
-  AgentProfile,
   BusinessSettings,
   NotificationPreferences,
   IntegrationSettings,
-  MarketingSettings,
   PlanInfo,
 } from "@/lib/types/settings"
 import type { BotConfig } from "@/lib/types/bot"
 
 interface SettingsLayoutProps {
-  profile: AgentProfile
   business: BusinessSettings
   notifications: NotificationPreferences
   integrations: IntegrationSettings
-  marketing: MarketingSettings
   plan: PlanInfo
   botConfig: BotConfig
 }
 
 export function SettingsLayout({
-  profile,
   business,
   notifications,
   integrations,
-  marketing,
   plan,
   botConfig,
 }: SettingsLayoutProps) {
-  const [activeSection, setActiveSection] = useState<SettingsSection>("profile")
+  const [activeSection, setActiveSection] = useState<SettingsSection>("business")
 
   return (
     <div className="flex flex-col gap-4 md:flex-row">
@@ -98,11 +90,9 @@ export function SettingsLayout({
 
       {/* Content */}
       <div className="min-w-0 flex-1">
-        {activeSection === "profile" && <ProfileSection data={profile} />}
         {activeSection === "business" && <BusinessSection data={business} />}
         {activeSection === "notifications" && <NotificationsSection data={notifications} />}
         {activeSection === "integrations" && <IntegrationsSection data={integrations} />}
-        {activeSection === "marketing" && <MarketingSection data={marketing} />}
         {activeSection === "bot" && <BotConfigPanel config={botConfig} />}
         {activeSection === "plan" && <PlanSection data={plan} />}
       </div>

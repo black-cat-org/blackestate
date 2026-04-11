@@ -1,4 +1,4 @@
-import { User, Briefcase, Bell, Plug, Megaphone, Bot, CreditCard } from "lucide-react"
+import { User, Briefcase, Bell, Plug, Bot, CreditCard } from "lucide-react"
 import type {
   SettingsSection,
   AgentProfile,
@@ -10,11 +10,9 @@ import type {
 } from "@/lib/types/settings"
 
 export const SETTINGS_SECTIONS: { key: SettingsSection; label: string; icon: typeof User; description: string }[] = [
-  { key: "profile", label: "Perfil", icon: User, description: "Información personal y de contacto" },
-  { key: "business", label: "Negocio", icon: Briefcase, description: "Comisiones, moneda y datos fiscales" },
+  { key: "business", label: "Negocio", icon: Briefcase, description: "Empresa, moneda y comisiones" },
   { key: "notifications", label: "Notificaciones", icon: Bell, description: "Canales, eventos y horarios" },
-  { key: "integrations", label: "Integraciones", icon: Plug, description: "WhatsApp, redes sociales y APIs" },
-  { key: "marketing", label: "Marketing", icon: Megaphone, description: "Hashtags, firma y branding" },
+  { key: "integrations", label: "Integraciones", icon: Plug, description: "Conexiones con servicios externos" },
   { key: "bot", label: "Mi Bot", icon: Bot, description: "Configuración del asistente virtual" },
   { key: "plan", label: "Plan y Facturación", icon: CreditCard, description: "Tu plan actual y uso" },
 ]

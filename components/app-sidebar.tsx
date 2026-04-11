@@ -8,6 +8,8 @@ import {
   Calendar,
   LayoutDashboard,
   LifeBuoy,
+  Megaphone,
+  MessageSquare,
   Send,
   Settings2,
   Users,
@@ -50,6 +52,11 @@ const data = {
       icon: Users,
     },
     {
+      title: "Conversaciones",
+      url: "/dashboard/conversations",
+      icon: MessageSquare,
+    },
+    {
       title: "Citas",
       url: "/dashboard/appointments",
       icon: Calendar,
@@ -63,6 +70,16 @@ const data = {
       title: "Analíticas",
       url: "/dashboard/analytics",
       icon: BarChart3,
+    },
+    {
+      title: "Marketing",
+      url: "/dashboard/marketing/brochures",
+      icon: Megaphone,
+      items: [
+        { title: "Brochures", url: "/dashboard/marketing/brochures" },
+        { title: "Firma digital", url: "/dashboard/marketing/signature" },
+        { title: "Publicaciones", url: "/dashboard/marketing/publications" },
+      ],
     },
     {
       title: "Configuración",
