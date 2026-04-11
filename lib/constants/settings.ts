@@ -22,22 +22,26 @@ export const SETTINGS_SECTIONS: { key: SettingsSection; label: string; icon: typ
 export const DEFAULT_AGENT_PROFILE: AgentProfile = {
   name: "Gonzalo Pinell",
   email: "gonzalo@blackestate.com",
-  phone: "+54 11 5555-1234",
+  whatsapp: "+591 78812345",
+  instagram: "@gonzalopinell.realestate",
+  facebook: "Gonzalo Pinell Bienes Raíces",
   avatar: "",
-  bio: "Agente inmobiliario con más de 10 años de experiencia en el mercado residencial y comercial de Buenos Aires.",
-  licenseNumber: "CUCICBA-1234",
+  bio: "Agente inmobiliario con más de 10 años de experiencia en el mercado residencial y comercial de Santa Cruz de la Sierra.",
   website: "https://blackestate.com",
-  address: "Av. Santa Fe 1234, CABA, Argentina",
 }
 
 export const DEFAULT_BUSINESS_SETTINGS: BusinessSettings = {
   companyName: "Black Estate",
-  defaultCommissionRate: 3,
   currency: "USD",
-  taxRate: 21,
-  fiscalId: "20-12345678-9",
-  defaultOperationType: "venta",
   monthlyGrowthTarget: 10,
+  sameCommissionForAll: true,
+  defaultCommissionRate: 3,
+  commissionByType: {
+    venta: 3,
+    alquiler: 100,
+    anticretico: 3,
+    temporal: 100,
+  },
 }
 
 export const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreferences = {

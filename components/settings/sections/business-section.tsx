@@ -4,6 +4,7 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Checkbox } from "@/components/ui/checkbox"
 import {
   Select,
   SelectContent,
@@ -11,6 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { Separator } from "@/components/ui/separator"
 import { updateBusinessSettings } from "@/lib/data/settings"
 import { toast } from "sonner"
 import type { BusinessSettings } from "@/lib/types/settings"
@@ -25,6 +27,13 @@ export function BusinessSection({ data: initialData }: BusinessSectionProps) {
 
   function update<K extends keyof BusinessSettings>(field: K, value: BusinessSettings[K]) {
     setData((prev) => ({ ...prev, [field]: value }))
+  }
+
+  function updateCommissionByType(type: keyof BusinessSettings["commissionByType"], value: number) {
+    setData((prev) => ({
+      ...prev,
+      commissionByType: { ...prev.commissionByType, [type]: value },
+    }))
   }
 
   async function handleSave() {
@@ -43,25 +52,13 @@ export function BusinessSection({ data: initialData }: BusinessSectionProps) {
     <div className="max-w-2xl space-y-6">
       <div>
         <h3 className="text-lg font-semibold">Negocio</h3>
-        <p className="text-sm text-muted-foreground">Comisiones, moneda y datos fiscales</p>
+        <p className="text-sm text-muted-foreground">Empresa, moneda y comisiones</p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <div className="space-y-2 sm:col-span-2">
+        <div className="space-y-2">
           <Label htmlFor="company">Nombre de empresa</Label>
           <Input id="company" value={data.companyName} onChange={(e) => update("companyName", e.target.value)} />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="commission">Comisión por defecto (%)</Label>
-          <Input
-            id="commission"
-            type="number"
-            min={0}
-            max={100}
-            step={0.5}
-            value={data.defaultCommissionRate}
-            onChange={(e) => update("defaultCommissionRate", Number(e.target.value))}
-          />
         </div>
         <div className="space-y-2">
           <Label htmlFor="currency">Moneda</Label>
@@ -71,26 +68,9 @@ export function BusinessSection({ data: initialData }: BusinessSectionProps) {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="USD">USD - Dólar estadounidense</SelectItem>
-              <SelectItem value="ARS">ARS - Peso argentino</SelectItem>
-              <SelectItem value="EUR">EUR - Euro</SelectItem>
+              <SelectItem value="BOB">BOB - Boliviano</SelectItem>
             </SelectContent>
           </Select>
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="tax">Tasa impositiva (%)</Label>
-          <Input
-            id="tax"
-            type="number"
-            min={0}
-            max={100}
-            step={0.5}
-            value={data.taxRate}
-            onChange={(e) => update("taxRate", Number(e.target.value))}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="fiscal">CUIT / RFC / NIT</Label>
-          <Input id="fiscal" value={data.fiscalId} onChange={(e) => update("fiscalId", e.target.value)} />
         </div>
         <div className="space-y-2">
           <Label htmlFor="growth">Crecimiento mensual objetivo (%)</Label>
@@ -105,19 +85,88 @@ export function BusinessSection({ data: initialData }: BusinessSectionProps) {
           />
           <p className="text-xs text-muted-foreground">Se usa para calcular la línea de meta en la gráfica de ingresos</p>
         </div>
-        <div className="space-y-2 sm:col-span-2">
-          <Label htmlFor="operation-type">Tipo de operación por defecto</Label>
-          <Select value={data.defaultOperationType} onValueChange={(v) => update("defaultOperationType", v)}>
-            <SelectTrigger id="operation-type">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="venta">Venta</SelectItem>
-              <SelectItem value="alquiler">Alquiler</SelectItem>
-              <SelectItem value="temporal">Alquiler temporal</SelectItem>
-            </SelectContent>
-          </Select>
+      </div>
+
+      <Separator />
+
+      {/* Commissions */}
+      <div className="space-y-4">
+        <div>
+          <h4 className="text-sm font-semibold">Comisiones</h4>
+          <p className="text-xs text-muted-foreground">Porcentaje de comisión que cobras por cada tipo de operación</p>
         </div>
+
+        <label className="flex items-center gap-2 text-sm cursor-pointer">
+          <Checkbox
+            checked={data.sameCommissionForAll}
+            onCheckedChange={(checked) => update("sameCommissionForAll", checked === true)}
+          />
+          Misma comisión para todas las operaciones
+        </label>
+
+        {data.sameCommissionForAll ? (
+          <div className="space-y-2 max-w-xs">
+            <Label htmlFor="commission">Comisión (%)</Label>
+            <Input
+              id="commission"
+              type="number"
+              min={0}
+              max={100}
+              step={0.5}
+              value={data.defaultCommissionRate}
+              onChange={(e) => update("defaultCommissionRate", Number(e.target.value))}
+            />
+          </div>
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label>Venta (%)</Label>
+              <Input
+                type="number"
+                min={0}
+                max={100}
+                step={0.5}
+                value={data.commissionByType.venta}
+                onChange={(e) => updateCommissionByType("venta", Number(e.target.value))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Alquiler (%)</Label>
+              <Input
+                type="number"
+                min={0}
+                max={100}
+                step={0.5}
+                value={data.commissionByType.alquiler}
+                onChange={(e) => updateCommissionByType("alquiler", Number(e.target.value))}
+              />
+              <p className="text-xs text-muted-foreground">Generalmente equivale a 1 mes de alquiler (100%)</p>
+            </div>
+            <div className="space-y-2">
+              <Label>Anticrético (%)</Label>
+              <Input
+                type="number"
+                min={0}
+                max={100}
+                step={0.5}
+                value={data.commissionByType.anticretico}
+                onChange={(e) => updateCommissionByType("anticretico", Number(e.target.value))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Alquiler temporal (%)</Label>
+              <Input
+                type="number"
+                min={0}
+                max={100}
+                step={0.5}
+                value={data.commissionByType.temporal}
+                onChange={(e) => updateCommissionByType("temporal", Number(e.target.value))}
+              />
+              <p className="text-xs text-muted-foreground">Generalmente equivale a 1 mes de alquiler (100%)</p>
+            </div>
+          </div>
+        )}
       </div>
 
       <Button onClick={handleSave} disabled={saving}>

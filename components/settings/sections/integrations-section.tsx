@@ -39,25 +39,20 @@ export function IntegrationsSection({ data: initialData }: IntegrationsSectionPr
     <div className="max-w-2xl space-y-6">
       <div>
         <h3 className="text-lg font-semibold">Integraciones</h3>
-        <p className="text-sm text-muted-foreground">WhatsApp, redes sociales y APIs</p>
+        <p className="text-sm text-muted-foreground">Conexiones técnicas con servicios externos</p>
       </div>
 
-      {/* WhatsApp */}
+      {/* WhatsApp Business API */}
       <Card>
         <CardContent className="space-y-3 p-4!">
           <div className="flex items-center justify-between">
-            <h4 className="text-sm font-semibold">WhatsApp</h4>
+            <div>
+              <h4 className="text-sm font-semibold">WhatsApp Business API</h4>
+              <p className="text-xs text-muted-foreground">Conexión del bot con WhatsApp para enviar y recibir mensajes automáticamente</p>
+            </div>
             <Badge variant={data.whatsappConnected ? "default" : "destructive"}>
               {data.whatsappConnected ? "Conectado" : "Desconectado"}
             </Badge>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="wa-number">Número de WhatsApp</Label>
-            <Input
-              id="wa-number"
-              value={data.whatsappNumber}
-              onChange={(e) => update("whatsappNumber", e.target.value)}
-            />
           </div>
           <Button variant="outline" size="sm" disabled>
             {data.whatsappConnected ? "Reconectar" : "Conectar"}
@@ -67,36 +62,12 @@ export function IntegrationsSection({ data: initialData }: IntegrationsSectionPr
 
       <Separator />
 
-      {/* Social networks */}
+      {/* API Keys */}
       <div className="space-y-3">
-        <h4 className="text-sm font-semibold">Redes Sociales</h4>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-2">
-            <Label htmlFor="instagram">Instagram</Label>
-            <Input
-              id="instagram"
-              value={data.instagram}
-              onChange={(e) => update("instagram", e.target.value)}
-              placeholder="@usuario"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="facebook">Facebook</Label>
-            <Input
-              id="facebook"
-              value={data.facebook}
-              onChange={(e) => update("facebook", e.target.value)}
-              placeholder="Nombre de página"
-            />
-          </div>
+        <div>
+          <h4 className="text-sm font-semibold">API Keys</h4>
+          <p className="text-xs text-muted-foreground">Claves de acceso para servicios externos</p>
         </div>
-      </div>
-
-      <Separator />
-
-      {/* API */}
-      <div className="space-y-3">
-        <h4 className="text-sm font-semibold">API</h4>
         <div className="grid gap-4">
           <div className="space-y-2">
             <Label htmlFor="gmaps">Google Maps API Key</Label>

@@ -1,22 +1,26 @@
 export interface AgentProfile {
   name: string
   email: string
-  phone: string
+  whatsapp: string
+  instagram: string
+  facebook: string
   avatar: string
   bio: string
-  licenseNumber: string
   website: string
-  address: string
 }
 
 export interface BusinessSettings {
   companyName: string
-  defaultCommissionRate: number
   currency: string
-  taxRate: number
-  fiscalId: string
-  defaultOperationType: string
   monthlyGrowthTarget: number
+  sameCommissionForAll: boolean
+  defaultCommissionRate: number
+  commissionByType: {
+    venta: number
+    alquiler: number
+    anticretico: number
+    temporal: number
+  }
 }
 
 export interface NotificationPreferences {
