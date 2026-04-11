@@ -45,30 +45,24 @@ export const DEFAULT_BUSINESS_SETTINGS: BusinessSettings = {
 }
 
 export const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreferences = {
-  channels: {
-    email: true,
-    whatsapp: true,
-    push: false,
-  },
-  events: {
-    newLead: true,
-    appointmentCreated: true,
-    appointmentReminder: true,
-    propertySold: true,
-    weeklyReport: false,
-  },
+  events: [
+    { id: "newLead", label: "Nuevo lead registrado", description: "Cuando alguien se contacta por primera vez", channels: { email: false, whatsapp: true, push: true } },
+    { id: "leadStale", label: "Lead sin contactar", description: "Cuando un lead lleva más de 48h sin ser contactado", channels: { email: false, whatsapp: true, push: true } },
+    { id: "appointmentRequested", label: "Cita solicitada", description: "Cuando el bot agenda una nueva cita", channels: { email: false, whatsapp: true, push: true } },
+    { id: "appointmentConfirmed", label: "Cita confirmada", description: "Cuando confirmas una cita", channels: { email: true, whatsapp: false, push: false } },
+    { id: "appointmentReminder", label: "Cita próxima", description: "Recordatorio antes de una cita", channels: { email: false, whatsapp: true, push: true } },
+    { id: "propertyClosed", label: "Propiedad vendida/alquilada", description: "Cuando se cierra una operación", channels: { email: true, whatsapp: true, push: true } },
+    { id: "catalogOpened", label: "Cliente abrió el catálogo", description: "Cuando un lead abre el link del catálogo", channels: { email: false, whatsapp: true, push: false } },
+    { id: "clientMessage", label: "Mensaje del cliente", description: "Cuando un lead responde un mensaje", channels: { email: false, whatsapp: true, push: true } },
+    { id: "weeklyReport", label: "Reporte semanal", description: "Resumen de tu actividad de la semana", channels: { email: true, whatsapp: false, push: false } },
+  ],
   quietHoursEnabled: true,
   quietHoursStart: "22:00",
   quietHoursEnd: "08:00",
 }
 
 export const DEFAULT_INTEGRATION_SETTINGS: IntegrationSettings = {
-  whatsappNumber: "+54 9 11 1234-5678",
   whatsappConnected: true,
-  instagram: "@blackestate",
-  facebook: "blackestate",
-  googleMapsApiKey: "",
-  webhookUrl: "",
 }
 
 export const DEFAULT_MARKETING_SETTINGS: MarketingSettings = {

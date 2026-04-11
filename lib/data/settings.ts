@@ -33,11 +33,7 @@ export async function getBusinessSettings(): Promise<BusinessSettings> {
 }
 
 export async function getNotificationPreferences(): Promise<NotificationPreferences> {
-  return Promise.resolve({
-    ...notificationPreferences,
-    channels: { ...notificationPreferences.channels },
-    events: { ...notificationPreferences.events },
-  })
+  return Promise.resolve({ ...notificationPreferences })
 }
 
 export async function getIntegrationSettings(): Promise<IntegrationSettings> {
@@ -67,14 +63,8 @@ export async function updateNotificationPreferences(data: Partial<NotificationPr
   notificationPreferences = {
     ...notificationPreferences,
     ...data,
-    channels: { ...notificationPreferences.channels, ...(data.channels || {}) },
-    events: { ...notificationPreferences.events, ...(data.events || {}) },
   }
-  return Promise.resolve({
-    ...notificationPreferences,
-    channels: { ...notificationPreferences.channels },
-    events: { ...notificationPreferences.events },
-  })
+  return Promise.resolve({ ...notificationPreferences })
 }
 
 export async function updateIntegrationSettings(data: Partial<IntegrationSettings>): Promise<IntegrationSettings> {

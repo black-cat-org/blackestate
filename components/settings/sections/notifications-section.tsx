@@ -1,45 +1,43 @@
 "use client"
 
 import { useState } from "react"
+import { Mail, MessageCircle, Bell } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Card, CardContent } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { updateNotificationPreferences } from "@/lib/data/settings"
 import { toast } from "sonner"
-import type { NotificationPreferences } from "@/lib/types/settings"
+import type { NotificationPreferences, NotificationChannel } from "@/lib/types/settings"
 
 interface NotificationsSectionProps {
   data: NotificationPreferences
 }
 
-const CHANNEL_LABELS = {
-  email: "Email",
-  whatsapp: "WhatsApp",
-  push: "Notificaciones push",
-} as const
-
-const EVENT_LABELS = {
-  newLead: "Nuevo lead registrado",
-  appointmentCreated: "Cita creada",
-  appointmentReminder: "Recordatorio de cita",
-  propertySold: "Propiedad vendida",
-  weeklyReport: "Reporte semanal",
-} as const
+const CHANNEL_CONFIG: { key: NotificationChannel; label: string; icon: React.ElementType }[] = [
+  { key: "email", label: "Email", icon: Mail },
+  { key: "whatsapp", label: "WhatsApp", icon: MessageCircle },
+  { key: "push", label: "Push", icon: Bell },
+]
 
 export function NotificationsSection({ data: initialData }: NotificationsSectionProps) {
   const [data, setData] = useState<NotificationPreferences>(initialData)
   const [saving, setSaving] = useState(false)
 
-  function updateChannel(key: keyof NotificationPreferences["channels"], value: boolean) {
-    setData((prev) => ({ ...prev, channels: { ...prev.channels, [key]: value } }))
-  }
-
-  function updateEvent(key: keyof NotificationPreferences["events"], value: boolean) {
-    setData((prev) => ({ ...prev, events: { ...prev.events, [key]: value } }))
+  function toggleChannel(eventIndex: number, channel: NotificationChannel) {
+    setData((prev) => {
+      const events = [...prev.events]
+      events[eventIndex] = {
+        ...events[eventIndex],
+        channels: {
+          ...events[eventIndex].channels,
+          [channel]: !events[eventIndex].channels[channel],
+        },
+      }
+      return { ...prev, events }
+    })
   }
 
   async function handleSave() {
@@ -58,47 +56,44 @@ export function NotificationsSection({ data: initialData }: NotificationsSection
     <div className="max-w-2xl space-y-6">
       <div>
         <h3 className="text-lg font-semibold">Notificaciones</h3>
-        <p className="text-sm text-muted-foreground">Canales, eventos y horarios</p>
+        <p className="text-sm text-muted-foreground">Elige qué notificaciones recibir y por qué canal</p>
       </div>
 
-      {/* Channels */}
-      <Card>
-        <CardContent className="space-y-4 p-4!">
-          <h4 className="text-sm font-semibold">Canales</h4>
-          {(Object.keys(CHANNEL_LABELS) as (keyof typeof CHANNEL_LABELS)[]).map((key) => (
-            <div key={key} className="flex items-center justify-between">
-              <Label htmlFor={`channel-${key}`} className="font-normal">
-                {CHANNEL_LABELS[key]}
-              </Label>
-              <Switch
-                id={`channel-${key}`}
-                checked={data.channels[key]}
-                onCheckedChange={(checked) => updateChannel(key, checked)}
-              />
-            </div>
-          ))}
-        </CardContent>
-      </Card>
-
-      <Separator />
-
-      {/* Events */}
-      <div className="space-y-3">
-        <h4 className="text-sm font-semibold">Eventos</h4>
-        <div className="space-y-3">
-          {(Object.keys(EVENT_LABELS) as (keyof typeof EVENT_LABELS)[]).map((key) => (
-            <div key={key} className="flex items-center gap-2">
-              <Checkbox
-                id={`event-${key}`}
-                checked={data.events[key]}
-                onCheckedChange={(checked) => updateEvent(key, !!checked)}
-              />
-              <Label htmlFor={`event-${key}`} className="font-normal">
-                {EVENT_LABELS[key]}
-              </Label>
-            </div>
-          ))}
-        </div>
+      {/* Event × Channel grid */}
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b">
+              <th className="pb-3 text-left font-medium text-muted-foreground">Evento</th>
+              {CHANNEL_CONFIG.map(({ key, label, icon: Icon }) => (
+                <th key={key} className="pb-3 text-center font-medium text-muted-foreground w-20">
+                  <div className="flex flex-col items-center gap-1">
+                    <Icon className="size-4" />
+                    <span className="text-xs">{label}</span>
+                  </div>
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {data.events.map((event, i) => (
+              <tr key={event.id} className="border-b last:border-0">
+                <td className="py-3 pr-4">
+                  <p className="text-sm font-medium">{event.label}</p>
+                  <p className="text-xs text-muted-foreground">{event.description}</p>
+                </td>
+                {CHANNEL_CONFIG.map(({ key }) => (
+                  <td key={key} className="py-3 text-center">
+                    <Checkbox
+                      checked={event.channels[key]}
+                      onCheckedChange={() => toggleChannel(i, key)}
+                    />
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
 
       <Separator />

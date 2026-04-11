@@ -23,31 +23,24 @@ export interface BusinessSettings {
   }
 }
 
+export type NotificationChannel = "email" | "whatsapp" | "push"
+
+export interface NotificationEvent {
+  id: string
+  label: string
+  description: string
+  channels: Record<NotificationChannel, boolean>
+}
+
 export interface NotificationPreferences {
-  channels: {
-    email: boolean
-    whatsapp: boolean
-    push: boolean
-  }
-  events: {
-    newLead: boolean
-    appointmentCreated: boolean
-    appointmentReminder: boolean
-    propertySold: boolean
-    weeklyReport: boolean
-  }
+  events: NotificationEvent[]
   quietHoursEnabled: boolean
   quietHoursStart: string
   quietHoursEnd: string
 }
 
 export interface IntegrationSettings {
-  whatsappNumber: string
   whatsappConnected: boolean
-  instagram: string
-  facebook: string
-  googleMapsApiKey: string
-  webhookUrl: string
 }
 
 export interface MarketingSettings {
