@@ -7,7 +7,7 @@ export const botConversations = pgTable("bot_conversations", {
   organizationId: text("organization_id").notNull(),
   leadId: text("lead_id").notNull().references(() => leads.id),
 
-  status: conversationStatusEnum("status").notNull().default("activa"),
+  status: conversationStatusEnum("status").notNull().default("active"),
 
   // Timestamps
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

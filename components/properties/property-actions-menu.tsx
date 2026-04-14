@@ -82,7 +82,7 @@ export function PropertyActionsMenu({ property }: { property: Property }) {
           <Copy className="text-muted-foreground" />
           Duplicar
         </DropdownMenuItem>
-        {property.status === "activa" && (
+        {property.status === "active" && (
           <DropdownMenuItem onClick={() => setShareOpen(true)}>
             <Share2 className="text-muted-foreground" />
             Compartir

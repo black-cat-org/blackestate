@@ -78,7 +78,7 @@ export function PropertyDetailHeader({ property }: { property: Property }) {
               Kit de Marketing
             </Link>
           </Button>
-          {property.status === "activa" && (
+          {property.status === "active" && (
             <Button variant="outline" onClick={() => setShareOpen(true)}>
               <Share2 className="mr-2 size-4" />
               Compartir

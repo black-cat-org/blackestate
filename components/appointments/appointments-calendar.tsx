@@ -75,7 +75,7 @@ export function AppointmentsCalendar({ appointments, onUpdate }: AppointmentsCal
 
   const upcomingAppointments = useMemo(() => {
     return appointments
-      .filter((a) => a.date >= todayStr && a.status !== "cancelada" && a.status !== "completada")
+      .filter((a) => a.date >= todayStr && a.status !== "cancelled" && a.status !== "completed")
       .sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time))
   }, [appointments, todayStr])
 

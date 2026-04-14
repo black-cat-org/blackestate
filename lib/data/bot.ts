@@ -205,18 +205,18 @@ let messages: BotMessage[] = [...mockMessages]
 
 const mockSentProperties: SentProperty[] = [
   // Lead 1 — Carla Mendoza
-  { id: "sp1", leadId: "1", propertyId: "1", propertyTitle: "Casa moderna en Equipetrol", status: "cita_agendada", sentAt: "2026-02-20T14:31:05Z", viewedAt: "2026-02-20T14:35:00Z", respondedAt: "2026-02-20T15:10:00Z" },
+  { id: "sp1", leadId: "1", propertyId: "1", propertyTitle: "Casa moderna en Equipetrol", status: "appointment_scheduled", sentAt: "2026-02-20T14:31:05Z", viewedAt: "2026-02-20T14:35:00Z", respondedAt: "2026-02-20T15:10:00Z" },
   // Lead 2 — Fernando Rojas
-  { id: "sp2", leadId: "2", propertyId: "1", propertyTitle: "Casa moderna en Equipetrol", status: "vista", sentAt: "2026-02-18T09:16:05Z", viewedAt: "2026-02-18T09:20:00Z" },
-  { id: "sp3", leadId: "2", propertyId: "2", propertyTitle: "Departamento 2 amb en Norte", status: "interesado", sentAt: "2026-02-18T10:30:35Z", viewedAt: "2026-02-18T10:45:00Z", respondedAt: "2026-02-18T11:00:00Z" },
-  { id: "sp4", leadId: "2", propertyId: "6", propertyTitle: "PH reciclado en Las Palmas", status: "enviada", sentAt: "2026-02-18T10:30:40Z" },
+  { id: "sp2", leadId: "2", propertyId: "1", propertyTitle: "Casa moderna en Equipetrol", status: "viewed", sentAt: "2026-02-18T09:16:05Z", viewedAt: "2026-02-18T09:20:00Z" },
+  { id: "sp3", leadId: "2", propertyId: "2", propertyTitle: "Departamento 2 amb en Norte", status: "interested", sentAt: "2026-02-18T10:30:35Z", viewedAt: "2026-02-18T10:45:00Z", respondedAt: "2026-02-18T11:00:00Z" },
+  { id: "sp4", leadId: "2", propertyId: "6", propertyTitle: "PH reciclado en Las Palmas", status: "sent", sentAt: "2026-02-18T10:30:40Z" },
   // Lead 7 — Valentina Ruiz
-  { id: "sp5", leadId: "7", propertyId: "2", propertyTitle: "Departamento 2 amb en Norte", status: "interesado", sentAt: "2026-02-22T07:46:05Z", viewedAt: "2026-02-22T07:50:00Z", respondedAt: "2026-02-22T08:30:00Z" },
-  { id: "sp6", leadId: "7", propertyId: "8", propertyTitle: "Cabaña en Samaipata", status: "enviada", sentAt: "2026-02-22T09:00:00Z" },
+  { id: "sp5", leadId: "7", propertyId: "2", propertyTitle: "Departamento 2 amb en Norte", status: "interested", sentAt: "2026-02-22T07:46:05Z", viewedAt: "2026-02-22T07:50:00Z", respondedAt: "2026-02-22T08:30:00Z" },
+  { id: "sp6", leadId: "7", propertyId: "8", propertyTitle: "Cabaña en Samaipata", status: "sent", sentAt: "2026-02-22T09:00:00Z" },
   // Lead 4 — Hugo Chávez Peña
-  { id: "sp7", leadId: "4", propertyId: "3", propertyTitle: "Terreno en Urubó", status: "vista", sentAt: "2026-02-21T16:21:00Z", viewedAt: "2026-02-21T17:00:00Z" },
+  { id: "sp7", leadId: "4", propertyId: "3", propertyTitle: "Terreno en Urubó", status: "viewed", sentAt: "2026-02-21T16:21:00Z", viewedAt: "2026-02-21T17:00:00Z" },
   // Lead 5 — Lucía Justiniano (ganado)
-  { id: "sp8", leadId: "5", propertyId: "5", propertyTitle: "Oficina premium en Equipetrol Norte", status: "cita_agendada", sentAt: "2026-01-28T10:01:00Z", viewedAt: "2026-01-28T10:05:00Z", respondedAt: "2026-01-28T10:30:00Z" },
+  { id: "sp8", leadId: "5", propertyId: "5", propertyTitle: "Oficina premium en Equipetrol Norte", status: "appointment_scheduled", sentAt: "2026-01-28T10:01:00Z", viewedAt: "2026-01-28T10:05:00Z", respondedAt: "2026-01-28T10:30:00Z" },
 ]
 
 let sentProperties: SentProperty[] = [...mockSentProperties]
@@ -237,7 +237,7 @@ const mockAppointments: Appointment[] = [
     date: "2026-03-20",
     time: "10:00",
     endTime: "11:00",
-    status: "completada",
+    status: "completed",
     notes: "Visitó y le encantó la oficina. Cerró la operación.",
     createdAt: "2026-03-15T11:00:00Z",
     confirmedAt: "2026-03-16T09:00:00Z",
@@ -253,7 +253,7 @@ const mockAppointments: Appointment[] = [
     date: "2026-03-25",
     time: "16:00",
     endTime: "17:00",
-    status: "cancelada",
+    status: "cancelled",
     createdAt: "2026-03-20T09:00:00Z",
     confirmedAt: "2026-03-21T10:00:00Z",
     cancelledAt: "2026-03-24T08:00:00Z",
@@ -269,7 +269,7 @@ const mockAppointments: Appointment[] = [
     date: "2026-04-03",
     time: "10:00",
     endTime: "11:00",
-    status: "confirmada",
+    status: "confirmed",
     createdAt: "2026-03-28T16:15:30Z",
     confirmedAt: "2026-03-29T18:00:00Z",
   },
@@ -283,7 +283,7 @@ const mockAppointments: Appointment[] = [
     date: "2026-04-03",
     time: "15:00",
     endTime: "16:00",
-    status: "confirmada",
+    status: "confirmed",
     createdAt: "2026-03-30T10:00:00Z",
     confirmedAt: "2026-03-31T09:00:00Z",
   },
@@ -298,7 +298,7 @@ const mockAppointments: Appointment[] = [
     date: "2026-04-05",
     time: "09:00",
     endTime: "10:00",
-    status: "confirmada",
+    status: "confirmed",
     createdAt: "2026-04-01T08:00:00Z",
     confirmedAt: "2026-04-01T12:00:00Z",
   },
@@ -312,7 +312,7 @@ const mockAppointments: Appointment[] = [
     date: "2026-04-05",
     time: "11:00",
     endTime: "12:00",
-    status: "solicitada",
+    status: "requested",
     createdAt: "2026-04-01T14:00:00Z",
   },
   {
@@ -325,7 +325,7 @@ const mockAppointments: Appointment[] = [
     date: "2026-04-05",
     time: "16:00",
     endTime: "17:00",
-    status: "solicitada",
+    status: "requested",
     createdAt: "2026-04-02T09:00:00Z",
   },
   // April 7 — 1 cita
@@ -339,7 +339,7 @@ const mockAppointments: Appointment[] = [
     date: "2026-04-07",
     time: "14:00",
     endTime: "15:00",
-    status: "solicitada",
+    status: "requested",
     createdAt: "2026-03-30T08:30:30Z",
   },
   // April 10 — 2 citas
@@ -353,7 +353,7 @@ const mockAppointments: Appointment[] = [
     date: "2026-04-10",
     time: "11:00",
     endTime: "12:00",
-    status: "solicitada",
+    status: "requested",
     createdAt: "2026-04-01T10:00:00Z",
   },
   {
@@ -366,7 +366,7 @@ const mockAppointments: Appointment[] = [
     date: "2026-04-10",
     time: "15:00",
     endTime: "16:00",
-    status: "confirmada",
+    status: "confirmed",
     createdAt: "2026-04-02T11:00:00Z",
     confirmedAt: "2026-04-02T14:00:00Z",
   },
@@ -381,7 +381,7 @@ const mockAppointments: Appointment[] = [
     date: "2026-04-15",
     time: "10:00",
     endTime: "11:30",
-    status: "solicitada",
+    status: "requested",
     createdAt: "2026-04-03T08:00:00Z",
   },
   // April 18 — 2 citas
@@ -395,7 +395,7 @@ const mockAppointments: Appointment[] = [
     date: "2026-04-18",
     time: "09:30",
     endTime: "10:30",
-    status: "solicitada",
+    status: "requested",
     createdAt: "2026-04-03T09:00:00Z",
   },
   {
@@ -408,7 +408,7 @@ const mockAppointments: Appointment[] = [
     date: "2026-04-18",
     time: "14:00",
     endTime: "15:00",
-    status: "solicitada",
+    status: "requested",
     createdAt: "2026-04-03T10:00:00Z",
   },
 ]
@@ -621,9 +621,9 @@ export async function updateAppointmentStatus(id: string, status: AppointmentSta
   const now = new Date().toISOString()
   const updates: Partial<Appointment> = { status }
 
-  if (status === "confirmada") updates.confirmedAt = now
-  if (status === "completada") updates.completedAt = now
-  if (status === "cancelada") updates.cancelledAt = now
+  if (status === "confirmed") updates.confirmedAt = now
+  if (status === "completed") updates.completedAt = now
+  if (status === "cancelled") updates.cancelledAt = now
 
   appointments[index] = { ...appointments[index], ...updates }
   return Promise.resolve(appointments[index])
@@ -635,7 +635,7 @@ export async function createAppointment(
   const appointment: Appointment = {
     ...data,
     id: `apt${++appointmentCounter}`,
-    status: "solicitada",
+    status: "requested",
     createdAt: new Date().toISOString(),
   }
   appointments = [appointment, ...appointments]

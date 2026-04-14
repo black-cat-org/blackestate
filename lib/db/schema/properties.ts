@@ -11,7 +11,7 @@ export const properties = pgTable("properties", {
   shortDescription: text("short_description"),
   type: propertyTypeEnum("type").notNull(),
   operationType: operationTypeEnum("operation_type").notNull(),
-  status: propertyStatusEnum("status").notNull().default("borrador"),
+  status: propertyStatusEnum("status").notNull().default("draft"),
 
   // Price
   priceAmount: numeric("price_amount", { precision: 14, scale: 2 }).notNull(),

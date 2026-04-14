@@ -6,18 +6,18 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } f
 import { ChartHeader } from "@/components/analytics/chart-header"
 
 const TYPE_COLORS: Record<string, string> = {
-  venta: "hsl(217, 91%, 60%)",
-  alquiler: "hsl(142, 71%, 45%)",
+  sale: "hsl(217, 91%, 60%)",
+  rent: "hsl(142, 71%, 45%)",
   anticretico: "hsl(45, 93%, 47%)",
-  temporal: "hsl(271, 91%, 65%)",
+  short_term: "hsl(271, 91%, 65%)",
 }
 
 const chartConfig = {
   amount: { label: "Comisión" },
-  venta: { label: "Venta", color: TYPE_COLORS.venta },
-  alquiler: { label: "Alquiler", color: TYPE_COLORS.alquiler },
+  sale: { label: "Venta", color: TYPE_COLORS.sale },
+  rent: { label: "Alquiler", color: TYPE_COLORS.rent },
   anticretico: { label: "Anticrético", color: TYPE_COLORS.anticretico },
-  temporal: { label: "Temporal", color: TYPE_COLORS.temporal },
+  short_term: { label: "Temporal", color: TYPE_COLORS.short_term },
 } satisfies ChartConfig
 
 interface CommissionsByTypeDonutProps {

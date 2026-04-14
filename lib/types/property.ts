@@ -8,16 +8,16 @@ export type PropertyType =
   | "cabin"
   | "ph"
 
-export type OperationType = "venta" | "alquiler" | "temporal" | "anticretico"
+export type OperationType = "sale" | "rent" | "short_term" | "anticretico"
 
 export type PropertyStatus =
-  | "borrador"
-  | "en_revision"
-  | "activa"
-  | "pausada"
-  | "vendida"
-  | "alquilada"
-  | "rechazada"
+  | "draft"
+  | "in_review"
+  | "active"
+  | "paused"
+  | "sold"
+  | "rented"
+  | "rejected"
 
 export type Currency = "USD" | "BOB"
 
@@ -73,8 +73,8 @@ export interface Property {
   bathrooms?: number
   garages?: number
   age?: number
-  condition?: "nueva" | "excelente" | "buena" | "regular" | "a_reciclar"
-  orientation?: "norte" | "sur" | "este" | "oeste" | "noreste" | "noroeste" | "sureste" | "suroeste"
+  condition?: "new" | "excellent" | "good" | "fair" | "to_renovate"
+  orientation?: "north" | "south" | "east" | "west" | "northeast" | "northwest" | "southeast" | "southwest"
   amenities: string[]
   hideExactLocation: boolean
   media: PropertyMedia

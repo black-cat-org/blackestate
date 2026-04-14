@@ -11,7 +11,7 @@ const chartConfig = {
   instagram: { label: "Instagram", color: "hsl(330, 70%, 50%)" },
   whatsapp: { label: "WhatsApp", color: "hsl(142, 70%, 40%)" },
   tiktok: { label: "TikTok", color: "hsl(0, 0%, 10%)" },
-  otro: { label: "Otro", color: "hsl(0, 0%, 60%)" },
+  other: { label: "Otro", color: "hsl(0, 0%, 60%)" },
 } satisfies ChartConfig
 
 interface LeadsBySourceStackedProps {
@@ -39,10 +39,10 @@ export function LeadsBySourceStacked({ data }: LeadsBySourceStackedProps) {
             <Bar dataKey="instagram" stackId="a" fill="var(--color-instagram)" />
             <Bar dataKey="whatsapp" stackId="a" fill="var(--color-whatsapp)" />
             <Bar dataKey="tiktok" stackId="a" fill="var(--color-tiktok)" />
-            <Bar dataKey="otro" stackId="a" fill="var(--color-otro)" radius={[4, 4, 0, 0]}>
+            <Bar dataKey="other" stackId="a" fill="var(--color-other)" radius={[4, 4, 0, 0]}>
               <LabelList
                 valueAccessor={(entry: TimeSeriesPoint) => {
-                  const keys = ["facebook", "instagram", "whatsapp", "tiktok", "otro"]
+                  const keys = ["facebook", "instagram", "whatsapp", "tiktok", "other"]
                   return keys.reduce((sum, k) => sum + (Number(entry[k]) || 0), 0)
                 }}
                 position="top"

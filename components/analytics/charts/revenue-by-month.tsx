@@ -12,8 +12,8 @@ const RED = "hsl(0, 72%, 51%)"
 const GRAY = "hsl(0, 0%, 60%)"
 
 const chartConfig = {
-  ingreso: { label: "Ingresos", color: GREEN },
-  meta: { label: "Meta", color: GRAY },
+  revenue: { label: "Ingresos", color: GREEN },
+  goal: { label: "Meta", color: GRAY },
 } satisfies ChartConfig
 
 interface RevenueByMonthProps {
@@ -23,8 +23,8 @@ interface RevenueByMonthProps {
 export function RevenueByMonth({ data }: RevenueByMonthProps) {
   const barColors = useMemo(() => {
     return data.map((entry, i) => {
-      const prev = i > 0 ? Number(data[i - 1].ingreso) : 0
-      const current = Number(entry.ingreso)
+      const prev = i > 0 ? Number(data[i - 1].revenue) : 0
+      const current = Number(entry.revenue)
       return i === 0 || current >= prev ? GREEN : RED
     })
   }, [data])
@@ -56,11 +56,11 @@ export function RevenueByMonth({ data }: RevenueByMonthProps) {
                     <p className="text-xs font-medium mb-1">{label}</p>
                     {payload.map((entry) => {
                       const idx = data.findIndex((d) => d.date === label)
-                      const color = entry.dataKey === "ingreso" ? barColors[idx] || GREEN : GRAY
+                      const color = entry.dataKey === "revenue" ? barColors[idx] || GREEN : GRAY
                       return (
                         <div key={entry.dataKey} className="flex items-center gap-2 text-xs">
                           <span className="size-2.5 shrink-0" style={{ backgroundColor: color, borderRadius: '2px' }} />
-                          <span className="text-muted-foreground">{entry.dataKey === "ingreso" ? "Ingresos" : "Meta"}</span>
+                          <span className="text-muted-foreground">{entry.dataKey === "revenue" ? "Ingresos" : "Meta"}</span>
                           <span className="ml-auto font-medium">US$ {Number(entry.value).toLocaleString("es-BO")}</span>
                         </div>
                       )
@@ -69,12 +69,12 @@ export function RevenueByMonth({ data }: RevenueByMonthProps) {
                 )
               }}
             />
-            <Bar dataKey="ingreso" radius={[4, 4, 0, 0]}>
+            <Bar dataKey="revenue" radius={[4, 4, 0, 0]}>
               {data.map((_, i) => (
                 <Cell key={i} fill={barColors[i]} />
               ))}
               <LabelList
-                dataKey="ingreso"
+                dataKey="revenue"
                 position="top"
                 className="fill-foreground text-[10px] font-medium"
                 formatter={(value: number) => `$${(value / 1000).toFixed(1)}K`}
@@ -82,8 +82,8 @@ export function RevenueByMonth({ data }: RevenueByMonthProps) {
             </Bar>
             <Line
               type="monotone"
-              dataKey="meta"
-              stroke="var(--color-meta)"
+              dataKey="goal"
+              stroke="var(--color-goal)"
               strokeWidth={2}
               strokeDasharray="4 4"
               dot={false}

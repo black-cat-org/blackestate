@@ -9,7 +9,7 @@ export const botConfig = pgTable("bot_config", {
   appointmentDuration: integer("appointment_duration").notNull().default(60),
   reminderHoursBefore: integer("reminder_hours_before").notNull().default(2),
 
-  // { "lunes": { enabled: true, startTime: "09:00", endTime: "18:00" }, ... }
+  // { "monday": { enabled: true, startTime: "09:00", endTime: "18:00" }, ... }
   schedule: jsonb("schedule").notNull().default({}),
 
   // { newAppointmentRequest: true, appointmentConfirmed: true, ... }

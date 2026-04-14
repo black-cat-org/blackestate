@@ -9,7 +9,7 @@ const SOURCE_COLORS: Record<string, string> = {
   instagram: "hsl(330, 70%, 50%)",
   whatsapp: "hsl(142, 70%, 40%)",
   tiktok: "hsl(0, 0%, 10%)",
-  otro: "hsl(0, 0%, 60%)",
+  other: "hsl(0, 0%, 60%)",
 }
 
 interface ConversionBySourceProps {
@@ -32,7 +32,7 @@ export function ConversionBySource({ data }: ConversionBySourceProps) {
       <CardContent>
         <div className="space-y-3">
           {sorted.map((entry, i) => {
-            const color = SOURCE_COLORS[entry.source] || SOURCE_COLORS.otro
+            const color = SOURCE_COLORS[entry.source] || SOURCE_COLORS.other
             const widthPct = (entry.conversionRate / maxRate) * 100
 
             return (

@@ -71,17 +71,17 @@ export function LeadActionsMenu({ lead }: { lead: Lead }) {
               Ver detalle
             </Link>
           </DropdownMenuItem>
-          {transitions.filter((t) => t.status !== "descartado").map((t) => (
+          {transitions.filter((t) => t.status !== "discarded").map((t) => (
             <DropdownMenuItem key={t.status} onClick={() => handleStatusChange(t.status)}>
               {t.label}
             </DropdownMenuItem>
           ))}
-          {transitions.some((t) => t.status === "descartado") && (
+          {transitions.some((t) => t.status === "discarded") && (
             <>
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 className="text-destructive"
-                onClick={() => handleStatusChange("descartado")}
+                onClick={() => handleStatusChange("discarded")}
               >
                 Descartar
               </DropdownMenuItem>

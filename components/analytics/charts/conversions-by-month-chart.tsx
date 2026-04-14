@@ -6,8 +6,8 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } f
 import type { TimeSeriesPoint } from "@/lib/types/analytics"
 
 const chartConfig = {
-  ganados: { label: "Ganados", color: "hsl(142, 71%, 45%)" },
-  perdidos: { label: "Perdidos", color: "hsl(0, 72%, 51%)" },
+  won: { label: "Ganados", color: "hsl(142, 71%, 45%)" },
+  lost: { label: "Perdidos", color: "hsl(0, 72%, 51%)" },
 } satisfies ChartConfig
 
 interface ConversionsByMonthChartProps {
@@ -30,8 +30,8 @@ export function ConversionsByMonthChart({ data }: ConversionsByMonthChartProps) 
             <XAxis dataKey="date" tickLine={false} axisLine={false} fontSize={12} />
             <YAxis hide />
             <ChartTooltip content={<ChartTooltipContent />} />
-            <Bar dataKey="ganados" fill="var(--color-ganados)" radius={[4, 4, 0, 0]} />
-            <Bar dataKey="perdidos" fill="var(--color-perdidos)" radius={[4, 4, 0, 0]} />
+            <Bar dataKey="won" fill="var(--color-won)" radius={[4, 4, 0, 0]} />
+            <Bar dataKey="lost" fill="var(--color-lost)" radius={[4, 4, 0, 0]} />
           </BarChart>
         </ChartContainer>
       </CardContent>

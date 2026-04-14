@@ -8,7 +8,7 @@ const mockLeads: Lead[] = [
     propertyId: "1",
     propertyTitle: "Casa moderna en Equipetrol",
     source: "facebook",
-    status: "nuevo",
+    status: "new",
     name: "Carla Mendoza",
     phone: "+591 78812345",
     email: "carla.mendoza@gmail.com",
@@ -21,7 +21,7 @@ const mockLeads: Lead[] = [
     propertyId: "1",
     propertyTitle: "Casa moderna en Equipetrol",
     source: "instagram",
-    status: "contactado",
+    status: "contacted",
     name: "Fernando Rojas",
     phone: "+591 70045678",
     email: "fernando.rojas@hotmail.com",
@@ -37,7 +37,7 @@ const mockLeads: Lead[] = [
     propertyId: "2",
     propertyTitle: "Departamento 2 amb en Norte",
     source: "facebook",
-    status: "interesado",
+    status: "interested",
     name: "Patricia Suárez",
     phone: "+591 76690123",
     email: "patricia.suarez@yahoo.com",
@@ -50,7 +50,7 @@ const mockLeads: Lead[] = [
     propertyId: "3",
     propertyTitle: "Terreno en Urubó",
     source: "whatsapp",
-    status: "nuevo",
+    status: "new",
     name: "Hugo Chávez Peña",
     phone: "+591 71134567",
     email: "hugo.chavez@gmail.com",
@@ -65,7 +65,7 @@ const mockLeads: Lead[] = [
     propertyId: "5",
     propertyTitle: "Oficina premium en Equipetrol Norte",
     source: "instagram",
-    status: "ganado",
+    status: "won",
     name: "Lucía Justiniano",
     phone: "+591 78887890",
     email: "lucia.justiniano@outlook.com",
@@ -78,7 +78,7 @@ const mockLeads: Lead[] = [
     propertyId: "4",
     propertyTitle: "Local comercial sobre Av. San Martín",
     source: "tiktok",
-    status: "descartado",
+    status: "discarded",
     name: "Andrés Salvatierra",
     phone: "+591 69932222",
     email: "andres.salvatierra@gmail.com",
@@ -91,7 +91,7 @@ const mockLeads: Lead[] = [
     propertyId: "2",
     propertyTitle: "Departamento 2 amb en Norte",
     source: "facebook",
-    status: "perdido",
+    status: "lost",
     name: "Valentina Ruiz",
     phone: "+591 75524444",
     email: "valentina.ruiz@gmail.com",
@@ -107,7 +107,7 @@ const mockLeads: Lead[] = [
     propertyId: "6",
     propertyTitle: "Oficina en zona Plan Tres Mil",
     source: null,
-    status: "contactado",
+    status: "contacted",
     name: "Mario Céspedes",
     phone: "+591 60015555",
     email: "mario.cespedes@empresa.com",
@@ -128,7 +128,7 @@ let visitCounter = 0
 export async function createLead(data: Omit<Lead, "id" | "createdAt" | "status">): Promise<Lead> {
   const lead: Lead = {
     ...data,
-    status: "nuevo",
+    status: "new",
     id: String(++leadCounter),
     createdAt: new Date().toISOString(),
   }
@@ -182,7 +182,7 @@ export async function getVisitsByProperty(propertyId: string): Promise<PropertyV
  */
 export function getSuggestedProperties(lead: Lead, allProperties: Property[]): Property[] {
   const active = allProperties.filter(
-    (p) => p.status === "activa" && p.id !== lead.propertyId
+    (p) => p.status === "active" && p.id !== lead.propertyId
   )
 
   if (active.length === 0) return []
@@ -269,32 +269,32 @@ const mockCatalogTracking: Record<string, CatalogTracking> = {
 }
 
 const mockQueueStatuses: Record<string, QueueStatus> = {
-  "1": { status: "pausada_cita" },
-  "2": { status: "inactiva_catalogo" },
-  "3": { status: "activa" },
-  "4": { status: "en_espera" },
-  "5": { status: "inactiva_ganado" },
-  "6": { status: "inactiva_descartado" },
-  "7": { status: "pausada_conversacion" },
-  "8": { status: "en_espera" },
+  "1": { status: "paused_appointment" },
+  "2": { status: "inactive_catalog" },
+  "3": { status: "active" },
+  "4": { status: "waiting" },
+  "5": { status: "inactive_won" },
+  "6": { status: "inactive_discarded" },
+  "7": { status: "paused_conversation" },
+  "8": { status: "waiting" },
 }
 
 const mockPropertyQueues: Record<string, PropertyQueueItem[]> = {
   "1": [
-    { id: "q1", propertyId: "6", propertyTitle: "PH reciclado en Las Palmas", status: "enviada", sentAt: "2026-02-21T10:00:00Z", addedAt: "2026-02-20T15:00:00Z" },
-    { id: "q2", propertyId: "2", propertyTitle: "Departamento 2 amb en Norte", status: "pausada", estimatedSendAt: "2026-02-26T10:00:00Z", addedAt: "2026-02-20T15:00:00Z" },
-    { id: "q3", propertyId: "3", propertyTitle: "Terreno en Urubó", status: "pausada", estimatedSendAt: "2026-02-27T10:00:00Z", addedAt: "2026-02-20T15:00:00Z" },
+    { id: "q1", propertyId: "6", propertyTitle: "PH reciclado en Las Palmas", status: "sent", sentAt: "2026-02-21T10:00:00Z", addedAt: "2026-02-20T15:00:00Z" },
+    { id: "q2", propertyId: "2", propertyTitle: "Departamento 2 amb en Norte", status: "paused", estimatedSendAt: "2026-02-26T10:00:00Z", addedAt: "2026-02-20T15:00:00Z" },
+    { id: "q3", propertyId: "3", propertyTitle: "Terreno en Urubó", status: "paused", estimatedSendAt: "2026-02-27T10:00:00Z", addedAt: "2026-02-20T15:00:00Z" },
   ],
   "2": [
-    { id: "q8", propertyId: "6", propertyTitle: "PH reciclado en Las Palmas", status: "enviada", sentAt: "2026-02-18T12:00:00Z", addedAt: "2026-02-18T10:00:00Z" },
+    { id: "q8", propertyId: "6", propertyTitle: "PH reciclado en Las Palmas", status: "sent", sentAt: "2026-02-18T12:00:00Z", addedAt: "2026-02-18T10:00:00Z" },
   ],
   "3": [
-    { id: "q4", propertyId: "1", propertyTitle: "Casa moderna en Equipetrol", status: "pendiente", estimatedSendAt: "2026-03-31T11:45:00Z", addedAt: "2026-02-15T12:00:00Z" },
-    { id: "q5", propertyId: "6", propertyTitle: "PH reciclado en Las Palmas", status: "pendiente", estimatedSendAt: "2026-04-01T11:45:00Z", addedAt: "2026-02-15T12:00:00Z" },
+    { id: "q4", propertyId: "1", propertyTitle: "Casa moderna en Equipetrol", status: "pending", estimatedSendAt: "2026-03-31T11:45:00Z", addedAt: "2026-02-15T12:00:00Z" },
+    { id: "q5", propertyId: "6", propertyTitle: "PH reciclado en Las Palmas", status: "pending", estimatedSendAt: "2026-04-01T11:45:00Z", addedAt: "2026-02-15T12:00:00Z" },
   ],
   "7": [
-    { id: "q6", propertyId: "1", propertyTitle: "Casa moderna en Equipetrol", status: "pausada", estimatedSendAt: "2026-02-23T08:30:00Z", addedAt: "2026-02-22T08:00:00Z" },
-    { id: "q7", propertyId: "6", propertyTitle: "PH reciclado en Las Palmas", status: "pausada", estimatedSendAt: "2026-02-24T08:30:00Z", addedAt: "2026-02-22T08:00:00Z" },
+    { id: "q6", propertyId: "1", propertyTitle: "Casa moderna en Equipetrol", status: "paused", estimatedSendAt: "2026-02-23T08:30:00Z", addedAt: "2026-02-22T08:00:00Z" },
+    { id: "q7", propertyId: "6", propertyTitle: "PH reciclado en Las Palmas", status: "paused", estimatedSendAt: "2026-02-24T08:30:00Z", addedAt: "2026-02-22T08:00:00Z" },
   ],
 }
 
@@ -308,7 +308,7 @@ export async function getCatalogTracking(leadId: string): Promise<CatalogTrackin
 }
 
 export async function getQueueStatus(leadId: string): Promise<QueueStatus> {
-  return Promise.resolve(queueStatuses[leadId] || { status: "en_espera" })
+  return Promise.resolve(queueStatuses[leadId] || { status: "waiting" })
 }
 
 export async function getPropertyQueue(leadId: string): Promise<PropertyQueueItem[]> {
@@ -325,7 +325,7 @@ export async function addToQueue(leadId: string, propertyId: string, propertyTit
     id: `q${++queueItemCounter}`,
     propertyId,
     propertyTitle,
-    status: "pendiente",
+    status: "pending",
     estimatedSendAt: estimated,
     addedAt: new Date().toISOString(),
   }
@@ -342,7 +342,7 @@ export async function sendQueueItemNow(leadId: string, queueItemId: string): Pro
   const queue = propertyQueues[leadId] || []
   const index = queue.findIndex((q) => q.id === queueItemId)
   if (index === -1) throw new Error("Queue item not found")
-  queue[index] = { ...queue[index], status: "enviada", sentAt: new Date().toISOString() }
+  queue[index] = { ...queue[index], status: "sent", sentAt: new Date().toISOString() }
   propertyQueues[leadId] = [...queue]
   return Promise.resolve(queue[index])
 }

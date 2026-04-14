@@ -22,7 +22,7 @@ const SOURCE_ICONS: Record<LeadSource, React.ReactNode> = {
   instagram: <Instagram className="size-4" />,
   tiktok: <Hash className="size-4" />,
   whatsapp: <MessageCircle className="size-4" />,
-  otro: <Link2 className="size-4" />,
+  other: <Link2 className="size-4" />,
 }
 
 interface ShareLinksDialogProps {
@@ -55,7 +55,7 @@ export function ShareLinksDialog({
         </DialogHeader>
 
         <div className="space-y-1">
-          {VALID_SOURCES.filter((s) => s !== "otro").map((source) => (
+          {VALID_SOURCES.filter((s) => s !== "other").map((source) => (
             <ShareLinkItem
               key={source}
               icon={SOURCE_ICONS[source]}

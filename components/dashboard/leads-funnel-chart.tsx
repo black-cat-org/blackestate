@@ -17,27 +17,27 @@ const chartConfig = {
   count: {
     label: "Leads",
   },
-  nuevo: {
+  new: {
     label: "Nuevo",
     color: "hsl(217, 91%, 60%)",
   },
-  contactado: {
+  contacted: {
     label: "Contactado",
     color: "hsl(45, 93%, 47%)",
   },
-  interesado: {
+  interested: {
     label: "Interesado",
     color: "hsl(142, 71%, 45%)",
   },
-  ganado: {
+  won: {
     label: "Ganado",
     color: "hsl(142, 71%, 45%)",
   },
-  perdido: {
+  lost: {
     label: "Perdido",
     color: "hsl(0, 72%, 51%)",
   },
-  descartado: {
+  discarded: {
     label: "Descartado",
     color: "hsl(0, 0%, 60%)",
   },

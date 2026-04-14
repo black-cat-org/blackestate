@@ -1,4 +1,4 @@
-export type LeadStatus = "nuevo" | "contactado" | "interesado" | "ganado" | "perdido" | "descartado"
+export type LeadStatus = "new" | "contacted" | "interested" | "won" | "lost" | "discarded"
 
 export interface Lead {
   id: string
@@ -37,21 +37,21 @@ export interface CatalogTracking {
 }
 
 export type QueueStatusId =
-  | "en_espera"
-  | "activa"
-  | "pausada_conversacion"
-  | "pausada_cita"
-  | "inactiva_catalogo"
-  | "inactiva_cita_completada"
-  | "inactiva_ganado"
-  | "inactiva_perdido"
-  | "inactiva_descartado"
+  | "waiting"
+  | "active"
+  | "paused_conversation"
+  | "paused_appointment"
+  | "inactive_catalog"
+  | "inactive_appointment_completed"
+  | "inactive_won"
+  | "inactive_lost"
+  | "inactive_discarded"
 
 export interface QueueStatus {
   status: QueueStatusId
 }
 
-export type QueueItemStatus = "pendiente" | "enviada" | "pausada"
+export type QueueItemStatus = "pending" | "sent" | "paused"
 
 export interface PropertyQueueItem {
   id: string

@@ -5,7 +5,7 @@ const mockContents: AiContent[] = [
     id: "1",
     propertyId: "1",
     propertyTitle: "Casa moderna en Palermo",
-    type: "descripcion",
+    type: "description",
     text: "Espectacular casa moderna de 3 plantas ubicada en el corazón de Palermo. Con 320 m² totales y 280 m² cubiertos, esta propiedad ofrece 4 dormitorios, 3 baños y cochera para 2 vehículos. Disfrute de amenities premium como pileta, quincho con parrilla, jardín y terraza. Orientación norte para máxima luminosidad. Una oportunidad única en una de las zonas más codiciadas de Buenos Aires.",
     createdAt: "2026-02-20T10:00:00Z",
   },

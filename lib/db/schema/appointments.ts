@@ -12,7 +12,7 @@ export const appointments = pgTable("appointments", {
   startsAt: timestamp("starts_at", { withTimezone: true }).notNull(),
   endsAt: timestamp("ends_at", { withTimezone: true }).notNull(),
 
-  status: appointmentStatusEnum("status").notNull().default("solicitada"),
+  status: appointmentStatusEnum("status").notNull().default("requested"),
   notes: text("notes"),
 
   // Timestamps

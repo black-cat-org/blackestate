@@ -14,9 +14,9 @@ import {
 import type { TimeSeriesPoint } from "@/lib/types/analytics"
 
 const chartConfig = {
-  citas: { label: "Citas agendadas", color: "hsl(271, 91%, 65%)" },
-  propiedades: { label: "Props. enviadas", color: "hsl(142, 71%, 45%)" },
-  mensajes: { label: "Mensajes", color: "hsl(217, 91%, 60%)" },
+  appointments: { label: "Citas agendadas", color: "hsl(271, 91%, 65%)" },
+  properties: { label: "Props. enviadas", color: "hsl(142, 71%, 45%)" },
+  messages: { label: "Mensajes", color: "hsl(217, 91%, 60%)" },
 } satisfies ChartConfig
 
 interface BotActivityAreaProps {
@@ -59,26 +59,26 @@ export function BotActivityArea({
             <ChartLegend content={<ChartLegendContent />} />
             <Area
               type="monotone"
-              dataKey="citas"
+              dataKey="appointments"
               stackId="1"
-              stroke="var(--color-citas)"
-              fill="var(--color-citas)"
+              stroke="var(--color-appointments)"
+              fill="var(--color-appointments)"
               fillOpacity={0.3}
             />
             <Area
               type="monotone"
-              dataKey="propiedades"
+              dataKey="properties"
               stackId="1"
-              stroke="var(--color-propiedades)"
-              fill="var(--color-propiedades)"
+              stroke="var(--color-properties)"
+              fill="var(--color-properties)"
               fillOpacity={0.3}
             />
             <Area
               type="monotone"
-              dataKey="mensajes"
+              dataKey="messages"
               stackId="1"
-              stroke="var(--color-mensajes)"
-              fill="var(--color-mensajes)"
+              stroke="var(--color-messages)"
+              fill="var(--color-messages)"
               fillOpacity={0.3}
             />
           </AreaChart>

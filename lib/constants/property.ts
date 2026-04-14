@@ -18,33 +18,33 @@ export const PROPERTY_TYPE_LABELS: Record<PropertyType, string> = {
 };
 
 export const OPERATION_TYPE_LABELS: Record<OperationType, string> = {
-  venta: "Venta",
-  alquiler: "Alquiler",
-  temporal: "Alquiler temporal",
+  sale: "Venta",
+  rent: "Alquiler",
+  short_term: "Alquiler temporal",
   anticretico: "Anticrético",
 };
 
 export const PROPERTY_STATUS_LABELS: Record<PropertyStatus, string> = {
-  borrador: "Borrador",
-  en_revision: "En revisión",
-  activa: "Activa",
-  pausada: "Pausada",
-  vendida: "Vendida",
-  alquilada: "Alquilada",
-  rechazada: "Rechazada",
+  draft: "Borrador",
+  in_review: "En revisión",
+  active: "Activa",
+  paused: "Pausada",
+  sold: "Vendida",
+  rented: "Alquilada",
+  rejected: "Rechazada",
 };
 
 export const PROPERTY_STATUS_COLORS: Record<PropertyStatus, string> = {
-  borrador: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300",
-  en_revision:
+  draft: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300",
+  in_review:
     "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300",
-  activa: "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300",
-  pausada:
+  active: "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300",
+  paused:
     "bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300",
-  vendida: "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300",
-  alquilada:
+  sold: "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300",
+  rented:
     "bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300",
-  rechazada: "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300",
+  rejected: "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300",
 };
 
 export const CURRENCY_LABELS: Record<Currency, string> = {
@@ -63,66 +63,66 @@ export const SURFACE_UNIT_LABELS: Record<SurfaceUnit, string> = {
 };
 
 export const EQUIPMENT_OPTIONS = [
-  { value: "aire_acondicionado", label: "Aire acondicionado" },
-  { value: "agua_caliente", label: "Agua caliente" },
-  { value: "gas_natural", label: "Gas natural" },
-  { value: "cocina_equipada", label: "Cocina equipada" },
-  { value: "balcon", label: "Balcón" },
-  { value: "terraza", label: "Terraza" },
-  { value: "jardin", label: "Jardín" },
-  { value: "quincho", label: "Parrillero" },
+  { value: "air_conditioning", label: "Aire acondicionado" },
+  { value: "hot_water", label: "Agua caliente" },
+  { value: "natural_gas", label: "Gas natural" },
+  { value: "equipped_kitchen", label: "Cocina equipada" },
+  { value: "balcony", label: "Balcón" },
+  { value: "terrace", label: "Terraza" },
+  { value: "garden", label: "Jardín" },
+  { value: "grill", label: "Parrillero" },
 ] as const;
 
 export const AMENITIES_OPTIONS = [
-  { value: "pileta", label: "Piscina" },
+  { value: "pool", label: "Piscina" },
   { value: "gym", label: "Gimnasio" },
   { value: "playroom", label: "Sala de juegos" },
-  { value: "quincho_compartido", label: "Parrillero" },
-  { value: "jardin_compartido", label: "Jardín" },
+  { value: "shared_grill", label: "Parrillero" },
+  { value: "shared_garden", label: "Jardín" },
   { value: "laundry", label: "Lavandería" },
-  { value: "ascensor", label: "Ascensor" },
-  { value: "seguridad", label: "Seguridad 24hs" },
-  { value: "baulera", label: "Baulera" },
-  { value: "sum", label: "Áreas comunes" },
+  { value: "elevator", label: "Ascensor" },
+  { value: "security", label: "Seguridad 24hs" },
+  { value: "storage", label: "Baulera" },
+  { value: "common_areas", label: "Áreas comunes" },
 ] as const;
 
 export const CONDITION_OPTIONS = [
-  { value: "nueva", label: "A estrenar" },
-  { value: "excelente", label: "Excelente" },
-  { value: "buena", label: "Buena" },
-  { value: "regular", label: "Regular" },
-  { value: "a_reciclar", label: "A reciclar" },
+  { value: "new", label: "A estrenar" },
+  { value: "excellent", label: "Excelente" },
+  { value: "good", label: "Buena" },
+  { value: "fair", label: "Regular" },
+  { value: "to_renovate", label: "A reciclar" },
 ] as const;
 
 export const ORIENTATION_OPTIONS = [
-  { value: "norte", label: "Norte" },
-  { value: "sur", label: "Sur" },
-  { value: "este", label: "Este" },
-  { value: "oeste", label: "Oeste" },
-  { value: "noreste", label: "Noreste" },
-  { value: "noroeste", label: "Noroeste" },
-  { value: "sureste", label: "Sureste" },
-  { value: "suroeste", label: "Suroeste" },
+  { value: "north", label: "Norte" },
+  { value: "south", label: "Sur" },
+  { value: "east", label: "Este" },
+  { value: "west", label: "Oeste" },
+  { value: "northeast", label: "Noreste" },
+  { value: "northwest", label: "Noroeste" },
+  { value: "southeast", label: "Sureste" },
+  { value: "southwest", label: "Suroeste" },
 ] as const;
 
 export const STATUS_TRANSITIONS: Record<
   PropertyStatus,
   { status: PropertyStatus; label: string }[]
 > = {
-  borrador: [{ status: "en_revision", label: "Enviar a revisión" }],
-  en_revision: [
-    { status: "activa", label: "Activar" },
-    { status: "rechazada", label: "Rechazar" },
+  draft: [{ status: "in_review", label: "Enviar a revisión" }],
+  in_review: [
+    { status: "active", label: "Activar" },
+    { status: "rejected", label: "Rechazar" },
   ],
-  activa: [
-    { status: "pausada", label: "Pausar" },
-    { status: "vendida", label: "Marcar como vendida" },
-    { status: "alquilada", label: "Marcar como alquilada" },
+  active: [
+    { status: "paused", label: "Pausar" },
+    { status: "sold", label: "Marcar como vendida" },
+    { status: "rented", label: "Marcar como alquilada" },
   ],
-  pausada: [{ status: "activa", label: "Reactivar" }],
-  vendida: [],
-  alquilada: [],
-  rechazada: [{ status: "borrador", label: "Volver a borrador" }],
+  paused: [{ status: "active", label: "Reactivar" }],
+  sold: [],
+  rented: [],
+  rejected: [{ status: "draft", label: "Volver a borrador" }],
 };
 
 export const WIZARD_STEPS = [

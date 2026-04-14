@@ -1,42 +1,42 @@
 import type { LeadStatus } from "@/lib/types/lead"
 
 export const LEAD_STATUS_LABELS: Record<LeadStatus, string> = {
-  nuevo: "Nuevo",
-  contactado: "Contactado",
-  interesado: "Interesado",
-  ganado: "Ganado",
-  perdido: "Perdido",
-  descartado: "Descartado",
+  new: "Nuevo",
+  contacted: "Contactado",
+  interested: "Interesado",
+  won: "Ganado",
+  lost: "Perdido",
+  discarded: "Descartado",
 }
 
 export const LEAD_STATUS_COLORS: Record<LeadStatus, string> = {
-  nuevo: "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300",
-  contactado: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300",
-  interesado: "bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300",
-  ganado: "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300",
-  perdido: "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300",
-  descartado: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300",
+  new: "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300",
+  contacted: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300",
+  interested: "bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300",
+  won: "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300",
+  lost: "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300",
+  discarded: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300",
 }
 
 export const LEAD_STATUS_TRANSITIONS: Record<LeadStatus, { status: LeadStatus; label: string }[]> = {
-  nuevo: [
-    { status: "contactado", label: "Marcar contactado" },
-    { status: "descartado", label: "Descartar" },
+  new: [
+    { status: "contacted", label: "Marcar contactado" },
+    { status: "discarded", label: "Descartar" },
   ],
-  contactado: [
-    { status: "interesado", label: "Marcar interesado" },
-    { status: "descartado", label: "Descartar" },
+  contacted: [
+    { status: "interested", label: "Marcar interesado" },
+    { status: "discarded", label: "Descartar" },
   ],
-  interesado: [
-    { status: "ganado", label: "Marcar como ganado" },
-    { status: "perdido", label: "Marcar como perdido" },
-    { status: "descartado", label: "Descartar" },
+  interested: [
+    { status: "won", label: "Marcar como ganado" },
+    { status: "lost", label: "Marcar como perdido" },
+    { status: "discarded", label: "Descartar" },
   ],
-  ganado: [],
-  perdido: [
-    { status: "interesado", label: "Reabrir" },
+  won: [],
+  lost: [
+    { status: "interested", label: "Reabrir" },
   ],
-  descartado: [
-    { status: "nuevo", label: "Reabrir" },
+  discarded: [
+    { status: "new", label: "Reabrir" },
   ],
 }

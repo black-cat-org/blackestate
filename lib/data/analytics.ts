@@ -26,12 +26,12 @@ import type { LeadStatus } from "@/lib/types/lead"
 const MONTHS_6 = ["Sep", "Oct", "Nov", "Dic", "Ene", "Feb"]
 
 const STATUS_HSL: Record<LeadStatus, string> = {
-  nuevo: "hsl(217, 91%, 60%)",
-  contactado: "hsl(45, 93%, 47%)",
-  interesado: "hsl(271, 91%, 65%)",
-  ganado: "hsl(142, 71%, 45%)",
-  perdido: "hsl(0, 72%, 51%)",
-  descartado: "hsl(0, 0%, 60%)",
+  new: "hsl(217, 91%, 60%)",
+  contacted: "hsl(45, 93%, 47%)",
+  interested: "hsl(271, 91%, 65%)",
+  won: "hsl(142, 71%, 45%)",
+  lost: "hsl(0, 72%, 51%)",
+  discarded: "hsl(0, 0%, 60%)",
 }
 
 /** Deterministic pseudo-value based on two indices. Never uses Math.random(). */
@@ -46,8 +46,8 @@ function synth(base: number, i: number, j: number = 0): number {
 export async function getOverviewStats(): Promise<StatCardData[]> {
   const leads = await getLeads()
 
-  const newLeads = leads.filter((l) => l.status === "nuevo").length
-  const closedLeads = leads.filter((l) => l.status === "ganado").length
+  const newLeads = leads.filter((l) => l.status === "new").length
+  const closedLeads = leads.filter((l) => l.status === "won").length
   const total = leads.length
   const conversionRate = total > 0 ? Math.round((closedLeads / total) * 1000) / 10 : 0
 
@@ -103,8 +103,8 @@ export async function getLeadsTrend(): Promise<TimeSeriesPoint[]> {
 export async function getConversionsByMonth(): Promise<TimeSeriesPoint[]> {
   return MONTHS_6.map((date, i) => ({
     date,
-    ganados: synth(1, i),
-    perdidos: synth(2, i, 1),
+    won: synth(1, i),
+    lost: synth(2, i, 1),
   }))
 }
 
@@ -115,7 +115,7 @@ export async function getLeadsSourceDistribution(): Promise<
   const counts: Record<string, number> = {}
 
   for (const lead of leads) {
-    const key = lead.source ?? "otro"
+    const key = lead.source ?? "other"
     counts[key] = (counts[key] || 0) + 1
   }
 
@@ -138,11 +138,11 @@ export async function getAlerts(): Promise<AlertItem[]> {
 
   const alerts: AlertItem[] = []
 
-  // Leads in "nuevo" status created >48h ago
+  // Leads in "new" status created >48h ago
   const now = new Date()
   const threshold48h = new Date(now.getTime() - 48 * 60 * 60 * 1000)
   const staleLeads = leads.filter(
-    (l) => l.status === "nuevo" && new Date(l.createdAt) < threshold48h
+    (l) => l.status === "new" && new Date(l.createdAt) < threshold48h
   )
   for (const lead of staleLeads) {
     alerts.push({
@@ -155,8 +155,8 @@ export async function getAlerts(): Promise<AlertItem[]> {
     })
   }
 
-  // Appointments with "solicitada" status (pending confirmation)
-  const pendingAppts = appointments.filter((a) => a.status === "solicitada")
+  // Appointments with "requested" status (pending confirmation)
+  const pendingAppts = appointments.filter((a) => a.status === "requested")
   for (const apt of pendingAppts) {
     alerts.push({
       id: `alert-apt-${apt.id}`,
@@ -179,25 +179,25 @@ export async function getHighlights(): Promise<string[]> {
 
   const highlights: string[] = []
 
-  const ganados = leads.filter((l) => l.status === "ganado").length
-  if (ganados > 0) highlights.push(`Cerraste ${ganados} venta${ganados > 1 ? "s" : ""} este período`)
+  const wonCount = leads.filter((l) => l.status === "won").length
+  if (wonCount > 0) highlights.push(`Cerraste ${wonCount} venta${wonCount > 1 ? "s" : ""} este período`)
 
   const sources: Record<string, number> = {}
   for (const l of leads) {
-    const s = l.source ?? "otro"
+    const s = l.source ?? "other"
     sources[s] = (sources[s] || 0) + 1
   }
   const topSource = Object.entries(sources).sort((a, b) => b[1] - a[1])[0]
   if (topSource) {
-    const sourceNames: Record<string, string> = { facebook: "Facebook", instagram: "Instagram", whatsapp: "WhatsApp", tiktok: "TikTok", otro: "Otro" }
+    const sourceNames: Record<string, string> = { facebook: "Facebook", instagram: "Instagram", whatsapp: "WhatsApp", tiktok: "TikTok", other: "Otro" }
     highlights.push(`Tu mejor fuente fue ${sourceNames[topSource[0]] || topSource[0]} con ${topSource[1]} leads`)
   }
 
-  const botAppointments = appointments.filter((a) => a.status === "confirmada" || a.status === "completada").length
+  const botAppointments = appointments.filter((a) => a.status === "confirmed" || a.status === "completed").length
   if (botAppointments > 0) highlights.push(`El bot agendó ${botAppointments} cita${botAppointments > 1 ? "s" : ""} sin tu intervención`)
 
-  const interesados = leads.filter((l) => l.status === "interesado").length
-  if (interesados > 0) highlights.push(`Tienes ${interesados} lead${interesados > 1 ? "s" : ""} activamente interesado${interesados > 1 ? "s" : ""}`)
+  const interestedCount = leads.filter((l) => l.status === "interested").length
+  if (interestedCount > 0) highlights.push(`Tienes ${interestedCount} lead${interestedCount > 1 ? "s" : ""} activamente interesado${interestedCount > 1 ? "s" : ""}`)
 
   return highlights
 }
@@ -208,15 +208,15 @@ export async function getHighlights(): Promise<string[]> {
 
 export async function getLeadsStats(): Promise<StatCardData[]> {
   const leads = await getLeads()
-  const activeLeads = leads.filter((l) => l.status !== "descartado")
+  const activeLeads = leads.filter((l) => l.status !== "discarded")
   const total = activeLeads.length
-  const closed = activeLeads.filter((l) => l.status === "ganado").length
+  const closed = activeLeads.filter((l) => l.status === "won").length
   const closeRate = total > 0 ? Math.round((closed / total) * 1000) / 10 : 0
 
   const avgCloseDays = 12
   const leadsPerClose = closeRate > 0 ? Math.round(100 / closeRate) : 0
-  const contacted = activeLeads.filter((l) => l.status !== "nuevo").length
-  const responded = activeLeads.filter((l) => l.status === "contactado" || l.status === "interesado" || l.status === "ganado").length
+  const contacted = activeLeads.filter((l) => l.status !== "new").length
+  const responded = activeLeads.filter((l) => l.status === "contacted" || l.status === "interested" || l.status === "won").length
   const responseRate = contacted > 0 ? Math.round((responded / contacted) * 1000) / 10 : 0
   const responsePer10 = contacted > 0 ? Math.round((responded / contacted) * 10) : 0
 
@@ -258,7 +258,7 @@ export async function getLeadsStats(): Promise<StatCardData[]> {
 
 export async function getConversionFunnel(): Promise<FunnelStep[]> {
   const leads = await getLeads()
-  const statusOrder: LeadStatus[] = ["nuevo", "contactado", "interesado", "ganado", "perdido", "descartado"]
+  const statusOrder: LeadStatus[] = ["new", "contacted", "interested", "won", "lost", "discarded"]
 
   return statusOrder.map((status) => ({
     label: LEAD_STATUS_LABELS[status],
@@ -268,7 +268,7 @@ export async function getConversionFunnel(): Promise<FunnelStep[]> {
 }
 
 export async function getLeadsBySourceOverTime(): Promise<TimeSeriesPoint[]> {
-  const sources = ["facebook", "instagram", "whatsapp", "tiktok", "otro"]
+  const sources = ["facebook", "instagram", "whatsapp", "tiktok", "other"]
   return MONTHS_6.map((date, i) => {
     const point: TimeSeriesPoint = { date }
     for (let j = 0; j < sources.length; j++) {
@@ -280,14 +280,14 @@ export async function getLeadsBySourceOverTime(): Promise<TimeSeriesPoint[]> {
 
 export async function getConversionBySource(): Promise<SourceMetric[]> {
   const leads = await getLeads()
-  const sourceKeys = ["facebook", "instagram", "whatsapp", "tiktok", "otro"]
+  const sourceKeys = ["facebook", "instagram", "whatsapp", "tiktok", "other"]
 
   return sourceKeys.map((source, idx) => {
     const sourceLeads = leads.filter(
-      (l) => (l.source ?? "otro") === source
+      (l) => (l.source ?? "other") === source
     )
     const count = sourceLeads.length
-    const closed = sourceLeads.filter((l) => l.status === "ganado").length
+    const closed = sourceLeads.filter((l) => l.status === "won").length
     const realRate = count > 0 ? Math.round((closed / count) * 1000) / 10 : 0
     // Use real rate if available, otherwise deterministic mock so chart isn't empty
     const mockRates = [25, 50, 15, 10, 5]
@@ -370,7 +370,7 @@ export async function getLeadsByPropertyType(): Promise<
 
 export async function getPropertiesStats(): Promise<StatCardData[]> {
   const properties = await getProperties()
-  const active = properties.filter((p) => p.status === "activa")
+  const active = properties.filter((p) => p.status === "active")
 
   // Average price in USD for active properties with USD pricing
   const usdPrices = active
@@ -424,10 +424,10 @@ export async function getInventoryStatus(): Promise<
   { status: string; label: string; count: number; percentage: number; fill: string }[]
 > {
   const validStatuses = [
-    { status: "activa", label: "Activa", fill: "hsl(142, 71%, 45%)", count: 12 },
-    { status: "pausada", label: "Pausada", fill: "hsl(25, 95%, 53%)", count: 4 },
-    { status: "vendida", label: "Vendida", fill: "hsl(217, 91%, 60%)", count: 3 },
-    { status: "alquilada", label: "Alquilada", fill: "hsl(271, 91%, 65%)", count: 2 },
+    { status: "active", label: "Activa", fill: "hsl(142, 71%, 45%)", count: 12 },
+    { status: "paused", label: "Pausada", fill: "hsl(25, 95%, 53%)", count: 4 },
+    { status: "sold", label: "Vendida", fill: "hsl(217, 91%, 60%)", count: 3 },
+    { status: "rented", label: "Alquilada", fill: "hsl(271, 91%, 65%)", count: 2 },
     { status: "anticretico", label: "En anticrético", fill: "hsl(45, 93%, 47%)", count: 1 },
   ]
 
@@ -505,16 +505,16 @@ export async function getPriceTrendByZone(): Promise<TimeSeriesPoint[]> {
 
 export async function getFinancialStats(): Promise<StatCardData[]> {
   const commissionRate = 0.03
-  const commissionsCobradas = 36000
+  const collectedCommissions = 36000
   const pipelineValue = 1200000
   const pendingCommissions = Math.round(pipelineValue * commissionRate)
   const closedOps = 8
-  const avgCommission = Math.round(commissionsCobradas / closedOps)
+  const avgCommission = Math.round(collectedCommissions / closedOps)
 
   return [
     {
       title: "Comisiones cobradas",
-      value: `US$ ${(commissionsCobradas / 1000).toFixed(0)}K`,
+      value: `US$ ${(collectedCommissions / 1000).toFixed(0)}K`,
       subtitle: "Acumulado del período",
       change: 8.0,
       helpText: "Es el dinero que ya ganaste en este período — la suma de todas las comisiones que registraste como cobradas. Si cerraste una venta de $200k con 3% de comisión y la registraste, esos $6k aparecen aquí. Solo cuenta lo que tú registras manualmente.",
@@ -556,14 +556,14 @@ export async function getRevenueByMonth(): Promise<TimeSeriesPoint[]> {
   const revenues = [4200, 5800, 3500, 6100, 4800, 7200]
 
   return MONTHS_6.map((date, i) => {
-    const ingreso = revenues[i]
-    // Meta = previous month * (1 + growthRate), no meta for first month
-    const meta = i > 0 ? Math.round(revenues[i - 1] * (1 + growthRate)) : undefined
+    const revenue = revenues[i]
+    // Goal = previous month * (1 + growthRate), no goal for first month
+    const goal = i > 0 ? Math.round(revenues[i - 1] * (1 + growthRate)) : undefined
 
     return {
       date,
-      ingreso,
-      ...(meta !== undefined ? { meta } : {}),
+      revenue,
+      ...(goal !== undefined ? { goal } : {}),
     }
   })
 }
@@ -576,7 +576,7 @@ export async function getPipelineByStage(): Promise<PipelineStage[]> {
   // Temporal: ~US$ 1.8K/month * 3 months * 3% = ~US$ 162
   return [
     {
-      stage: "venta",
+      stage: "sale",
       label: "Venta",
       value: 8500,
       probability: 100,
@@ -590,14 +590,14 @@ export async function getPipelineByStage(): Promise<PipelineStage[]> {
       fill: "hsl(45, 93%, 47%)",
     },
     {
-      stage: "alquiler",
+      stage: "rent",
       label: "Alquiler",
       value: 1200,
       probability: 100,
       fill: "hsl(142, 71%, 45%)",
     },
     {
-      stage: "temporal",
+      stage: "short_term",
       label: "Temporal",
       value: 480,
       probability: 100,
@@ -614,7 +614,7 @@ export async function getCommissionsBySource(): Promise<
     { source: "instagram", label: "Instagram", amount: 8500 },
     { source: "whatsapp", label: "WhatsApp", amount: 7200 },
     { source: "tiktok", label: "TikTok", amount: 4800 },
-    { source: "otro", label: "Otro", amount: 2700 },
+    { source: "other", label: "Otro", amount: 2700 },
   ]
 }
 
@@ -623,8 +623,8 @@ export async function getCommissionsByOperationType(): Promise<
 > {
   return [
     {
-      type: "venta",
-      label: OPERATION_TYPE_LABELS["venta"],
+      type: "sale",
+      label: OPERATION_TYPE_LABELS["sale"],
       amount: 19800,
       percentage: 55,
     },
@@ -635,14 +635,14 @@ export async function getCommissionsByOperationType(): Promise<
       percentage: 20,
     },
     {
-      type: "alquiler",
-      label: OPERATION_TYPE_LABELS["alquiler"],
+      type: "rent",
+      label: OPERATION_TYPE_LABELS["rent"],
       amount: 6500,
       percentage: 18,
     },
     {
-      type: "temporal",
-      label: OPERATION_TYPE_LABELS["temporal"],
+      type: "short_term",
+      label: OPERATION_TYPE_LABELS["short_term"],
       amount: 2500,
       percentage: 7,
     },
@@ -772,11 +772,11 @@ export async function getBotActivityByDay(): Promise<TimeSeriesPoint[]> {
     // Deterministic values: higher on weekdays (0-4), lower on weekends (5-6)
     const dayOfWeek = (i + 1) % 7 // Tue start
     const isWeekend = dayOfWeek >= 5
-    const mensajes = isWeekend ? 2 + (i % 3) : 5 + (i % 4) * 2 + ((i + 1) % 3)
-    const propiedades = isWeekend ? 1 + (i % 2) : 2 + (i % 3) + ((i + 2) % 2)
-    const citas = isWeekend ? 0 : (i % 5 === 0 ? 2 : i % 3 === 0 ? 1 : 0)
+    const messages = isWeekend ? 2 + (i % 3) : 5 + (i % 4) * 2 + ((i + 1) % 3)
+    const properties = isWeekend ? 1 + (i % 2) : 2 + (i % 3) + ((i + 2) % 2)
+    const appointments = isWeekend ? 0 : (i % 5 === 0 ? 2 : i % 3 === 0 ? 1 : 0)
 
-    points.push({ date: dateStr, mensajes, propiedades, citas })
+    points.push({ date: dateStr, messages, properties, appointments })
   }
   return points
 }

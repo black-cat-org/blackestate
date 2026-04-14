@@ -16,13 +16,13 @@ interface LeadPropertyQueueItemProps {
 }
 
 const statusConfig = {
-  pendiente: { label: "Pendiente", icon: Clock, color: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300" },
-  enviada: { label: "Enviada", icon: CheckCircle2, color: "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300" },
-  pausada: { label: "Pausada", icon: Pause, color: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300" },
+  pending: { label: "Pendiente", icon: Clock, color: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300" },
+  sent: { label: "Enviada", icon: CheckCircle2, color: "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300" },
+  paused: { label: "Pausada", icon: Pause, color: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300" },
 }
 
 export function LeadPropertyQueueItem({ item, onSendNow, onRemove, actionsDisabled }: LeadPropertyQueueItemProps) {
-  const isSent = item.status === "enviada"
+  const isSent = item.status === "sent"
   const draggable = !isSent
   const showActions = !isSent && !actionsDisabled
 
@@ -65,12 +65,12 @@ export function LeadPropertyQueueItem({ item, onSendNow, onRemove, actionsDisabl
             <StatusIcon className="mr-0.5 size-2.5" />
             {config.label}
           </Badge>
-          {item.status === "pendiente" && item.estimatedSendAt && (
+          {item.status === "pending" && item.estimatedSendAt && (
             <span className="text-[10px] text-muted-foreground">
               {formatRelativeTime(item.estimatedSendAt)}
             </span>
           )}
-          {item.status === "enviada" && item.sentAt && (
+          {item.status === "sent" && item.sentAt && (
             <span className="text-[10px] text-muted-foreground">
               {formatRelativeTime(item.sentAt)}
             </span>

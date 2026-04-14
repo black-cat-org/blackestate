@@ -5,7 +5,7 @@ import { AppointmentCard } from "@/components/appointments/appointment-card"
 import { APPOINTMENT_STATUS_LABELS, APPOINTMENT_STATUS_COLORS } from "@/lib/constants/bot"
 import type { Appointment, AppointmentStatus } from "@/lib/types/bot"
 
-const COLUMNS: AppointmentStatus[] = ["solicitada", "confirmada", "completada", "cancelada"]
+const COLUMNS: AppointmentStatus[] = ["requested", "confirmed", "completed", "cancelled"]
 
 interface AppointmentsKanbanProps {
   appointments: Appointment[]
@@ -15,10 +15,10 @@ interface AppointmentsKanbanProps {
 export function AppointmentsKanban({ appointments, onUpdate }: AppointmentsKanbanProps) {
   const grouped = useMemo(() => {
     const map: Record<AppointmentStatus, Appointment[]> = {
-      solicitada: [],
-      confirmada: [],
-      completada: [],
-      cancelada: [],
+      requested: [],
+      confirmed: [],
+      completed: [],
+      cancelled: [],
     }
     for (const apt of appointments) {
       map[apt.status].push(apt)

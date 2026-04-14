@@ -9,7 +9,7 @@ export const leadPropertyQueue = pgTable("lead_property_queue", {
   leadId: text("lead_id").notNull().references(() => leads.id),
   propertyId: text("property_id").notNull().references(() => properties.id),
 
-  status: queueItemStatusEnum("status").notNull().default("pendiente"),
+  status: queueItemStatusEnum("status").notNull().default("pending"),
   sortOrder: integer("sort_order").notNull().default(0),
 
   estimatedSendAt: timestamp("estimated_send_at", { withTimezone: true }),

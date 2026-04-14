@@ -1,4 +1,4 @@
-export type AiContentType = "descripcion" | "caption" | "hashtags" | "brochure"
+export type AiContentType = "description" | "caption" | "hashtags" | "brochure"
 export type AiPlatform = "facebook" | "instagram" | "tiktok" | "whatsapp"
 
 export interface AiContentAnalytics {

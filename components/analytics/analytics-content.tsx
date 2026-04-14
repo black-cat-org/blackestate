@@ -192,7 +192,7 @@ export function AnalyticsContent({ overviewData, leadsData, propertiesData, fina
         for (const point of financialData.revenueByMonth) {
           rows.push([
             point.date,
-            typeof point.ingreso === "number" ? `$${point.ingreso.toLocaleString()}` : String(point.ingreso ?? ""),
+            typeof point.revenue === "number" ? `$${point.revenue.toLocaleString()}` : String(point.revenue ?? ""),
             typeof point.meta === "number" ? `$${point.meta.toLocaleString()}` : String(point.meta ?? ""),
           ])
         }

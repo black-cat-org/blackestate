@@ -126,8 +126,8 @@ export function BusinessSection({ data: initialData }: BusinessSectionProps) {
                 min={0}
                 max={100}
                 step={0.5}
-                value={data.commissionByType.venta}
-                onChange={(e) => updateCommissionByType("venta", Number(e.target.value))}
+                value={data.commissionByType.sale}
+                onChange={(e) => updateCommissionByType("sale", Number(e.target.value))}
               />
             </div>
             <div className="space-y-2">
@@ -137,8 +137,8 @@ export function BusinessSection({ data: initialData }: BusinessSectionProps) {
                 min={0}
                 max={100}
                 step={0.5}
-                value={data.commissionByType.alquiler}
-                onChange={(e) => updateCommissionByType("alquiler", Number(e.target.value))}
+                value={data.commissionByType.rent}
+                onChange={(e) => updateCommissionByType("rent", Number(e.target.value))}
               />
               <p className="text-xs text-muted-foreground">Generalmente equivale a 1 mes de alquiler (100%)</p>
             </div>
@@ -160,8 +160,8 @@ export function BusinessSection({ data: initialData }: BusinessSectionProps) {
                 min={0}
                 max={100}
                 step={0.5}
-                value={data.commissionByType.temporal}
-                onChange={(e) => updateCommissionByType("temporal", Number(e.target.value))}
+                value={data.commissionByType.short_term}
+                onChange={(e) => updateCommissionByType("short_term", Number(e.target.value))}
               />
               <p className="text-xs text-muted-foreground">Generalmente equivale a 1 mes de alquiler (100%)</p>
             </div>

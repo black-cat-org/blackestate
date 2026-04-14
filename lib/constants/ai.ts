@@ -2,7 +2,7 @@ import { Facebook, Instagram, Hash, MessageCircle, type LucideIcon } from "lucid
 import type { AiContentType, AiPlatform } from "@/lib/types/ai-content"
 
 export const AI_CONTENT_TYPE_LABELS: Record<AiContentType, string> = {
-  descripcion: "Descripcion",
+  description: "Descripción",
   caption: "Caption",
   hashtags: "Hashtags",
   brochure: "Brochure",

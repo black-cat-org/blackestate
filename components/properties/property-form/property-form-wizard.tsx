@@ -68,12 +68,12 @@ export function PropertyFormWizard({ propertyId, initialData }: PropertyFormWiza
     const values = form.getValues()
     try {
       if (isEditing) {
-        await updateProperty(propertyId, { ...buildPropertyData(values), status: "pausada" })
+        await updateProperty(propertyId, { ...buildPropertyData(values), status: "paused" })
         toast.success("Propiedad guardada como borrador")
         router.push(`/dashboard/properties/${propertyId}`)
       } else {
         const property = await createProperty(values as PropertyFormData)
-        await updateProperty(property.id, { status: "pausada" })
+        await updateProperty(property.id, { status: "paused" })
         toast.success("Propiedad guardada como borrador")
         router.push("/dashboard/properties")
       }
@@ -86,12 +86,12 @@ export function PropertyFormWizard({ propertyId, initialData }: PropertyFormWiza
     const values = form.getValues()
     try {
       if (isEditing) {
-        await updateProperty(propertyId, { ...buildPropertyData(values), status: "activa" })
+        await updateProperty(propertyId, { ...buildPropertyData(values), status: "active" })
         toast.success("Propiedad publicada")
         router.push(`/dashboard/properties/${propertyId}`)
       } else {
         const property = await createProperty(values as PropertyFormData)
-        await updateProperty(property.id, { status: "activa" })
+        await updateProperty(property.id, { status: "active" })
         toast.success("Propiedad publicada")
         router.push("/dashboard/properties")
       }

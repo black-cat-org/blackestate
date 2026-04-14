@@ -24,7 +24,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const { id } = await params
   const property = await getPropertyById(id)
 
-  if (!property || property.status !== "activa") {
+  if (!property || property.status !== "active") {
     return { title: "Propiedad no encontrada | Black Estate" }
   }
 
@@ -50,7 +50,7 @@ export default async function PropertyLandingPage({ params, searchParams }: Page
   const { src } = await searchParams
   const property = await getPropertyById(id)
 
-  if (!property || property.status !== "activa") {
+  if (!property || property.status !== "active") {
     notFound()
   }
 

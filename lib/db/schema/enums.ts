@@ -6,11 +6,11 @@ export const propertyTypeEnum = pgEnum("property_type", [
 ]);
 
 export const operationTypeEnum = pgEnum("operation_type", [
-  "venta", "alquiler", "temporal", "anticretico",
+  "sale", "rent", "short_term", "anticretico",
 ]);
 
 export const propertyStatusEnum = pgEnum("property_status", [
-  "borrador", "en_revision", "activa", "pausada", "vendida", "alquilada", "rechazada",
+  "draft", "in_review", "active", "paused", "sold", "rented", "rejected",
 ]);
 
 export const currencyEnum = pgEnum("currency", ["USD", "BOB"]);
@@ -18,35 +18,35 @@ export const currencyEnum = pgEnum("currency", ["USD", "BOB"]);
 export const surfaceUnitEnum = pgEnum("surface_unit", ["m2", "ha"]);
 
 export const propertyConditionEnum = pgEnum("property_condition", [
-  "nueva", "excelente", "buena", "regular", "a_reciclar",
+  "new", "excellent", "good", "fair", "to_renovate",
 ]);
 
 export const orientationEnum = pgEnum("orientation", [
-  "norte", "sur", "este", "oeste", "noreste", "noroeste", "sureste", "suroeste",
+  "north", "south", "east", "west", "northeast", "northwest", "southeast", "southwest",
 ]);
 
 // Leads
 export const leadStatusEnum = pgEnum("lead_status", [
-  "nuevo", "contactado", "interesado", "ganado", "perdido", "descartado",
+  "new", "contacted", "interested", "won", "lost", "discarded",
 ]);
 
 export const leadSourceEnum = pgEnum("lead_source", [
-  "facebook", "instagram", "whatsapp", "tiktok", "google", "referido", "directo",
+  "facebook", "instagram", "whatsapp", "tiktok", "google", "referral", "direct",
 ]);
 
 // Lead property queue
 export const queueItemStatusEnum = pgEnum("queue_item_status", [
-  "pendiente", "enviada", "pausada",
+  "pending", "sent", "paused",
 ]);
 
 // Appointments
 export const appointmentStatusEnum = pgEnum("appointment_status", [
-  "solicitada", "confirmada", "completada", "cancelada",
+  "requested", "confirmed", "completed", "cancelled",
 ]);
 
 // Bot
 export const conversationStatusEnum = pgEnum("conversation_status", [
-  "activa", "pausada", "cerrada",
+  "active", "paused", "closed",
 ]);
 
 export const messageSenderEnum = pgEnum("message_sender", [
@@ -63,7 +63,7 @@ export const messageStatusEnum = pgEnum("message_status", [
 
 // AI Contents
 export const aiContentTypeEnum = pgEnum("ai_content_type", [
-  "descripcion", "caption", "hashtags", "brochure",
+  "description", "caption", "hashtags", "brochure",
 ]);
 
 export const aiPlatformEnum = pgEnum("ai_platform", [

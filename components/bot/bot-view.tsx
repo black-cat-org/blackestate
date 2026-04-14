@@ -27,10 +27,10 @@ interface BotViewProps {
 type ViewMode = "leads" | "tipo" | "cronologico"
 
 const CATEGORY_TYPES: Record<string, string[]> = {
-  mensajes: ["message_sent", "message_received"],
-  propiedades: ["property_sent", "property_viewed"],
-  citas: ["appointment_requested", "appointment_confirmed", "appointment_completed", "appointment_cancelled"],
-  sistema: ["lead_created", "reminder_sent"],
+  messages: ["message_sent", "message_received"],
+  properties: ["property_sent", "property_viewed"],
+  appointments: ["appointment_requested", "appointment_confirmed", "appointment_completed", "appointment_cancelled"],
+  system: ["lead_created", "reminder_sent"],
 }
 
 
@@ -111,10 +111,10 @@ export function BotView({ activities, messages }: BotViewProps) {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todas las categorías</SelectItem>
-              <SelectItem value="mensajes">Mensajes</SelectItem>
-              <SelectItem value="propiedades">Propiedades</SelectItem>
-              <SelectItem value="citas">Citas</SelectItem>
-              <SelectItem value="sistema">Sistema</SelectItem>
+              <SelectItem value="messages">Mensajes</SelectItem>
+              <SelectItem value="properties">Propiedades</SelectItem>
+              <SelectItem value="appointments">Citas</SelectItem>
+              <SelectItem value="system">Sistema</SelectItem>
             </SelectContent>
           </Select>
           <Select value={activityType} onValueChange={setActivityType}>

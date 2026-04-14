@@ -16,10 +16,10 @@ export interface BusinessSettings {
   sameCommissionForAll: boolean
   defaultCommissionRate: number
   commissionByType: {
-    venta: number
-    alquiler: number
+    sale: number
+    rent: number
     anticretico: number
-    temporal: number
+    short_term: number
   }
 }
 

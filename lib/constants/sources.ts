@@ -3,7 +3,7 @@ export const VALID_SOURCES = [
   "instagram",
   "tiktok",
   "whatsapp",
-  "otro",
+  "other",
 ] as const
 
 export type LeadSource = (typeof VALID_SOURCES)[number]
@@ -13,7 +13,7 @@ export const SOURCE_LABELS: Record<LeadSource, string> = {
   instagram: "Instagram",
   tiktok: "TikTok",
   whatsapp: "WhatsApp",
-  otro: "Otro",
+  other: "Otro",
 }
 
 export function sanitizeSource(src: string | null | undefined): string | null {

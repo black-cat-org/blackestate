@@ -26,9 +26,9 @@ export function AppointmentCard({ appointment, onUpdate, showDate }: Appointment
   const router = useRouter()
   const [notesOpen, setNotesOpen] = useState(false)
   const leadColor = getLeadColor(appointment.leadId)
-  const isActionable = appointment.status === "solicitada" || appointment.status === "confirmada"
-  const canConfirm = appointment.status === "solicitada"
-  const canCancel = appointment.status === "solicitada" || appointment.status === "confirmada"
+  const isActionable = appointment.status === "requested" || appointment.status === "confirmed"
+  const canConfirm = appointment.status === "requested"
+  const canCancel = appointment.status === "requested" || appointment.status === "confirmed"
   const hasNotes = !!appointment.notes
 
   async function handleTransition(newStatus: AppointmentStatus) {
@@ -103,7 +103,7 @@ export function AppointmentCard({ appointment, onUpdate, showDate }: Appointment
                     variant="outline"
                     size="sm"
                     className="h-7 text-xs"
-                    onClick={() => handleTransition("cancelada")}
+                    onClick={() => handleTransition("cancelled")}
                   >
                     Cancelar
                   </Button>
@@ -113,7 +113,7 @@ export function AppointmentCard({ appointment, onUpdate, showDate }: Appointment
                     variant="default"
                     size="sm"
                     className="h-7 text-xs"
-                    onClick={() => handleTransition("confirmada")}
+                    onClick={() => handleTransition("confirmed")}
                   >
                     Confirmar
                   </Button>

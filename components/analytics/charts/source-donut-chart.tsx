@@ -9,7 +9,7 @@ const SOURCE_COLORS: Record<string, string> = {
   instagram: "hsl(330, 70%, 50%)",
   whatsapp: "hsl(142, 70%, 40%)",
   tiktok: "hsl(0, 0%, 10%)",
-  otro: "hsl(0, 0%, 60%)",
+  other: "hsl(0, 0%, 60%)",
 }
 
 const chartConfig = {
@@ -18,7 +18,7 @@ const chartConfig = {
   instagram: { label: "Instagram", color: SOURCE_COLORS.instagram },
   whatsapp: { label: "WhatsApp", color: SOURCE_COLORS.whatsapp },
   tiktok: { label: "TikTok", color: SOURCE_COLORS.tiktok },
-  otro: { label: "Otro", color: SOURCE_COLORS.otro },
+  other: { label: "Otro", color: SOURCE_COLORS.other },
 } satisfies ChartConfig
 
 interface SourceDonutChartProps {
@@ -39,7 +39,7 @@ export function SourceDonutChart({ data }: SourceDonutChartProps) {
             <ChartTooltip content={<ChartTooltipContent nameKey="source" />} />
             <Pie data={data} dataKey="count" nameKey="label" innerRadius={50} outerRadius={80} paddingAngle={2}>
               {data.map((entry) => (
-                <Cell key={entry.source} fill={SOURCE_COLORS[entry.source] || SOURCE_COLORS.otro} />
+                <Cell key={entry.source} fill={SOURCE_COLORS[entry.source] || SOURCE_COLORS.other} />
               ))}
             </Pie>
             <text x="50%" y="46%" textAnchor="middle" dominantBaseline="middle" className="fill-foreground text-2xl font-bold">
@@ -53,7 +53,7 @@ export function SourceDonutChart({ data }: SourceDonutChartProps) {
         <div className="mt-2 flex flex-wrap justify-center gap-3">
           {data.map((entry) => (
             <div key={entry.source} className="flex items-center gap-1.5 text-xs">
-              <div className="size-2.5 rounded-full" style={{ backgroundColor: SOURCE_COLORS[entry.source] || SOURCE_COLORS.otro }} />
+              <div className="size-2.5 rounded-full" style={{ backgroundColor: SOURCE_COLORS[entry.source] || SOURCE_COLORS.other }} />
               <span className="text-muted-foreground">{entry.label}</span>
               <span className="font-medium">{entry.count}</span>
               <span className="text-muted-foreground">({entry.percentage}%)</span>

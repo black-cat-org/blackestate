@@ -14,14 +14,14 @@ export async function getDashboardStats() {
   ])
 
   const totalLeads = leads.length
-  const newLeadsCount = leads.filter((l) => l.status === "nuevo").length
+  const newLeadsCount = leads.filter((l) => l.status === "new").length
   const totalProperties = properties.length
-  const activePropertiesCount = properties.filter((p) => p.status === "activa").length
+  const activePropertiesCount = properties.filter((p) => p.status === "active").length
   const totalAppointments = appointments.length
   const pendingAppointmentsCount = appointments.filter(
-    (a) => a.status === "solicitada" || a.status === "confirmada"
+    (a) => a.status === "requested" || a.status === "confirmed"
   ).length
-  const closedCount = leads.filter((l) => l.status === "ganado").length
+  const closedCount = leads.filter((l) => l.status === "won").length
   const conversionRate = totalLeads > 0 ? (closedCount / totalLeads) * 100 : 0
 
   return {
@@ -41,7 +41,7 @@ export async function getLeadsBySource() {
   const counts: Record<string, number> = {}
 
   for (const lead of leads) {
-    const key = lead.source ?? "otro"
+    const key = lead.source ?? "other"
     counts[key] = (counts[key] || 0) + 1
   }
 
@@ -62,14 +62,14 @@ export async function getLeadsByStatus() {
     counts[lead.status] = (counts[lead.status] || 0) + 1
   }
 
-  const statusOrder: LeadStatus[] = ["nuevo", "contactado", "interesado", "ganado", "perdido", "descartado"]
+  const statusOrder: LeadStatus[] = ["new", "contacted", "interested", "won", "lost", "discarded"]
   const colors: Record<LeadStatus, string> = {
-    nuevo: "hsl(217, 91%, 60%)",
-    contactado: "hsl(45, 93%, 47%)",
-    interesado: "hsl(271, 91%, 65%)",
-    ganado: "hsl(142, 71%, 45%)",
-    perdido: "hsl(0, 72%, 51%)",
-    descartado: "hsl(0, 0%, 60%)",
+    new: "hsl(217, 91%, 60%)",
+    contacted: "hsl(45, 93%, 47%)",
+    interested: "hsl(271, 91%, 65%)",
+    won: "hsl(142, 71%, 45%)",
+    lost: "hsl(0, 72%, 51%)",
+    discarded: "hsl(0, 0%, 60%)",
   }
 
   return statusOrder.map((status) => ({
@@ -99,7 +99,7 @@ export async function getUpcomingAppointments() {
   const appointments = await getAppointments()
 
   return appointments
-    .filter((a) => a.status === "solicitada" || a.status === "confirmada")
+    .filter((a) => a.status === "requested" || a.status === "confirmed")
     .sort((a, b) => {
       const dateA = `${a.date}T${a.time}`
       const dateB = `${b.date}T${b.time}`

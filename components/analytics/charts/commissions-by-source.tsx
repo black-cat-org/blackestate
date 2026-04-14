@@ -10,7 +10,7 @@ const SOURCE_COLORS: Record<string, string> = {
   instagram: "hsl(330, 70%, 50%)",
   whatsapp: "hsl(142, 70%, 40%)",
   tiktok: "hsl(0, 0%, 10%)",
-  otro: "hsl(0, 0%, 60%)",
+  other: "hsl(0, 0%, 60%)",
 }
 
 const chartConfig = {
@@ -41,7 +41,7 @@ export function CommissionsBySource({ data }: CommissionsBySourceProps) {
             <ChartTooltip content={<ChartTooltipContent formatter={(value) => `US$ ${Number(value).toLocaleString("es-BO")}`} />} />
             <Bar dataKey="amount" radius={4}>
               {sorted.map((entry) => (
-                <Cell key={entry.source} fill={SOURCE_COLORS[entry.source] || SOURCE_COLORS.otro} />
+                <Cell key={entry.source} fill={SOURCE_COLORS[entry.source] || SOURCE_COLORS.other} />
               ))}
               <LabelList
                 dataKey="amount"

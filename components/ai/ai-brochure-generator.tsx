@@ -139,24 +139,24 @@ export function AiBrochureGenerator({ property, onGenerated }: AiBrochureGenerat
         const amenityText = property.amenities
           .map((a) => {
             const opt = [
-              { value: "pileta", label: "Pileta" },
-              { value: "quincho", label: "Quincho" },
-              { value: "parrilla", label: "Parrilla" },
-              { value: "jardin", label: "Jardín" },
-              { value: "terraza", label: "Terraza" },
-              { value: "balcon", label: "Balcón" },
+              { value: "pool", label: "Pileta" },
+              { value: "grill_area", label: "Quincho" },
+              { value: "grill", label: "Parrilla" },
+              { value: "garden", label: "Jardín" },
+              { value: "terrace", label: "Terraza" },
+              { value: "balcony", label: "Balcón" },
               { value: "laundry", label: "Lavadero" },
               { value: "gym", label: "Gimnasio" },
-              { value: "seguridad", label: "Seguridad 24hs" },
-              { value: "ascensor", label: "Ascensor" },
-              { value: "calefaccion", label: "Calefacción" },
-              { value: "aire_acondicionado", label: "Aire acondicionado" },
-              { value: "agua_caliente", label: "Agua caliente" },
-              { value: "gas_natural", label: "Gas natural" },
+              { value: "security", label: "Seguridad 24hs" },
+              { value: "elevator", label: "Ascensor" },
+              { value: "heating", label: "Calefacción" },
+              { value: "air_conditioning", label: "Aire acondicionado" },
+              { value: "hot_water", label: "Agua caliente" },
+              { value: "natural_gas", label: "Gas natural" },
               { value: "sum", label: "SUM" },
               { value: "playroom", label: "Playroom" },
               { value: "solarium", label: "Solarium" },
-              { value: "baulera", label: "Baulera" },
+              { value: "storage_unit", label: "Baulera" },
             ].find((o) => o.value === a)
             return opt?.label || a
           })

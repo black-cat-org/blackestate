@@ -60,53 +60,53 @@ const queueStatusConfig: Record<QueueStatusId, {
   configLink?: string
   configLabel?: string
 }> = {
-  en_espera: {
+  waiting: {
     label: "En espera",
     icon: Clock,
     color: "text-yellow-700 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-950/30 border-yellow-200 dark:border-yellow-900/40",
     configLink: "/dashboard/settings",
     configLabel: "Configurar tiempo de espera",
   },
-  activa: {
+  active: {
     label: "Activa — envío cada 24h",
     icon: Play,
     color: "text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-900/40",
     configLink: "/dashboard/settings",
     configLabel: "Configurar cadencia",
   },
-  pausada_conversacion: {
+  paused_conversation: {
     label: "Pausada — conversación activa",
     icon: MessageSquare,
     color: "text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-900/40",
     configLink: "/dashboard/settings",
     configLabel: "Configurar tiempo de inactividad",
   },
-  pausada_cita: {
+  paused_appointment: {
     label: "Pausada — cita pendiente",
     icon: CalendarClock,
     color: "text-yellow-700 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-950/30 border-yellow-200 dark:border-yellow-900/40",
   },
-  inactiva_catalogo: {
+  inactive_catalog: {
     label: "Pausada — cliente abrió el catálogo",
     icon: BookOpen,
     color: "text-yellow-700 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-950/30 border-yellow-200 dark:border-yellow-900/40",
   },
-  inactiva_cita_completada: {
+  inactive_appointment_completed: {
     label: "Inactiva — cita completada",
     icon: CheckCircle2,
     color: "text-muted-foreground bg-muted/50 border-border",
   },
-  inactiva_ganado: {
+  inactive_won: {
     label: "Inactiva — lead ganado",
     icon: Trophy,
     color: "text-muted-foreground bg-muted/50 border-border",
   },
-  inactiva_perdido: {
+  inactive_lost: {
     label: "Inactiva — lead perdido",
     icon: XCircle,
     color: "text-muted-foreground bg-muted/50 border-border",
   },
-  inactiva_descartado: {
+  inactive_discarded: {
     label: "Inactiva — lead descartado",
     icon: Ban,
     color: "text-muted-foreground bg-muted/50 border-border",
@@ -148,7 +148,7 @@ export function LeadBotTimeline({
   const statusId = queueStatus.status
   const statusCfg = queueStatusConfig[statusId]
   const StatusIcon = statusCfg.icon
-  const isTerminal = statusId === "inactiva_perdido" || statusId === "inactiva_descartado"
+  const isTerminal = statusId === "inactive_lost" || statusId === "inactive_discarded"
   const dimmed = isTerminal
 
   const handleDragEnd = useCallback(async (event: DragEndEvent) => {
@@ -196,7 +196,7 @@ export function LeadBotTimeline({
   }
 
   const queuedPropertyIds = new Set(queue.map((q) => q.propertyId))
-  const sentPropertyIds = new Set(queue.filter((q) => q.status === "enviada").map((q) => q.propertyId))
+  const sentPropertyIds = new Set(queue.filter((q) => q.status === "sent").map((q) => q.propertyId))
   const availableProperties = allProperties.filter(
     (p) => p.id !== leadPropertyId
   )
@@ -289,8 +289,8 @@ export function LeadBotTimeline({
                 {queue.map((item, index) => {
                   const prevItem = index > 0 ? queue[index - 1] : null
                   const showStatusBadge =
-                    item.status !== "enviada" &&
-                    (index === 0 || prevItem?.status === "enviada")
+                    item.status !== "sent" &&
+                    (index === 0 || prevItem?.status === "sent")
 
                   return (
                     <div key={item.id}>
@@ -319,7 +319,7 @@ export function LeadBotTimeline({
             </DndContext>
 
             {/* If all items are sent, show status at the end */}
-            {queue.every((q) => q.status === "enviada") && (
+            {queue.every((q) => q.status === "sent") && (
               <div className={`flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 ${statusCfg.color}`}>
                 <StatusIcon className="size-3" />
                 <span className="text-[11px] font-medium">{statusCfg.label}</span>

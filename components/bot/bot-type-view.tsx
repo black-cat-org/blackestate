@@ -29,28 +29,28 @@ interface Category {
 
 const CATEGORIES: Category[] = [
   {
-    id: "mensajes",
+    id: "messages",
     label: "Mensajes",
     icon: MessageSquare,
     types: ["message_sent", "message_received"],
     color: "text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/30",
   },
   {
-    id: "propiedades",
+    id: "properties",
     label: "Propiedades",
     icon: Send,
     types: ["property_sent", "property_viewed"],
     color: "text-purple-700 dark:text-purple-400 bg-purple-50 dark:bg-purple-950/30",
   },
   {
-    id: "citas",
+    id: "appointments",
     label: "Citas",
     icon: Calendar,
     types: ["appointment_requested", "appointment_confirmed", "appointment_completed", "appointment_cancelled"],
     color: "text-yellow-700 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-950/30",
   },
   {
-    id: "sistema",
+    id: "system",
     label: "Sistema",
     icon: Bot,
     types: ["lead_created", "reminder_sent"],

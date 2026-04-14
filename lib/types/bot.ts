@@ -14,7 +14,7 @@ export interface BotMessage {
   timestamp: string
 }
 
-export type SentPropertyStatus = "enviada" | "vista" | "interesado" | "cita_agendada" | "descartada"
+export type SentPropertyStatus = "sent" | "viewed" | "interested" | "appointment_scheduled" | "discarded"
 
 export interface SentProperty {
   id: string
@@ -27,7 +27,7 @@ export interface SentProperty {
   respondedAt?: string
 }
 
-export type AppointmentStatus = "solicitada" | "confirmada" | "completada" | "cancelada"
+export type AppointmentStatus = "requested" | "confirmed" | "completed" | "cancelled"
 
 export interface Appointment {
   id: string

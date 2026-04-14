@@ -14,7 +14,7 @@ export const leads = pgTable("leads", {
 
   // Lead details
   source: leadSourceEnum("source"),
-  status: leadStatusEnum("status").notNull().default("nuevo"),
+  status: leadStatusEnum("status").notNull().default("new"),
   message: text("message"),
 
   // Preferences

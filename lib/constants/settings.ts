@@ -35,10 +35,10 @@ export const DEFAULT_BUSINESS_SETTINGS: BusinessSettings = {
   sameCommissionForAll: true,
   defaultCommissionRate: 3,
   commissionByType: {
-    venta: 3,
-    alquiler: 100,
+    sale: 3,
+    rent: 100,
     anticretico: 3,
-    temporal: 100,
+    short_term: 100,
   },
 }
 
