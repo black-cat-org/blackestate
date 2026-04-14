@@ -15,6 +15,13 @@
       "when": 1776184553960,
       "tag": "0001_daffy_the_initiative",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1776184929727,
+      "tag": "0002_cheerful_prima",
+      "breakpoints": true
     }
   ]
 }
