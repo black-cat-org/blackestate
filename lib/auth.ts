@@ -7,6 +7,12 @@ import { pool } from "./db/pool";
 export const auth = betterAuth({
   database: pool,
 
+  advanced: {
+    database: {
+      generateId: "uuid",
+    },
+  },
+
   emailAndPassword: {
     enabled: true,
   },
