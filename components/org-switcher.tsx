@@ -19,14 +19,18 @@ import {
 
 export function OrgSwitcher() {
   const { isMobile } = useSidebar()
-  const { data: organizations } = authClient.useListOrganizations()
-  const { data: activeOrg } = authClient.useActiveOrganization()
+  const { data: organizations, isPending: orgsLoading } = authClient.useListOrganizations()
+  const { data: activeOrg, isPending: orgLoading } = authClient.useActiveOrganization()
+
+  const isLoading = orgsLoading || orgLoading
 
   const handleSetActive = async (orgId: string) => {
     await authClient.organization.setActive({ organizationId: orgId })
   }
 
   const hasMultipleOrgs = organizations && organizations.length > 1
+
+  if (isLoading) return null
 
   return (
     <SidebarMenu>
@@ -89,10 +93,10 @@ export function OrgSwitcher() {
               </div>
               <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-medium">
-                  {activeOrg?.name || "Black Estate"}
+                  {activeOrg?.name}
                 </span>
                 <span className="truncate text-xs">
-                  {activeOrg?.slug || "Gestión inmobiliaria"}
+                  {activeOrg?.slug}
                 </span>
               </div>
             </div>

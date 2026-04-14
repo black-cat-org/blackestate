@@ -32,6 +32,7 @@ No test framework is configured yet.
 - **Forms:** react-hook-form + Zod validation
 - **Tables:** @tanstack/react-table
 - **Icons:** lucide-react
+- **Skeletons:** Boneyard (`boneyard-js`) — TODO componente que carga datos async debe usar `<Skeleton>` de Boneyard. No usar placeholders hardcodeados ni texto de fallback. Correr `npx boneyard-js build` después de cambios en UI.
 
 ## Tenancy & Auth Model
 

@@ -11,7 +11,6 @@ import {
   Sparkles,
   User,
 } from "lucide-react"
-
 import {
   Avatar,
   AvatarFallback,
@@ -51,7 +50,6 @@ export function NavUser() {
   const router = useRouter()
 
   const user = session?.user
-  if (!user) return null
 
   const handleSignOut = async () => {
     await signOut({
@@ -62,6 +60,8 @@ export function NavUser() {
       },
     })
   }
+
+  if (!user) return null
 
   return (
     <SidebarMenu>
