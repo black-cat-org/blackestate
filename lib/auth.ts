@@ -1,12 +1,8 @@
 import { betterAuth } from "better-auth";
 import { organization } from "better-auth/plugins";
 import { nextCookies } from "better-auth/next-js";
-import { Pool } from "pg";
 import { ac, owner, admin, agent } from "./auth-permissions";
-
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-});
+import { pool } from "./db/pool";
 
 export const auth = betterAuth({
   database: pool,
