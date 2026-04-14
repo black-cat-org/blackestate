@@ -4,7 +4,7 @@
 >
 > **Creado:** 2026-04-13
 > **Última actualización:** 2026-04-14
-> **Estado:** Capa 1 completada, Capa 2.1 (schema) completada. Siguiente: migrar enums a inglés, luego RLS policies.
+> **Estado:** Capa 1 completada, Capa 2.1 (schema) completada, enums migrados a inglés. Siguiente: RLS policies, luego reemplazar mocks con queries reales.
 
 ---
 
@@ -78,15 +78,68 @@
 | 2.1.12 | Diseñar tabla `analytics_events` | 5 columnas: event_type, metadata (jsonb), created_at. Append-only, sin updatedAt/deletedAt | ✅ |
 | 2.1.13 | Diseñar tabla `ai_contents` | 11 columnas: type, platform, text, published_at/to, timestamps + soft delete. FK → properties | ✅ |
 | 2.1.14 | Diseñar tabla `agent_profiles` | 12 columnas: bio, social links, avatar_url, timestamps + soft delete. UNIQUE(user_id, org_id). FK → user, organization | ✅ |
-| 2.1.15 | Escribir RLS policies | Policies para Data API público. Server-side queries (Drizzle) usan rol postgres que bypasea RLS. Helpers `withOrg()` para filtrar org_id + deleted_at automáticamente | ⬜ |
+| 2.1.15 | **RLS — Row Level Security** | Seguridad a nivel de DB. Drizzle NO bypasea RLS — todas las queries pasan por `withRLS()` con `SET LOCAL role = 'authenticated'`. Ver subtareas abajo. | ⬜ |
+
+#### 2.1.15 — RLS (subtareas)
+
+**Arquitectura:**
+- Drizzle conecta con `postgres`/`service_role` pero SIEMPRE hace `SET LOCAL role = 'authenticated'` + claims via `withRLS()`.
+- `service_role` directo solo para: Better Auth internals e Inngest background jobs cross-org.
+- Todo request de usuario pasa por `withRLS()` — sin excepciones.
+- No existe hard delete. Solo soft delete (`UPDATE SET deleted_at`). Integridad referencial protegida.
+
+**Claims en `SET LOCAL request.jwt.claims`:**
+```json
+{ "sub": "user-uuid", "org_id": "org-uuid", "org_role": "owner|admin|agent", "is_super_admin": false }
+```
+
+**Niveles de acceso:**
+- **Super admin (futuro):** Ve todo, todas las orgs, incluso borrados. Tabla `platform_admins`.
+- **Owner/Admin:** Ve su org. Papelera: ve todo borrado de su org. Edita/borra cualquier registro.
+- **Agent:** Ve su org (read-only otros). Papelera: solo ve lo suyo borrado. Edita/borra solo lo suyo.
+
+**Papelera:** Se activa con `SET LOCAL app.include_deleted = 'true'` via `withRLS(ctx, cb, { includeDeleted: true })`. Owner/admin ven todo borrado de la org. Agent solo ve lo suyo borrado.
+
+| # | Tarea | Detalle | Estado |
+|---|-------|---------|--------|
+| 2.1.15.1 | Agregar `created_by_user_id` | Columna `TEXT NOT NULL` en 5 tablas: `properties`, `leads`, `appointments`, `ai_contents`, `lead_property_queue`. FK → `user(id)`. Índice compuesto `(organization_id, created_by_user_id)`. Migración SQL. | ⬜ |
+| 2.1.15.2 | Crear tabla `platform_admins` | `user_id TEXT PK REFERENCES user(id) ON DELETE CASCADE`, `created_at TIMESTAMPTZ DEFAULT now()`. Para super admin futuro. | ⬜ |
+| 2.1.15.3 | ENABLE + FORCE RLS | `ALTER TABLE ... ENABLE ROW LEVEL SECURITY` + `FORCE ROW LEVEL SECURITY` en 11 tablas de dominio. No en tablas de Better Auth. | ⬜ |
+| 2.1.15.4 | Policies SELECT | Org isolation + soft delete + papelera (owner/admin ven todo borrado, agent solo lo suyo) + super admin ve todo. Aplica a las 11 tablas. | ⬜ |
+| 2.1.15.5 | Policies INSERT | Solo en org propia (`org_id = claim.org_id`). Aplica a las 11 tablas. | ⬜ |
+| 2.1.15.6 | Policies UPDATE | Owner/admin: cualquier registro de su org. Agent: solo `created_by_user_id = claim.sub`. Tablas bot/config: solo owner/admin. `analytics_events`: nadie (append-only). | ⬜ |
+| 2.1.15.7 | Bloquear DELETE | No existe policy DELETE en ninguna tabla. Soft delete = UPDATE. Integridad referencial protegida. | ⬜ |
+| 2.1.15.8 | Crear `withRLS()` | `lib/db/rls.ts` — Transaction wrapper con `SET LOCAL role` + claims + `includeDeleted` flag. Reemplaza `withOrg()`. | ⬜ |
+| 2.1.15.9 | Crear `getSessionContext()` | Helper que extrae `userId`, `orgId`, `role` de Better Auth session + consulta `platform_admins` para `isSuperAdmin`. Alimenta `withRLS()`. | ⬜ |
+| 2.1.15.10 | Tests RLS | Verificar: agent no edita de otro, org isolation funciona, papelera respeta roles, super admin flag funciona. | ⬜ |
+| 2.1.15.11 | Permiso `org:properties:assign` | Agregar a owner/admin en Better Auth permissions. Agent no puede transferir. | ⬜ |
+| 2.1.15.12 | Tabla `property_transfers` | Audit trail: `from_user_id`, `to_user_id`, `transferred_by_user_id`, `property_ids TEXT[]`, counts de cascade (leads, appointments, ai_contents, queue_items), `acknowledged_at`, `notes`, `created_at`. RLS: org isolation, SELECT para involucrados + owner/admin. | ⬜ |
+| 2.1.15.13 | `transferProperties()` | Server Action: bulk transfer N propiedades + cascade (leads, appointments, ai_contents, lead_property_queue). Actualiza `created_by_user_id` en todo. Crea registro en `property_transfers`. Todo en una transacción. Solo owner/admin. | ⬜ |
+| 2.1.15.14 | `previewTransfer()` | Server Action: dado N property IDs y agente destino, retorna resumen de todo lo que se va a transferir (counts) sin ejecutar. Para el dialog de confirmación. | ⬜ |
+
+**Tablas y policies:**
+
+| Tabla | SELECT | INSERT | UPDATE | DELETE |
+|---|---|---|---|---|
+| `properties` | org + no deleted + papelera role-aware + super admin | org propia | owner/admin: todos; agent: solo suyo | bloqueado |
+| `leads` | igual | igual | igual | bloqueado |
+| `appointments` | igual | igual | igual | bloqueado |
+| `ai_contents` | igual | igual | igual | bloqueado |
+| `lead_property_queue` | igual | igual | igual | bloqueado |
+| `bot_config` | org + no deleted | org propia | solo owner/admin | bloqueado |
+| `bot_conversations` | org + no deleted | org propia | solo owner/admin | bloqueado |
+| `bot_messages` | org + no deleted | org propia | solo owner/admin | bloqueado |
+| `analytics_events` | org (sin soft delete) | org propia | nadie (append-only) | bloqueado |
+| `agent_profiles` | org | org propia | propio `user_id` | bloqueado |
+| `platform_admins` | solo super admin / service_role | solo service_role | solo service_role | solo service_role |
 | 2.1.16 | Crear índices | 24 índices: org_id en toda tabla, status, FKs, compuestos (org+status, org+starts_at, lead+sort_order) | ✅ |
 | 2.1.17 | Ejecutar migraciones | Todas las migraciones aplicadas contra Supabase dev. Migración base en `drizzle/0000_complex_infant_terrible.sql` | ✅ |
 | 2.1.18 | Seed data de desarrollo | Script de seed para tener datos de prueba en la DB real | ⬜ |
 | 2.1.19 | FK constraints | 25 FKs: 12 dominio↔dominio, 11 dominio→auth, 6 auth internas | ✅ |
-| 2.1.20 | pgEnum types | 17 enum types creados para validación a nivel de DB. **⚠️ Pendiente: migrar valores de español a inglés** | 🔄 Parcial |
+| 2.1.20 | pgEnum types | 17 enum types creados para validación a nivel de DB. Valores migrados a inglés. | ✅ |
 | 2.1.21 | Soft delete | `deleted_at timestamptz` en todas las tablas de dominio (excepto analytics_events que es append-only) | ✅ |
 | 2.1.22 | `$onUpdate` timestamps | `updatedAt` con `.$onUpdate(() => new Date())` en todas las tablas mutables | ✅ |
-| 2.1.23 | Migrar enums a inglés | Todos los enum values deben estar en inglés. Actualizar DB, schemas Drizzle, tipos TS, constantes/labels | ⬜ |
+| 2.1.23 | Migrar enums a inglés | Todos los enum values migrados a inglés en: 10 enums DB, 5 schema defaults, 5 tipos TS, 6 constantes, 6 archivos data layer, ~20 componentes. Build OK. ~200+ violaciones corregidas. Migración SQL de DB pendiente (se aplica cuando haya datos reales). | ✅ |
 
 ### 2.2 Reemplazar `/lib/data/` — Queries reales
 
@@ -104,6 +157,18 @@
 | 2.2.10 | Actualizar Server Actions | `app/p/[id]/actions.ts` — conectar `submitLeadAction` y `trackVisitAction` a Supabase | ⬜ |
 | 2.2.11 | Crear Server Actions nuevas | Actions para property CRUD, lead CRUD, bot config, etc. | ⬜ |
 | 2.2.12 | Verificar tipos | Asegurar que los tipos en `lib/types/` matchean con el schema de DB | ⬜ |
+
+### 2.4 Transferencia de propiedades (enterprise)
+
+Flujo completo para que owner/admin transfiera propiedades (+ cascade) entre agentes de la misma org. Incluye preview, confirmación, audit trail, e inbox para el agente receptor.
+
+| # | Tarea | Detalle | Estado |
+|---|-------|---------|--------|
+| 2.4.1 | Página de transferencias | `app/dashboard/transfers/page.tsx` — lista de transferencias realizadas y recibidas. Owner/admin ve todas de la org, agent ve solo las suyas. | ⬜ |
+| 2.4.2 | Dialog de bulk transfer | Selección múltiple de propiedades + selector de agente destino + preview con counts (N propiedades, N leads, N citas, N contenidos AI) + botón confirmar. | ⬜ |
+| 2.4.3 | Inbox del agente receptor | Dentro de la página de transferencias: lista de transfers pendientes de acknowledge. Muestra qué se recibió, de quién, cuándo. Botón "marcar como revisado". | ⬜ |
+| 2.4.4 | Badge en sidebar | Indicador en el sidebar cuando hay transfers sin acknowledge. | ⬜ |
+| 2.4.5 | Workflow Knock `property_transferred` | Notificación al agente receptor cuando recibe una transferencia. Se implementa junto con el resto de workflows en Capa 4.4. | ⏭️ Diferido a Capa 4 |
 
 ### 2.3 Supabase Storage — Archivos reales
 

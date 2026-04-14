@@ -147,6 +147,7 @@ org:properties:edit_own        → Editar propiedades propias
 org:properties:edit_all        → Editar TODAS las propiedades de la org
 org:properties:delete_own      → Eliminar propiedades propias
 org:properties:delete_all      → Eliminar cualquier propiedad de la org
+org:properties:assign          → Transferir propiedad (+ leads, appointments, ai_contents, queue) a otro agente
 
 # Leads
 org:leads:create               → Crear leads
