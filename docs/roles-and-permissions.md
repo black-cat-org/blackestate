@@ -13,8 +13,8 @@
 
 Todo usuario pertenece a al menos una organización. No existen "cuentas personales" fuera de una org.
 
-- **Personal Accounts en Clerk:** Deshabilitadas (default desde 2025).
-- **Auto-crear org al signup:** Habilitado en Clerk Dashboard.
+- **Auth provider:** Better Auth con Organization Plugin (open source).
+- **Auto-crear org al signup:** Via hook `afterCreate` en Better Auth.
 - **`organization_id` en todas las tablas de dominio:** `NOT NULL` siempre.
 - **El plan vive en la org**, nunca en el usuario.
 
@@ -36,21 +36,21 @@ Todo usuario pertenece a al menos una organización. No existen "cuentas persona
 ### Agente individual
 
 ```
-Signup → Clerk auto-crea org (1 miembro) → plan = free → usa el producto solo
+Signup → Better Auth auto-crea org (1 miembro) → plan = free → usa el producto solo
 Upgrade a Pro → más features, sigue solo
 ```
 
-- Rol: `org:owner` de su org personal.
+- Rol: `owner` de su org personal.
 - UI: sin secciones de equipo, sin invitaciones, sin org switcher.
 - Puede pertenecer a otras orgs como `agent` o `admin` simultáneamente.
 
 ### Dueño de agencia
 
 ```
-Signup → Clerk auto-crea org (1 miembro) → upgrade a enterprise → invita agentes
+Signup → Better Auth auto-crea org (1 miembro) → upgrade a enterprise → invita agentes
 ```
 
-- Rol: `org:owner` de la org de su agencia.
+- Rol: `owner` de la org de su agencia.
 - UI: sección "Equipo", puede invitar/gestionar miembros, ve todo.
 - También tiene su org personal si quiere operar independientemente.
 
@@ -58,11 +58,11 @@ Signup → Clerk auto-crea org (1 miembro) → upgrade a enterprise → invita a
 
 ```
 Recibe invitación por email → signup (o signin si ya existe) →
-se une a la org de la agencia → Clerk también le crea su org personal auto
+se une a la org de la agencia → Better Auth también le crea su org personal auto
 ```
 
-- Rol: `org:agent` en la org de la agencia.
-- Rol: `org:owner` en su org personal.
+- Rol: `agent` en la org de la agencia.
+- Rol: `owner` en su org personal.
 - Puede switchear entre orgs con `<OrganizationSwitcher />`.
 - Sus datos en cada org son completamente independientes.
 
@@ -72,11 +72,11 @@ Un mismo usuario puede pertenecer a **múltiples organizaciones** con **roles di
 
 | Org | Rol | Contexto |
 |-----|-----|----------|
-| "Mi Consultora" (personal) | `org:owner` | Su negocio independiente |
-| "Inmobiliaria Sur" | `org:agent` | Trabaja como agente para esta agencia |
-| "RE/MAX Bolivia" | `org:admin` | Administra esta franquicia |
+| "Mi Consultora" (personal) | `owner` | Su negocio independiente |
+| "Inmobiliaria Sur" | `agent` | Trabaja como agente para esta agencia |
+| "RE/MAX Bolivia" | `admin` | Administra esta franquicia |
 
-Clerk maneja esto nativamente. El `<OrganizationSwitcher />` permite cambiar de org y el JWT siempre refleja la org activa.
+Better Auth maneja esto nativamente. El componente OrgSwitcher permite cambiar de org y la session activa siempre refleja la org seleccionada.
 
 ---
 
@@ -100,7 +100,7 @@ Clerk maneja esto nativamente. El `<OrganizationSwitcher />` permite cambiar de 
 
 ```sql
 CREATE TABLE organizations (
-  id TEXT PRIMARY KEY,                -- clerk org_id
+  id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
   slug TEXT UNIQUE NOT NULL,
   plan TEXT NOT NULL DEFAULT 'free',   -- 'free' | 'pro' | 'enterprise'
@@ -117,26 +117,26 @@ CREATE TABLE organizations (
 
 ## 4. Roles
 
-Definidos como **custom roles en Clerk Organizations**.
+Definidos como **custom roles en Better Auth Organization Plugin** (`lib/auth-permissions.ts`).
 
-| Clerk Role ID | Nombre visible | Descripción | Máximo por org |
+| Role ID | Nombre visible | Descripción | Máximo por org |
 |---------------|---------------|-------------|----------------|
-| `org:owner` | Propietario | Dueño de la cuenta/agencia. Control total incluyendo billing. | 1 |
-| `org:admin` | Administrador | Gerente de agencia. Todo excepto billing. | Ilimitado |
-| `org:agent` | Agente | Agente inmobiliario operativo. Ve lo suyo + puede ver (no editar) lo de otros. | Ilimitado |
+| `owner` | Propietario | Dueño de la cuenta/agencia. Control total incluyendo billing. | 1 |
+| `admin` | Administrador | Gerente de agencia. Todo excepto billing. | Ilimitado |
+| `agent` | Agente | Agente inmobiliario operativo. Ve lo suyo + puede ver (no editar) lo de otros. | Ilimitado |
 
 ### Notas sobre roles
 
-- **Agente individual** siempre es `org:owner` de su org. No ve UI de roles porque es solo 1 persona.
-- **`org:owner` no se puede transferir** desde la UI (solo via API de Clerk si es necesario).
-- **`org:admin` puede invitar y remover agentes**, pero no puede remover al owner ni a otros admins.
-- **`org:agent` no puede invitar ni gestionar miembros.**
+- **Agente individual** siempre es `owner` de su org. No ve UI de roles porque es solo 1 persona.
+- **`owner` no se puede transferir** desde la UI (solo via API server-side si es necesario).
+- **`admin` puede invitar y remover agentes**, pero no puede remover al owner ni a otros admins.
+- **`agent` no puede invitar ni gestionar miembros.**
 
 ---
 
 ## 5. Permisos
 
-### Permissions en Clerk
+### Permissions en Better Auth
 
 ```
 # Propiedades
@@ -220,7 +220,7 @@ org:billing:manage             → Gestionar plan y billing
 
 **Modelo elegido: visible pero no editable.**
 
-Un `org:agent` dentro de una agencia Enterprise **puede ver** las propiedades y leads de otros agentes de la misma org, pero **no puede editarlos ni eliminarlos**.
+Un `agent` dentro de una agencia Enterprise **puede ver** las propiedades y leads de otros agentes de la misma org, pero **no puede editarlos ni eliminarlos**.
 
 ### Razones
 
@@ -245,7 +245,7 @@ FOR UPDATE USING (
   organization_id = (auth.jwt() ->> 'org_id')
   AND (
     -- Owner/Admin pueden editar cualquiera
-    (auth.jwt() ->> 'org_role') IN ('org:owner', 'org:admin')
+    role IN ('owner', 'admin') -- verificado via Better Auth session
     OR
     -- Agent solo puede editar las suyas
     (created_by_user_id = (auth.jwt() ->> 'sub')
@@ -268,13 +268,11 @@ Todas las entidades de dominio:
 - `analytics_events`
 - `ai_contents`
 
-Settings de la org:
-- `organization_settings` (comisiones, moneda, configuración del bot, etc.)
+Settings de la - `organization_settings` (comisiones, moneda, configuración del bot, etc.)
 
 ### Datos del usuario (tienen `user_id`, sin `organization_id`)
 
-Preferencias personales que siguen al usuario independientemente de la org:
-- `user_preferences` (tema claro/oscuro, idioma, timezone)
+Preferencias personales que siguen al usuario independientemente de la - `user_preferences` (tema claro/oscuro, idioma, timezone)
 - `notification_preferences` (qué notificaciones recibe y por qué canal)
 - `user_profiles` (nombre, avatar, bio, redes sociales, contacto)
 
@@ -337,9 +335,9 @@ Esta pregunta **no cambia la arquitectura** (ambos crean una org). Solo afecta:
 - Metadata de la org (`organizations.type = 'individual' | 'agency'`) para analytics internos.
 - Si elige agencia, se le muestra pricing de Enterprise inmediatamente.
 
-### Paso 3: Clerk auto-crea org
+### Paso 3: Better Auth auto-crea org
 
-Invisible para el usuario. Clerk crea la org y asigna rol `org:owner`.
+Invisible para el usuario. Un hook `afterCreate` en Better Auth crea la org y asigna rol `owner`.
 
 ### Paso 4: Onboarding contextual
 

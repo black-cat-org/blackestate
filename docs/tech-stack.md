@@ -20,7 +20,7 @@
 - Sistema de citas con calendario.
 - Módulo financiero (comisiones, ROI, rentabilidad).
 
-**Modelo de tenancy:** multi-tenant con soporte dual para agente individual (organización de 1 miembro) y agencias con múltiples agentes (organización con roles `owner`/`admin`/`agent`). Single DB en Supabase con Row-Level Security, donde la integración Clerk ↔ Supabase via Third-Party Auth permite que las políticas RLS lean los claims del JWT de Clerk directamente.
+**Modelo de tenancy:** multi-tenant con soporte dual para agente individual (organización de 1 miembro) y agencias con múltiples agentes (organización con roles `owner`/`admin`/`agent`). Single DB en Supabase con Better Auth Organization Plugin para identidad, roles y permissions.
 
 **Etapa actual:** MVP. Frontend completo con datos mock; backend e infraestructura en construcción.
 
@@ -34,7 +34,7 @@
 | ---------------------------- | --------------------------------- | --------- | ------------------------------------------------------ |
 | Hosting & runtime            | **Vercel**                        | $0        | Deploy del Next.js + edge/serverless functions         |
 | Base de datos                | **Supabase** (Postgres)           | $0–25/mes | DB + Storage + Realtime + RLS                          |
-| Autenticación e identidad    | **Clerk**                         | $0        | Users, organizations, roles, invitaciones              |
+| Autenticación e identidad    | **Better Auth** (open source)     | $0        | Users, organizations, roles custom, invitaciones       |
 | Email transaccional          | **Resend**                        | $0        | Envío de emails desde el producto                      |
 | Templates de email           | **React Email**                   | $0        | Composición de templates en JSX                        |
 | Notificaciones multi-canal   | **Knock**                         | $0        | Orquestación in-app + email + push + preferencias      |
@@ -67,11 +67,10 @@
        │                   │                   │
        ▼                   ▼                   ▼
 ┌─────────────┐    ┌──────────────┐   ┌──────────────┐
-│   Clerk     │    │   Supabase   │   │   Inngest    │
-│ Auth + Orgs │    │  Postgres    │   │  Background  │
-│             │◄──►│  + Storage   │   │  jobs        │
+│ Better Auth │    │   Supabase   │   │   Inngest    │
+│ Auth + Orgs │───►│  Postgres    │   │  Background  │
+│ (in-app)    │    │  + Storage   │   │  jobs        │
 └─────────────┘    │  + Realtime  │   └──────┬───────┘
-                   │  + RLS       │          │
                    └──────────────┘          │
                                              ▼
                                   ┌─────────────────────┐
@@ -86,10 +85,10 @@ Soporte: Crisp (inbox unificado de clientes)
 
 **Flujo principal de auth y datos:**
 
-1. Usuario hace sign-in en el app Next.js → Clerk emite JWT.
-2. El cliente Supabase recibe el JWT de Clerk (configurado como Third-Party Auth).
-3. Las queries SQL contra Supabase aplican RLS automáticamente leyendo claims del JWT (`auth.jwt() ->> 'sub'`, `org_id`, etc.).
-4. Webhooks de Clerk → endpoint en Vercel → escribe en tablas `organizations` y `memberships` de Supabase para tener referencias joinables desde el resto del schema.
+1. Usuario hace sign-in en el app Next.js → Better Auth valida credenciales y crea session en Postgres.
+2. Las API routes y Server Actions usan `auth.api.getSession()` para verificar la session y obtener user/org context.
+3. Las queries contra Supabase Postgres se ejecutan via Drizzle ORM, filtrando por `organization_id` de la session activa.
+4. Las tablas de auth (`user`, `session`, `account`, `organization`, `member`, `invitation`) viven directamente en Postgres — sin webhooks ni sincronización.
 5. Eventos del producto (lead nuevo, cita agendada, mensaje del bot) disparan funciones Inngest.
 6. Inngest llama a Claude Haiku via Vercel AI SDK, envía notificaciones via Knock, escribe resultados en Supabase.
 
@@ -103,7 +102,7 @@ Soporte: Crisp (inbox unificado de clientes)
 
 **Qué es.** Plataforma de hosting y runtime serverless construida específicamente para Next.js. Provee deploys automáticos desde Git, edge functions globales, image optimization, ISR (Incremental Static Regeneration), preview deployments por pull request, dominios custom y CDN integrado.
 
-**Rol en Black Estate.** Es el host del proyecto Next.js completo: tanto la app del producto (`/dashboard/*`) como el sitio de marketing (`/`, `/features`, `/pricing`). Las API routes y server actions de Next.js corren como serverless/edge functions y manejan toda la lógica de negocio del MVP: webhooks de Clerk, webhooks de WhatsApp/Meta, integraciones con terceros, llamadas al LLM, mutaciones contra Supabase.
+**Rol en Black Estate.** Es el host del proyecto Next.js completo: tanto la app del producto (`/dashboard/*`) como el sitio de marketing (`/`, `/features`, `/pricing`). Las API routes y server actions de Next.js corren como serverless/edge functions y manejan toda la lógica de negocio del MVP: webhooks de WhatsApp/Meta, integraciones con terceros, llamadas al LLM, mutaciones contra Supabase.
 
 **Por qué la elegimos.**
 - Vercel construye Next.js. Cada feature nueva del framework (Server Components, Server Actions, Partial Prerendering, Cache API) sale primero optimizada para Vercel.
@@ -130,13 +129,12 @@ Soporte: Crisp (inbox unificado de clientes)
 **Rol en Black Estate.** Es la base de datos primaria del producto. Almacena todas las entidades del dominio: `organizations`, `memberships`, `properties`, `leads`, `appointments`, `bot_conversations`, `analytics_events`, etc. También maneja:
 - **Storage**: fotos de propiedades, brochures PDF generados, avatars, planos.
 - **Realtime**: suscripciones para métricas en vivo del dashboard (leads entrando, mensajes del bot llegando, conteos de visitas).
-- **Row-Level Security**: enforcement de multitenancy a nivel base de datos via políticas que leen el JWT de Clerk.
+- **Row-Level Security**: enforcement de multitenancy a nivel base de datos via políticas RLS.
 
 **Por qué la elegimos.**
 - Bundling de DB + Storage + Realtime + RLS en una sola plataforma reduce drásticamente el código glue para un solo dev.
 - **Realtime** vía replicación lógica de Postgres es clave para los dashboards en vivo del producto (un agente quiere ver leads entrando sin recargar).
 - **Storage con RLS unificada**: las mismas políticas de permisos de la DB aplican a los archivos. Un solo modelo mental.
-- **Third-Party Auth** (desde 2024) permite usar Clerk como provider de identidad y aún así tener `auth.jwt()` accesible nativamente desde políticas RLS.
 - Postgres puro: bajo lock-in, `pg_dump` y migrás a cualquier Postgres del mundo.
 - Self-hosteable como escape hatch a largo plazo.
 
@@ -147,43 +145,40 @@ Soporte: Crisp (inbox unificado de clientes)
 
 **Notas técnicas.**
 - Connection pooling: usar **Supavisor** (incluido) en modo `transaction` para Vercel serverless.
-- Migraciones: gestionadas con Drizzle Kit o el CLI oficial de Supabase.
-- RLS policies: usar funciones helper `security definer` para evitar recursión en queries sobre `memberships`.
-- Webhooks de Clerk → Postgres: endpoint Next.js que recibe `organization.created`, `organizationMembership.created`, etc. y hace UPSERT en las tablas espejo.
+- Migraciones: gestionadas con Better Auth CLI (`npx auth migrate`) y Drizzle Kit para tablas de dominio.
+- Better Auth se conecta directamente a Postgres via `pg.Pool` — no usa el cliente `@supabase/supabase-js` para auth.
 
 ---
 
-### 4.3 Clerk — Autenticación, organizations y roles
+### 4.3 Better Auth — Autenticación, organizations y roles
 
-**Qué es.** Plataforma de identidad y gestión de usuarios diseñada específicamente para SaaS B2B. Provee autenticación (email/password, magic links, OAuth, MFA), gestión de organizations con miembros y roles, invitaciones, componentes UI prefabricados, JWT templates configurables y SDKs nativos para Next.js.
+**Qué es.** Librería open source de autenticación y autorización para TypeScript. Framework-agnostic, con ecosistema de plugins para organizations, 2FA, SSO, y más. Se conecta directamente a tu base de datos (Postgres, MySQL, SQLite, MongoDB). Respaldada por $5M de Y Combinator.
 
-**Rol en Black Estate.** Es la **única fuente de verdad** para identidad. Maneja:
+**Rol en Black Estate.** Es la **fuente de verdad para identidad, organizations, roles y permissions**. Maneja:
 - Sign-up, sign-in, password reset, verificación de email.
-- OAuth con Google (esperado por usuarios LATAM).
-- **Organizations**: cada agente individual obtiene una org personal de 1 miembro con rol `owner`; cada inmobiliaria es una org con N miembros y roles diferenciados.
-- **Roles**: `owner` (full + billing), `admin` (full producto, sin billing), `agent` (operativo).
+- OAuth con Google y Apple.
+- **Organization Plugin**: cada agente individual obtiene una org personal de 1 miembro con rol `owner`; cada inmobiliaria es una org con N miembros y roles diferenciados.
+- **Roles custom**: `owner` (full + billing), `admin` (full producto, sin billing), `agent` (operativo).
+- **Permissions granulares**: ~20 permissions sobre 7 recursos (property, lead, analytics, bot, settings, billing, org).
 - **Invitaciones**: flujo email → token → join.
-- **Organization switcher**: componente UI para usuarios con membership en múltiples orgs.
-- **JWT templates**: configurados para emitir tokens compatibles con Supabase Third-Party Auth.
+- **Session management**: cookies con soporte para Server Components y Server Actions via `nextCookies` plugin.
 
 **Por qué la elegimos.**
-- **Organizations out-of-the-box**: el modelo dual "agente solo / agencia con equipo" requiere multi-tenancy con roles desde día 1. Construirlo manualmente con Supabase Auth tomaría días; Clerk lo trae listo.
-- Componentes UI pulidos (`<SignIn />`, `<UserButton />`, `<OrganizationSwitcher />`) que se ven profesionales sin trabajo de diseño.
-- Integración oficial con Supabase via Third-Party Auth (no es plumbing, es configuración).
-- Free tier hasta 10k MAU = runway largo.
-- Webhooks bien diseñados para sincronizar con Postgres.
+- **$0 para siempre**: roles custom, permissions, organizations, invitaciones — todo gratis, sin add-ons ni límites de MAU.
+- **Organization Plugin completo**: el modelo dual "agente solo / agencia con equipo" con roles custom y RBAC granular funciona out-of-the-box.
+- **Sin vendor lock-in**: las tablas viven en nuestra DB (Supabase Postgres), el código vive en nuestro repo. Controlamos todo.
+- **Open source**: Apache 2.0, comunidad activa, MCP Server y Skills para AI agents.
+- **Framework integration**: soporte nativo para Next.js 16 (App Router, Server Actions, proxy).
 
-**Costo.**
-- **Free:** $0/mes — hasta 10.000 MAU, todas las features de Organizations incluidas.
-- **Pro:** $25/mes + $0.02 por MAU adicional — al superar 10k MAU.
-- **Add-ons:** SAML SSO, advanced security — aplica solo con clientes enterprise.
+**Costo.** $0 — es open source. Sin límites de MAU, orgs, ni features detrás de paywall.
 
 **Notas técnicas.**
-- Configurar el JWT template "supabase" desde el dashboard de Clerk (formato oficial).
-- Habilitar Third-Party Auth en Supabase apuntando al issuer de Clerk.
-- Las RLS policies usan `auth.jwt() ->> 'sub'` para el user ID y `auth.jwt() -> 'org_id'` para la org activa.
-- Webhooks Clerk → endpoint `app/api/webhooks/clerk/route.ts` → upsert en tablas `organizations` y `memberships` de Postgres.
-- Para el flujo "agente individual", crear automáticamente una Personal Organization en el sign-up y esconder en UI los conceptos de team.
+- Instancia server en `lib/auth.ts`, cliente React en `lib/auth-client.ts`.
+- Roles y permissions definidos en `lib/auth-permissions.ts` usando `createAccessControl()`.
+- API route handler en `app/api/auth/[...all]/route.ts`.
+- Proxy (Next.js 16) en `proxy.ts` protegiendo `/dashboard/*`.
+- Las tablas de auth (`user`, `session`, `account`, `organization`, `member`, `invitation`) se crean con `npx auth migrate`.
+- Para el flujo "agente individual": hook `afterCreate` en sign-up que crea automáticamente una org personal con rol `owner`.
 
 ---
 
@@ -191,11 +186,11 @@ Soporte: Crisp (inbox unificado de clientes)
 
 **Qué es.** API moderna de envío de emails transaccionales, construida por el equipo que también hace React Email. Foco en developer experience: SDKs limpios, dashboard claro, deliverability monitoreada, manejo de bounces y complaints, soporte para domains custom con DKIM/SPF/DMARC.
 
-**Rol en Black Estate.** Es el provider de envío para **emails del producto** que NO son de auth (los de auth los manda Clerk por su cuenta). Específicamente:
+**Rol en Black Estate.** Es el provider de envío para **todos los emails transaccionales del producto**. Específicamente:
 - Notificación "tienes un lead nuevo" al agente.
 - Recordatorio de cita 2h antes (al agente y al cliente).
 - Reporte semanal de actividad por agente.
-- Invitaciones del producto cuando aplica fuera del flujo Clerk.
+- Invitaciones a unirse a una agencia.
 - Comprobantes y facturas (cuando llegue el módulo de billing).
 - Cualquier otro email transaccional.
 
@@ -230,7 +225,7 @@ Templates esperados:
 - Recordatorio de cita.
 - Reporte semanal.
 - Invitación a unirse a una agencia.
-- Reset de password (lo maneja Clerk pero podemos override con template propio).
+- Reset de password.
 
 **Por qué la elegimos.**
 - Mismo mental model que el resto del proyecto (React + JSX + Tailwind-like styling).
@@ -293,7 +288,7 @@ Además provee el componente `<NotificationFeed />` (in-app campanita) que reemp
 - Frontend Next.js (React error boundaries, errores de runtime en browser).
 - Backend (API routes, Server Actions, Edge functions).
 - Inngest functions (workflows que fallan).
-- Webhooks (Clerk, Meta/WhatsApp).
+- Webhooks (Meta/WhatsApp, Paddle).
 
 Cada error se enriquece con `userId`, `organizationId`, feature/route, y se alertan los críticos a Slack o email. Es la red de seguridad para no perder bugs silenciosos siendo solo dev.
 
@@ -333,7 +328,7 @@ Cada error se enriquece con `userId`, `organizationId`, feature/route, y se aler
 **Por qué la elegimos.**
 - Colapsa 4-5 herramientas distintas (Mixpanel + Plausible + LaunchDarkly + FullStory) en una sola.
 - Free tier muy generoso (1M eventos/mes + 5k recordings/mes).
-- Integración con Clerk: pasa automáticamente `userId` y `organizationId` a cada evento, permitiendo segmentación por org.
+- Integración con Better Auth: pasa `userId` y `organizationId` a cada evento, permitiendo segmentación por org.
 - Open source — escape hatch a self-host si llegara el caso.
 
 **Costo.**
@@ -486,7 +481,7 @@ Casos de uso del SDK:
 | ----------------------------------------------------------------- | ------------------- |
 | Cola "envía propiedades poco a poco al lead" (descrito en specs)  | Throttled job       |
 | Recordatorio de cita 2h antes (cliente y agente)                  | Scheduled job       |
-| Webhook Clerk → upsert `organizations`/`memberships`              | Event-driven        |
+| Webhook Paddle → sync plan/subscription                           | Event-driven        |
 | Webhook WhatsApp/Meta → procesar mensaje entrante                 | Event-driven        |
 | Optimización/resize async de fotos cargadas                       | Fan-out             |
 | Reporte semanal por email a cada agente                           | Cron + fan-out      |
@@ -527,7 +522,7 @@ Cada función es código TypeScript en `inngest/functions/*.ts`, con steps idemp
 - **Genera tests automáticamente** a partir del código existente — cada feature nueva llega con tests sin esfuerzo manual.
 - **Valida código generado por IA** — dado que Black Estate usa Claude Haiku para generar copy, descripciones y respuestas del bot, TestSprite cierra el loop verificando que el código producido por IA funcione correctamente.
 - **Testing E2E de flujos críticos** — onboarding de agente, carga de propiedad, creación de lead, agendamiento de cita, flujo del bot WhatsApp.
-- **Testing de API routes y Server Actions** — validación de los endpoints que conectan con Supabase, Clerk, Inngest.
+- **Testing de API routes y Server Actions** — validación de los endpoints que conectan con Supabase, Better Auth, Inngest.
 - **Integración con CI/CD** — corre tests en cada push/PR antes del deploy en Vercel.
 - **Debugging asistido** — cuando un test falla, el agente sugiere y aplica fixes.
 
@@ -582,7 +577,7 @@ Cada función es código TypeScript en `inngest/functions/*.ts`, con steps idemp
 - Requiere proceso de aprobación manual (días, no semanas). B2B SaaS inmobiliario aprueba sin problema.
 - SDK: `@paddle/paddle-node-sdk` para backend, `@paddle/paddle-js` para frontend (checkout overlay).
 - Webhooks: `subscription.created`, `subscription.updated`, `subscription.canceled`, `transaction.completed`, etc.
-- Flujo de integración: checkout de Paddle → webhook → endpoint Next.js → actualiza `organizations.plan` en Supabase + `publicMetadata` en Clerk.
+- Flujo de integración: checkout de Paddle → webhook → endpoint Next.js → actualiza `organization.plan` en Postgres.
 - Payout: configurar Payoneer como método de recepción en el dashboard de Paddle.
 - Customer portal: hosted por Paddle, se linkea desde settings del producto.
 
@@ -654,10 +649,10 @@ Workflow visual estilo Zapier. Solo agregar si en el futuro Black Estate quiere 
 | Herramienta evaluada | Por qué se descartó                                                          |
 | -------------------- | ---------------------------------------------------------------------------- |
 | **Neon**             | Excelente Postgres, pero no aporta sobre Supabase (que ya da DB + Storage + Auth + Realtime). |
-| **Better Auth**      | Open source y muy capaz, pero compite con Clerk sin la integración out-of-the-box de Organizations. |
+| **Clerk**            | Custom roles y permissions requieren add-on de $100/mes (B2B Authentication). Demasiado caro para MVP bootstrapped. Reemplazado por Better Auth (gratis, open source). |
 | **Auth.js**          | Demasiada construcción manual para multi-tenancy con roles.                  |
 | **WorkOS**           | Enterprise-first (SSO/SAML). Overkill total para MVP B2B LATAM.              |
-| **Supabase Auth**    | Funciona bien, pero requiere construir Organizations/roles/invites manualmente. Clerk lo trae listo. |
+| **Supabase Auth**    | Funciona bien, pero requiere construir Organizations/roles/invites manualmente. |
 | **Loops**            | Marketing email lifecycle. Overlap con Resend para transaccional. Considerar más adelante. |
 | **Mixpanel**         | Solo product analytics, más caro. PostHog cubre eso + más.                   |
 | **Plausible**        | Solo web analytics. PostHog ya cubre web analytics además de todo lo demás.  |

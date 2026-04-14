@@ -29,14 +29,14 @@
 | 1.1.2 | Configurar env vars | `BETTER_AUTH_SECRET` (32+ chars), `BETTER_AUTH_URL`, `DATABASE_URL` en `.env.local` | ✅ |
 | 1.1.3 | Crear instancia auth (server) | `lib/auth.ts` con `betterAuth()`, PostgreSQL adapter, email/password, Google OAuth, Apple OAuth | ✅ |
 | 1.1.4 | Crear cliente auth (client) | `lib/auth-client.ts` con `createAuthClient()` desde `better-auth/react` | ✅ |
-| 1.1.5 | Crear API route handler | `app/api/auth/[...all]/route.ts` con `toNextJsHandler(auth)` | ⬜ |
-| 1.1.6 | Configurar proxy (Next.js 16) | `proxy.ts` en la raíz: proteger `/dashboard/*`, permitir `/`, `/p/*` como públicas | ⬜ |
-| 1.1.7 | Agregar plugin `nextCookies` | Para que Server Actions puedan setear cookies de auth automáticamente | ⬜ |
-| 1.1.8 | Agregar plugin `organization` | Con roles custom (`owner`, `admin`, `agent`), permissions, invitaciones, límite de miembros | ⬜ |
-| 1.1.9 | Definir roles y permissions | Configurar los 3 roles con sus ~20 permissions según `docs/roles-and-permissions.md` | ⬜ |
-| 1.1.10 | Generar/migrar tablas de auth | `npx auth migrate` para crear tablas `user`, `session`, `account`, `organization`, `member`, etc. | ⬜ |
-| 1.1.11 | Configurar Google OAuth | Crear proyecto en Google Cloud Console, obtener client ID y secret | ⬜ |
-| 1.1.12 | Configurar Apple OAuth | Crear App ID en Apple Developer, obtener credentials | ⬜ |
+| 1.1.5 | Crear API route handler | `app/api/auth/[...all]/route.ts` con `toNextJsHandler(auth)` | ✅ |
+| 1.1.6 | Configurar proxy (Next.js 16) | `proxy.ts` en la raíz: proteger `/dashboard/*`, permitir `/`, `/p/*` como públicas | ✅ |
+| 1.1.7 | Agregar plugin `nextCookies` | Para que Server Actions puedan setear cookies de auth automáticamente | ✅ (incluido en 1.1.3) |
+| 1.1.8 | Agregar plugin `organization` | Con roles custom (`owner`, `admin`, `agent`), permissions, invitaciones, límite de miembros | ✅ (incluido en 1.1.3) |
+| 1.1.9 | Definir roles y permissions | Configurar los 3 roles con sus ~20 permissions según `docs/roles-and-permissions.md` | ✅ |
+| 1.1.10 | Generar/migrar tablas de auth | `npx auth migrate` para crear tablas `user`, `session`, `account`, `organization`, `member`, etc. | ✅ |
+| 1.1.11 | Configurar Google OAuth | Crear proyecto en Google Cloud Console, obtener client ID y secret | ✅ |
+| 1.1.12 | Configurar Apple OAuth | Crear App ID en Apple Developer, obtener credentials | ⏭️ Diferido a producción |
 | 1.1.13 | Crear páginas de auth (UI) | `app/(auth)/sign-in/page.tsx` y `sign-up/page.tsx` con shadcn (formularios custom) | ⬜ |
 | 1.1.14 | Crear componente UserButton | Componente con avatar, nombre, dropdown menu (perfil, settings, logout) | ⬜ |
 | 1.1.15 | Crear componente OrgSwitcher | Componente para cambiar entre organizaciones | ⬜ |
@@ -74,7 +74,7 @@
 | 2.1.11 | Diseñar tabla `bot_config` | `id`, `org_id`, configuración del bot por organización | ⬜ |
 | 2.1.12 | Diseñar tabla `analytics_events` | `id`, `org_id`, `event_type`, `metadata` (JSONB), `created_at` | ⬜ |
 | 2.1.13 | Diseñar tabla `ai_contents` | `id`, `property_id`, `org_id`, `type`, `platform`, `content`, timestamps | ⬜ |
-| 2.1.14 | Diseñar tabla `agent_profiles` | `id`, `clerk_user_id`, `org_id`, datos del perfil del agente | ⬜ |
+| 2.1.14 | Diseñar tabla `agent_profiles` | `id`, `user_id`, `org_id`, datos del perfil del agente | ⬜ |
 | 2.1.15 | Escribir RLS policies | Policies para CADA tabla: filtrar por `org_id` usando `auth.jwt() -> 'org_id'` | ⬜ |
 | 2.1.16 | Crear índices | Índices en `org_id`, `status`, `created_at` para queries frecuentes | ⬜ |
 | 2.1.17 | Ejecutar migraciones | Correr las migraciones contra Supabase (dev y luego prod) | ⬜ |
@@ -121,7 +121,7 @@
 | 3.1.3 | Configurar env vars | `INNGEST_EVENT_KEY`, `INNGEST_SIGNING_KEY` | ⬜ |
 | 3.1.4 | Crear endpoint | `app/api/inngest/route.ts` | ⬜ |
 | 3.1.5 | Crear cliente Inngest | `inngest/client.ts` con definición de eventos tipados | ⬜ |
-| 3.1.6 | Función: sync Clerk webhooks | `inngest/functions/sync-clerk-org.ts` — procesar org/membership events | ⬜ |
+| 3.1.6 | Función: procesar webhooks | `inngest/functions/process-webhooks.ts` — procesar eventos entrantes (WhatsApp, Paddle, etc.) | ⬜ |
 | 3.1.7 | Función: procesar imágenes | `inngest/functions/process-property-media.ts` — resize/optimize fotos subidas | ⬜ |
 | 3.1.8 | Función: cola de propiedades | `inngest/functions/send-property-queue.ts` — envío throttled de propiedades a leads | ⬜ |
 | 3.1.9 | Función: recordatorio de cita | `inngest/functions/appointment-reminder.ts` — scheduled 2h antes | ⬜ |
@@ -231,5 +231,5 @@
 - **Dentro de cada capa**, las tareas están ordenadas por dependencia técnica.
 - **Mock data no se borra inmediatamente.** Se mantiene como fallback durante la migración y se elimina al final de Capa 2.
 - **Los tipos existentes en `lib/types/`** son la fuente de verdad para diseñar el schema de DB.
-- **El modelo de multitenancy** es: Clerk Organizations = tenant. Un agente individual = org de 1 miembro. Una agencia = org con N miembros y roles (`owner`/`admin`/`agent`).
-- **Pricing/tier** se almacena en `publicMetadata` de la org en Clerk y se replica en la tabla `organizations` de Supabase para queries.
+- **El modelo de multitenancy** es: Better Auth Organization = tenant. Un agente individual = org de 1 miembro. Una agencia = org con N miembros y roles (`owner`/`admin`/`agent`).
+- **Pricing/tier** se almacena en el campo `plan` de la tabla `organization` (campo adicional definido en Better Auth).
