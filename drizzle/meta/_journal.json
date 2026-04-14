@@ -22,6 +22,13 @@
       "when": 1776184929727,
       "tag": "0002_cheerful_prima",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1776185117672,
+      "tag": "0003_pink_rhino",
+      "breakpoints": true
     }
   ]
 }
