@@ -1,4 +1,4 @@
-import { pgTable, text, integer, boolean, real, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, integer, boolean, real, timestamp, index } from "drizzle-orm/pg-core";
 
 export const properties = pgTable("properties", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
@@ -62,4 +62,8 @@ export const properties = pgTable("properties", {
   // Timestamps
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}, (t) => [
+  index("properties_org_id_idx").on(t.organizationId),
+  index("properties_status_idx").on(t.status),
+  index("properties_org_status_idx").on(t.organizationId, t.status),
+]);

@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, index } from "drizzle-orm/pg-core";
 
 export const appointments = pgTable("appointments", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
@@ -16,4 +16,9 @@ export const appointments = pgTable("appointments", {
   confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
   completedAt: timestamp("completed_at", { withTimezone: true }),
   cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
-});
+}, (t) => [
+  index("appointments_org_id_idx").on(t.organizationId),
+  index("appointments_lead_id_idx").on(t.leadId),
+  index("appointments_status_idx").on(t.status),
+  index("appointments_starts_at_idx").on(t.startsAt),
+]);

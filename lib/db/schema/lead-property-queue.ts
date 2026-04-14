@@ -1,4 +1,4 @@
-import { pgTable, text, integer, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, integer, timestamp, index } from "drizzle-orm/pg-core";
 
 export const leadPropertyQueue = pgTable("lead_property_queue", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
@@ -12,4 +12,7 @@ export const leadPropertyQueue = pgTable("lead_property_queue", {
   estimatedSendAt: timestamp("estimated_send_at", { withTimezone: true }),
   sentAt: timestamp("sent_at", { withTimezone: true }),
   addedAt: timestamp("added_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}, (t) => [
+  index("lpq_lead_id_idx").on(t.leadId),
+  index("lpq_org_id_idx").on(t.organizationId),
+]);

@@ -1,4 +1,4 @@
-import { pgTable, text, boolean, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, boolean, timestamp, index } from "drizzle-orm/pg-core";
 
 export const leads = pgTable("leads", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
@@ -23,4 +23,9 @@ export const leads = pgTable("leads", {
 
   // Timestamps
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}, (t) => [
+  index("leads_org_id_idx").on(t.organizationId),
+  index("leads_property_id_idx").on(t.propertyId),
+  index("leads_status_idx").on(t.status),
+  index("leads_org_status_idx").on(t.organizationId, t.status),
+]);
