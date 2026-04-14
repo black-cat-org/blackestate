@@ -114,4 +114,5 @@ docs/                   # Project documentation
 - **Stack completo:** `docs/tech-stack.md`
 - **Plan de implementación:** `docs/implementation-plan.md`
 - **Roles y permisos:** `docs/roles-and-permissions.md`
-- **Idioma del producto:** Español (es-AR para formateo)
+- **Idioma del producto:** Español (es-AR para formateo de fechas y moneda)
+- **Idioma del código:** Inglés estricto — variables, enums, rutas, archivos, schemas, TODO en inglés. Español SOLO para contenido visible al usuario final (labels, mensajes). Mapeo vía constantes `LABELS`/`MESSAGES`.

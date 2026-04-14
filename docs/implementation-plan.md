@@ -3,7 +3,8 @@
 > Plan de ejecución granular para llevar Black Estate de frontend con datos mock a producto funcional con backend real.
 >
 > **Creado:** 2026-04-13
-> **Estado:** En planificación. Ejecutar capa por capa en orden.
+> **Última actualización:** 2026-04-14
+> **Estado:** Capa 1 completada, Capa 2.1 (schema) completada. Siguiente: migrar enums a inglés, luego RLS policies.
 
 ---
 
@@ -11,8 +12,8 @@
 
 | Capa | Nombre | Dependencias | Estado |
 |------|--------|-------------|--------|
-| 1 | Fundación (Auth + DB) | Ninguna | ⬜ Pendiente |
-| 2 | Data Layer Real | Capa 1 | ⬜ Pendiente |
+| 1 | Fundación (Auth + DB) | Ninguna | ✅ Completada |
+| 2 | Data Layer Real | Capa 1 | 🔄 En progreso (schema done, queries pendientes) |
 | 3 | Lógica Asíncrona y AI | Capa 2 | ⬜ Pendiente |
 | 4 | Observabilidad y Notificaciones | Capa 3 | ⬜ Pendiente |
 | 5 | Soporte y Marketing | Capa 4 | ⬜ Pendiente |
@@ -42,7 +43,8 @@
 | 1.1.15 | Crear componente OrgSwitcher | Componente para cambiar entre organizaciones | ✅ |
 | 1.1.16 | Hook: auto-crear org en sign-up | After hook en sign-up que crea una org personal con rol `owner` | ✅ |
 | 1.1.17 | Test end-to-end de auth flow | Sign-up → org creada → session activa → dashboard accesible → sign-out funciona | ✅ (16/16 tests passed) |
-| 1.1.18 | Geolocalización en sessions | Enriquecer sessions con país, ciudad y dispositivo usando headers de Vercel (`x-vercel-ip-country`, etc.) | ⬜ (implementar en deploy a producción) |
+| 1.1.18 | Geolocalización en sessions | Enriquecer sessions con país, ciudad y dispositivo usando headers de Vercel (`x-vercel-ip-country`, etc.) | ⏭️ Diferido a producción |
+| 1.1.19 | Migrar IDs de auth a UUID | Migrar IDs base62 → UUID, configurar `generateId: () => crypto.randomUUID()` en Better Auth | ✅ |
 
 ### 1.2 Supabase — Base de datos, storage y realtime
 
@@ -62,30 +64,35 @@
 
 | # | Tarea | Detalle | Estado |
 |---|-------|---------|--------|
-| 2.1.1 | Elegir herramienta de migraciones | Drizzle ORM + Drizzle Kit (recomendado) o Supabase CLI | ⬜ |
-| 2.1.2 | Extender tabla `organization` | Better Auth ya crea esta tabla. Agregar campos: `plan`, `max_seats`, `stripe_customer_id`, `logo_url` | ⬜ |
-| 2.1.3 | Extender tabla `member` | Better Auth ya crea esta tabla. Verificar que los campos de role son suficientes | ⬜ |
-| 2.1.4 | Diseñar tabla `properties` | Basarse en `lib/types/property.ts`: todos los campos del tipo `Property` | ⬜ |
+| 2.1.1 | Configurar Drizzle ORM | `drizzle.config.ts`, `lib/db/pool.ts` (shared pool con globalThis guard), `lib/db/index.ts` (instancia Drizzle), `lib/db/schema/` (schemas). Scripts: `db:generate`, `db:migrate`, `db:check`. `db:push` bloqueado. | ✅ |
+| 2.1.2 | Extender tabla `organization` | Better Auth ya crea esta tabla. Campos adicionales vía `schema.additionalFields`: `plan`, `maxSeats`, `logoUrl` | ✅ (en auth.ts) |
+| 2.1.3 | Extender tabla `member` | Better Auth ya crea esta tabla. Campo adicional: `title` | ✅ (en auth.ts) |
+| 2.1.4 | Diseñar tabla `properties` | 44 columnas: core, price (numeric 14,2), address (doublePrecision lat/lng), surface, features, amenities (text[]), media (text[]), timestamps + soft delete | ✅ |
 | 2.1.5 | Diseñar tabla `property_media` | Diferida — media se almacena como `photos text[]`, `blueprints text[]`, `video_url`, `virtual_tour_url` en `properties`. Tabla separada con metadata por archivo se crea cuando se implemente Supabase Storage (tarea 2.3) | ⏭️ Diferida |
-| 2.1.6 | Diseñar tabla `leads` | Basarse en `lib/types/lead.ts`: todos los campos del tipo `Lead` | ⬜ |
-| 2.1.7 | Diseñar tabla `lead_property_queue` | `id`, `lead_id`, `property_id`, `status`, `sent_at`, `opened_at` | ⬜ |
-| 2.1.8 | Diseñar tabla `appointments` | Basarse en `lib/types/bot.ts`: tipo `Appointment` | ⬜ |
-| 2.1.9 | Diseñar tabla `bot_conversations` | `id`, `lead_id`, `org_id`, `status`, timestamps | ⬜ |
-| 2.1.10 | Diseñar tabla `bot_messages` | `id`, `conversation_id`, `sender`, `content`, `content_type`, timestamps | ⬜ |
-| 2.1.11 | Diseñar tabla `bot_config` | `id`, `org_id`, configuración del bot por organización | ⬜ |
-| 2.1.12 | Diseñar tabla `analytics_events` | `id`, `org_id`, `event_type`, `metadata` (JSONB), `created_at` | ⬜ |
-| 2.1.13 | Diseñar tabla `ai_contents` | `id`, `property_id`, `org_id`, `type`, `platform`, `content`, timestamps | ⬜ |
-| 2.1.14 | Diseñar tabla `agent_profiles` | `id`, `user_id`, `org_id`, datos del perfil del agente | ⬜ |
-| 2.1.15 | Escribir RLS policies | Policies para CADA tabla: filtrar por `org_id` usando `auth.jwt() -> 'org_id'` | ⬜ |
-| 2.1.16 | Crear índices | Índices en `org_id`, `status`, `created_at` para queries frecuentes | ⬜ |
-| 2.1.17 | Ejecutar migraciones | Correr las migraciones contra Supabase (dev y luego prod) | ⬜ |
+| 2.1.6 | Diseñar tabla `leads` | 16 columnas: contact info (email/phone nullable), source, status, preferences, timestamps + soft delete. FK → properties | ✅ |
+| 2.1.7 | Diseñar tabla `lead_property_queue` | 11 columnas: status, sort_order, timestamps + soft delete. FK → leads, properties | ✅ |
+| 2.1.8 | Diseñar tabla `appointments` | 14 columnas: starts_at/ends_at (timestamptz), status, notes, lifecycle timestamps + soft delete. FK → leads, properties | ✅ |
+| 2.1.9 | Diseñar tabla `bot_conversations` | 7 columnas: status, timestamps + soft delete. FK → leads | ✅ |
+| 2.1.10 | Diseñar tabla `bot_messages` | 12 columnas: sender, content_type, text, media_url, status, timestamps + soft delete. FK → bot_conversations | ✅ |
+| 2.1.11 | Diseñar tabla `bot_config` | 11 columnas: active, schedule (jsonb), notifications (jsonb), org_id UNIQUE, timestamps + soft delete | ✅ |
+| 2.1.12 | Diseñar tabla `analytics_events` | 5 columnas: event_type, metadata (jsonb), created_at. Append-only, sin updatedAt/deletedAt | ✅ |
+| 2.1.13 | Diseñar tabla `ai_contents` | 11 columnas: type, platform, text, published_at/to, timestamps + soft delete. FK → properties | ✅ |
+| 2.1.14 | Diseñar tabla `agent_profiles` | 12 columnas: bio, social links, avatar_url, timestamps + soft delete. UNIQUE(user_id, org_id). FK → user, organization | ✅ |
+| 2.1.15 | Escribir RLS policies | Policies para Data API público. Server-side queries (Drizzle) usan rol postgres que bypasea RLS. Helpers `withOrg()` para filtrar org_id + deleted_at automáticamente | ⬜ |
+| 2.1.16 | Crear índices | 24 índices: org_id en toda tabla, status, FKs, compuestos (org+status, org+starts_at, lead+sort_order) | ✅ |
+| 2.1.17 | Ejecutar migraciones | Todas las migraciones aplicadas contra Supabase dev. Migración base en `drizzle/0000_complex_infant_terrible.sql` | ✅ |
 | 2.1.18 | Seed data de desarrollo | Script de seed para tener datos de prueba en la DB real | ⬜ |
+| 2.1.19 | FK constraints | 25 FKs: 12 dominio↔dominio, 11 dominio→auth, 6 auth internas | ✅ |
+| 2.1.20 | pgEnum types | 17 enum types creados para validación a nivel de DB. **⚠️ Pendiente: migrar valores de español a inglés** | 🔄 Parcial |
+| 2.1.21 | Soft delete | `deleted_at timestamptz` en todas las tablas de dominio (excepto analytics_events que es append-only) | ✅ |
+| 2.1.22 | `$onUpdate` timestamps | `updatedAt` con `.$onUpdate(() => new Date())` en todas las tablas mutables | ✅ |
+| 2.1.23 | Migrar enums a inglés | Todos los enum values deben estar en inglés. Actualizar DB, schemas Drizzle, tipos TS, constantes/labels | ⬜ |
 
 ### 2.2 Reemplazar `/lib/data/` — Queries reales
 
 | # | Tarea | Detalle | Estado |
 |---|-------|---------|--------|
-| 2.2.1 | Crear capa de acceso a datos | `lib/db/` con funciones que usan el cliente Supabase (o Drizzle) | ⬜ |
+| 2.2.1 | Crear capa de acceso a datos | `lib/db/` con helpers `withOrg()` que inyectan filtro org_id + deleted_at. Usa Drizzle ORM | ⬜ |
 | 2.2.2 | Migrar `lib/data/properties.ts` | Reemplazar CRUD mock por queries reales: `getProperties()`, `getPropertyById()`, `createProperty()`, `updateProperty()`, `deleteProperty()` | ⬜ |
 | 2.2.3 | Migrar `lib/data/leads.ts` | Reemplazar CRUD mock: `getLeads()`, `getLeadById()`, `createLead()`, `updateLeadStatus()`, queue operations | ⬜ |
 | 2.2.4 | Migrar `lib/data/bot.ts` | Reemplazar mock: `getBotActivities()`, `getBotMessages()`, `getBotConfig()`, `updateBotConfig()` | ⬜ |
@@ -234,3 +241,7 @@
 - **Los tipos existentes en `lib/types/`** son la fuente de verdad para diseñar el schema de DB.
 - **El modelo de multitenancy** es: Better Auth Organization = tenant. Un agente individual = org de 1 miembro. Una agencia = org con N miembros y roles (`owner`/`admin`/`agent`).
 - **Pricing/tier** se almacena en el campo `plan` de la tabla `organization` (campo adicional definido en Better Auth).
+- **Idioma del código:** Inglés estricto. Español SOLO para contenido visible al usuario final.
+- **Drizzle Kit:** NUNCA usar `drizzle-kit push`. Solo `db:generate` + `db:migrate`. Hook de protección configurado.
+- **Soft delete:** `deleted_at` nullable en toda tabla de dominio. Las queries deben filtrar `WHERE deleted_at IS NULL`.
+- **Pool compartido:** `lib/db/pool.ts` con guard `globalThis` — usado por Better Auth y Drizzle.
