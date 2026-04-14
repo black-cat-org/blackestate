@@ -30,11 +30,6 @@ import {
 import Link from "next/link"
 
 const data = {
-  user: {
-    name: "Gonzalo P.",
-    email: "gonzalo@blackestate.com",
-    avatar: "",
-  },
   navMain: [
     {
       title: "Dashboard",
@@ -118,7 +113,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <NavSecondary items={data.navSecondary} className="mt-auto" />
       </SidebarContent>
       <SidebarFooter>
-        <NavUser user={data.user} />
+        <NavUser />
       </SidebarFooter>
     </Sidebar>
   )
