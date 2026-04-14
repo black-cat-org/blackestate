@@ -15,6 +15,8 @@ export const botConfig = pgTable("bot_config", {
   // { newAppointmentRequest: true, appointmentConfirmed: true, ... }
   notifications: jsonb("notifications").notNull().default({}),
 
+  // Timestamps
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
 });

@@ -5,64 +5,8 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1776182996615,
-      "tag": "0000_typical_energizer",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1776184553960,
-      "tag": "0001_daffy_the_initiative",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1776184929727,
-      "tag": "0002_cheerful_prima",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "7",
-      "when": 1776185117672,
-      "tag": "0003_pink_rhino",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "7",
-      "when": 1776185249596,
-      "tag": "0004_brainy_frightful_four",
-      "breakpoints": true
-    },
-    {
-      "idx": 5,
-      "version": "7",
-      "when": 1776185329346,
-      "tag": "0005_furry_microbe",
-      "breakpoints": true
-    },
-    {
-      "idx": 6,
-      "version": "7",
-      "when": 1776185499983,
-      "tag": "0006_watery_ultron",
-      "breakpoints": true
-    },
-    {
-      "idx": 7,
-      "version": "7",
-      "when": 1776185571553,
-      "tag": "0007_slippery_giant_man",
-      "breakpoints": true
-    },
-    {
-      "idx": 8,
-      "version": "7",
-      "when": 1776185982024,
-      "tag": "0008_amusing_the_liberteens",
+      "when": 1776193115475,
+      "tag": "0000_complex_infant_terrible",
       "breakpoints": true
     }
   ]

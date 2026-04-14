@@ -1,4 +1,4 @@
-import { pgTable, text, integer, boolean, real, timestamp, index } from "drizzle-orm/pg-core";
+import { pgTable, text, integer, boolean, numeric, doublePrecision, real, timestamp, index } from "drizzle-orm/pg-core";
 
 export const properties = pgTable("properties", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
@@ -13,10 +13,10 @@ export const properties = pgTable("properties", {
   status: text("status").notNull().default("borrador"), // borrador, en_revision, activa, pausada, vendida, alquilada, rechazada
 
   // Price
-  priceAmount: real("price_amount").notNull(),
+  priceAmount: numeric("price_amount", { precision: 14, scale: 2 }).notNull(),
   priceCurrency: text("price_currency").notNull(), // USD, BOB
   negotiable: boolean("negotiable").notNull().default(false),
-  expensesAmount: real("expenses_amount"),
+  expensesAmount: numeric("expenses_amount", { precision: 14, scale: 2 }),
   expensesCurrency: text("expenses_currency"),
 
   // Address
@@ -28,8 +28,8 @@ export const properties = pgTable("properties", {
   addressState: text("address_state").notNull(),
   addressCountry: text("address_country").notNull(),
   addressNeighborhood: text("address_neighborhood"),
-  addressLat: real("address_lat"),
-  addressLng: real("address_lng"),
+  addressLat: doublePrecision("address_lat"),
+  addressLng: doublePrecision("address_lng"),
   addressGoogleMapsUrl: text("address_google_maps_url"),
 
   // Surface
@@ -61,7 +61,8 @@ export const properties = pgTable("properties", {
 
   // Timestamps
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
 }, (t) => [
   index("properties_org_id_idx").on(t.organizationId),
   index("properties_status_idx").on(t.status),

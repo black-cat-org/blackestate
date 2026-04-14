@@ -12,7 +12,10 @@ export const appointments = pgTable("appointments", {
   status: text("status").notNull().default("solicitada"), // solicitada, confirmada, completada, cancelada
   notes: text("notes"),
 
+  // Timestamps
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
   confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
   completedAt: timestamp("completed_at", { withTimezone: true }),
   cancelledAt: timestamp("cancelled_at", { withTimezone: true }),

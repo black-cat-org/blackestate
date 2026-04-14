@@ -7,6 +7,7 @@ export const analyticsEvents = pgTable("analytics_events", {
   eventType: text("event_type").notNull(), // property_created, lead_received, appointment_booked, deal_won, property_viewed, etc.
   metadata: jsonb("metadata").notNull().default({}), // { propertyId, leadId, source, amount, ... }
 
+  // Timestamps
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [
   index("analytics_org_id_idx").on(t.organizationId),

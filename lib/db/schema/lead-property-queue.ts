@@ -11,7 +11,11 @@ export const leadPropertyQueue = pgTable("lead_property_queue", {
 
   estimatedSendAt: timestamp("estimated_send_at", { withTimezone: true }),
   sentAt: timestamp("sent_at", { withTimezone: true }),
-  addedAt: timestamp("added_at", { withTimezone: true }).notNull().defaultNow(),
+
+  // Timestamps
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
 }, (t) => [
   index("lpq_lead_id_idx").on(t.leadId),
   index("lpq_org_id_idx").on(t.organizationId),

@@ -7,8 +7,8 @@ export const leads = pgTable("leads", {
 
   // Contact info
   name: text("name").notNull(),
-  phone: text("phone").notNull(),
-  email: text("email").notNull(),
+  phone: text("phone"),
+  email: text("email"),
 
   // Lead details
   source: text("source"), // facebook, instagram, whatsapp, tiktok, null (directo)
@@ -23,6 +23,8 @@ export const leads = pgTable("leads", {
 
   // Timestamps
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
 }, (t) => [
   index("leads_org_id_idx").on(t.organizationId),
   index("leads_property_id_idx").on(t.propertyId),
