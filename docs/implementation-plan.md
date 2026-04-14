@@ -40,17 +40,18 @@
 | 1.1.13 | Crear páginas de auth (UI) | `app/(auth)/sign-in/page.tsx` y `sign-up/page.tsx` con shadcn (formularios custom) | ✅ |
 | 1.1.14 | Crear componente UserButton | Componente con avatar, nombre, dropdown menu (perfil, settings, logout) | ⬜ |
 | 1.1.15 | Crear componente OrgSwitcher | Componente para cambiar entre organizaciones | ⬜ |
-| 1.1.16 | Hook: auto-crear org en sign-up | After hook en sign-up que crea una org personal con rol `owner` | ⬜ |
+| 1.1.16 | Hook: auto-crear org en sign-up | After hook en sign-up que crea una org personal con rol `owner` | ✅ |
 | 1.1.17 | Test end-to-end de auth flow | Sign-up → org creada → session activa → dashboard accesible → sign-out funciona | ⬜ |
+| 1.1.18 | Geolocalización en sessions | Enriquecer sessions con país, ciudad y dispositivo usando headers de Vercel (`x-vercel-ip-country`, etc.) | ⬜ (implementar en deploy a producción) |
 
 ### 1.2 Supabase — Base de datos, storage y realtime
 
 | # | Tarea | Detalle | Estado |
 |---|-------|---------|--------|
-| 1.2.1 | Crear cuenta en Supabase | Registrarse en supabase.com, crear proyecto "blackestate" | ⬜ |
-| 1.2.2 | Obtener connection string | Copiar `DATABASE_URL` (pooled) del dashboard de Supabase | ⬜ |
-| 1.2.3 | Configurar env vars | `DATABASE_URL` en `.env.local` (Better Auth se conecta directamente a Postgres) | ⬜ |
-| 1.2.4 | Verificar conexión | Ejecutar `npx auth migrate` y confirmar que las tablas de auth se crean en Supabase | ⬜ |
+| 1.2.1 | Crear cuenta en Supabase | Registrarse en supabase.com, crear proyecto "blackestate" | ✅ |
+| 1.2.2 | Obtener connection string | Copiar `DATABASE_URL` (pooled) del dashboard de Supabase | ✅ |
+| 1.2.3 | Configurar env vars | `DATABASE_URL` en `.env.local` (Better Auth se conecta directamente a Postgres) | ✅ |
+| 1.2.4 | Verificar conexión | Ejecutar `npx auth migrate` y confirmar que las tablas de auth se crean en Supabase | ✅ |
 | 1.2.5 | Configurar Storage | Crear buckets `property-media`, `avatars`, `brochures` (para Capa 2) | ⬜ |
 
 ---

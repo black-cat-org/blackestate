@@ -1,6 +1,7 @@
 import { betterAuth } from "better-auth";
 import { organization } from "better-auth/plugins";
 import { nextCookies } from "better-auth/next-js";
+import { createAuthMiddleware } from "better-auth/api";
 import { Pool } from "pg";
 import { ac, owner, admin, agent } from "./auth-permissions";
 
@@ -18,6 +19,33 @@ export const auth = betterAuth({
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
     },
+  },
+
+  hooks: {
+    after: createAuthMiddleware(async (ctx) => {
+      if (!ctx.path.startsWith("/sign-up")) return;
+
+      const newSession = ctx.context.newSession;
+      if (!newSession) return;
+
+      const user = newSession.user;
+
+      const slug = user.email
+        .split("@")[0]
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, "-")
+        .replace(/-+/g, "-")
+        .slice(0, 30);
+
+      await auth.api.createOrganization({
+        body: {
+          name: `${user.name}`,
+          slug: `${slug}-${Date.now().toString(36)}`,
+          userId: user.id,
+          metadata: { plan: "free" },
+        },
+      });
+    }),
   },
 
   plugins: [
