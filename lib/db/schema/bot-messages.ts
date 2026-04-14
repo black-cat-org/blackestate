@@ -1,9 +1,10 @@
 import { pgTable, text, timestamp, index } from "drizzle-orm/pg-core";
+import { botConversations } from "./bot-conversations";
 
 export const botMessages = pgTable("bot_messages", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   organizationId: text("organization_id").notNull(),
-  conversationId: text("conversation_id").notNull(),
+  conversationId: text("conversation_id").notNull().references(() => botConversations.id),
 
   sender: text("sender").notNull(), // bot, client, agent
   contentType: text("content_type").notNull().default("text"), // text, image, pdf, property_card

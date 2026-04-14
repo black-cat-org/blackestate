@@ -1,10 +1,12 @@
 import { pgTable, text, timestamp, index } from "drizzle-orm/pg-core";
+import { leads } from "./leads";
+import { properties } from "./properties";
 
 export const appointments = pgTable("appointments", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   organizationId: text("organization_id").notNull(),
-  leadId: text("lead_id").notNull(),
-  propertyId: text("property_id").notNull(),
+  leadId: text("lead_id").notNull().references(() => leads.id),
+  propertyId: text("property_id").notNull().references(() => properties.id),
 
   startsAt: timestamp("starts_at", { withTimezone: true }).notNull(),
   endsAt: timestamp("ends_at", { withTimezone: true }).notNull(),

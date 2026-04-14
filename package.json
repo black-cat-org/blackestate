@@ -6,7 +6,11 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:check": "drizzle-kit check",
+    "db:push": "echo '⛔ PROHIBIDO: drizzle-kit push elimina tablas de Better Auth. Usar db:generate + db:migrate.' && exit 1"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

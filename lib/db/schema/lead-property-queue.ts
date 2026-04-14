@@ -1,10 +1,12 @@
 import { pgTable, text, integer, timestamp, index } from "drizzle-orm/pg-core";
+import { leads } from "./leads";
+import { properties } from "./properties";
 
 export const leadPropertyQueue = pgTable("lead_property_queue", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   organizationId: text("organization_id").notNull(),
-  leadId: text("lead_id").notNull(),
-  propertyId: text("property_id").notNull(),
+  leadId: text("lead_id").notNull().references(() => leads.id),
+  propertyId: text("property_id").notNull().references(() => properties.id),
 
   status: text("status").notNull().default("pendiente"), // pendiente, enviada, pausada
   sortOrder: integer("sort_order").notNull().default(0),

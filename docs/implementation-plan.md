@@ -66,7 +66,7 @@
 | 2.1.2 | Extender tabla `organization` | Better Auth ya crea esta tabla. Agregar campos: `plan`, `max_seats`, `stripe_customer_id`, `logo_url` | ⬜ |
 | 2.1.3 | Extender tabla `member` | Better Auth ya crea esta tabla. Verificar que los campos de role son suficientes | ⬜ |
 | 2.1.4 | Diseñar tabla `properties` | Basarse en `lib/types/property.ts`: todos los campos del tipo `Property` | ⬜ |
-| 2.1.5 | Diseñar tabla `property_media` | `id`, `property_id`, `type` (photo/video/blueprint), `url`, `order`, `storage_path` | ⬜ |
+| 2.1.5 | Diseñar tabla `property_media` | Diferida — media se almacena como `photos text[]`, `blueprints text[]`, `video_url`, `virtual_tour_url` en `properties`. Tabla separada con metadata por archivo se crea cuando se implemente Supabase Storage (tarea 2.3) | ⏭️ Diferida |
 | 2.1.6 | Diseñar tabla `leads` | Basarse en `lib/types/lead.ts`: todos los campos del tipo `Lead` | ⬜ |
 | 2.1.7 | Diseñar tabla `lead_property_queue` | `id`, `lead_id`, `property_id`, `status`, `sent_at`, `opened_at` | ⬜ |
 | 2.1.8 | Diseñar tabla `appointments` | Basarse en `lib/types/bot.ts`: tipo `Appointment` | ⬜ |

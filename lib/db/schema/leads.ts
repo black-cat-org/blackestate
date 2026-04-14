@@ -1,9 +1,10 @@
 import { pgTable, text, boolean, timestamp, index } from "drizzle-orm/pg-core";
+import { properties } from "./properties";
 
 export const leads = pgTable("leads", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   organizationId: text("organization_id").notNull(),
-  propertyId: text("property_id").notNull(),
+  propertyId: text("property_id").notNull().references(() => properties.id),
 
   // Contact info
   name: text("name").notNull(),

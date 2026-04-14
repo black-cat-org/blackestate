@@ -1,9 +1,10 @@
 import { pgTable, text, timestamp, index } from "drizzle-orm/pg-core";
+import { properties } from "./properties";
 
 export const aiContents = pgTable("ai_contents", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   organizationId: text("organization_id").notNull(),
-  propertyId: text("property_id").notNull(),
+  propertyId: text("property_id").notNull().references(() => properties.id),
 
   type: text("type").notNull(), // descripcion, caption, hashtags, brochure
   platform: text("platform"), // facebook, instagram, tiktok, whatsapp (null for descripcion/hashtags)

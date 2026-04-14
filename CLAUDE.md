@@ -34,6 +34,33 @@ No test framework is configured yet.
 - **Icons:** lucide-react
 - **Skeletons:** Boneyard (`boneyard-js`) — TODO componente que carga datos async debe usar `<Skeleton>` de Boneyard. No usar placeholders hardcodeados ni texto de fallback. Correr `npx boneyard-js build` después de cambios en UI.
 
+## Database Layer
+
+- **ORM:** Drizzle ORM + Drizzle Kit para tablas de dominio
+- **Conexión:** Pool compartido `pg` en `lib/db/pool.ts` (con guard `globalThis` para evitar leaks en dev)
+- **Instancia Drizzle:** `lib/db/index.ts` exporta `db`
+- **Schemas:** `lib/db/schema/` — un archivo por tabla, barrel en `index.ts`
+- **Migraciones:** `drizzle/` — archivos `.sql` generados por Drizzle Kit
+- **Config:** `drizzle.config.ts` apunta a `lib/db/schema/index.ts`
+
+### ⚠️ PELIGRO: Drizzle Kit + Better Auth coexisten en la misma DB
+
+Better Auth maneja sus propias tablas (`user`, `session`, `account`, `organization`, `member`, `invitation`, `verification`) que NO están definidas en los schemas de Drizzle. Esto significa:
+
+- **NUNCA usar `drizzle-kit push`** — elimina tablas que no están en Drizzle, destruyendo TODAS las tablas de Better Auth y los datos de usuarios/organizaciones.
+- **NUNCA usar `DROP SCHEMA CASCADE`** sin verificar qué contiene.
+- Para cambios de schema usar SOLO: `drizzle-kit generate` + `drizzle-kit migrate`, o SQL manual via Supabase MCP.
+- Si `drizzle-kit generate` pide TTY interactivo, aplicar SQL manualmente y registrar la migración.
+
+### Comandos seguros de Drizzle Kit
+
+```bash
+npx drizzle-kit generate   # Genera migración SQL (seguro, solo crea archivos)
+npx drizzle-kit migrate    # Aplica migraciones pendientes (seguro, solo ejecuta SQL)
+npx drizzle-kit check      # Verifica config (seguro, read-only)
+# PROHIBIDO: npx drizzle-kit push
+```
+
 ## Tenancy & Auth Model
 
 - **Patrón:** "Everything is an org" — todo usuario pertenece a al menos una organización
