@@ -3,17 +3,21 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { signIn } from "@/lib/auth-client";
+import { toast } from "sonner";
 
 export function SocialButtons() {
   const [loading, setLoading] = useState(false);
 
   const handleGoogleSignIn = async () => {
     setLoading(true);
-    await signIn.social({
+    const { error } = await signIn.social({
       provider: "google",
       callbackURL: "/dashboard",
     });
-    setLoading(false);
+    if (error) {
+      toast.error(error.message || "Error al iniciar sesión con Google");
+      setLoading(false);
+    }
   };
 
   return (

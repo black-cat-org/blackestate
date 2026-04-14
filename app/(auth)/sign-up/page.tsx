@@ -31,20 +31,23 @@ export default function SignUpPage() {
     e.preventDefault();
     setLoading(true);
 
-    const { error } = await signUp.email({
-      name,
-      email,
-      password,
-      callbackURL: "/dashboard",
-    });
+    try {
+      const { error } = await signUp.email({
+        name,
+        email,
+        password,
+        callbackURL: "/dashboard",
+      });
 
-    if (error) {
-      toast.error(error.message || "Error al crear la cuenta");
+      if (error) {
+        toast.error(error.message || "Error al crear la cuenta");
+        return;
+      }
+
+      router.push("/dashboard");
+    } finally {
       setLoading(false);
-      return;
     }
-
-    router.push("/dashboard");
   };
 
   return (

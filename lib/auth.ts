@@ -1,14 +1,15 @@
 import { betterAuth } from "better-auth";
 import { organization } from "better-auth/plugins";
 import { nextCookies } from "better-auth/next-js";
-import { createAuthMiddleware } from "better-auth/api";
 import { Pool } from "pg";
 import { ac, owner, admin, agent } from "./auth-permissions";
 
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+});
+
 export const auth = betterAuth({
-  database: new Pool({
-    connectionString: process.env.DATABASE_URL,
-  }),
+  database: pool,
 
   emailAndPassword: {
     enabled: true,
@@ -21,31 +22,27 @@ export const auth = betterAuth({
     },
   },
 
-  hooks: {
-    after: createAuthMiddleware(async (ctx) => {
-      if (!ctx.path.startsWith("/sign-up")) return;
+  databaseHooks: {
+    session: {
+      create: {
+        before: async (session) => {
+          if (session.activeOrganizationId) return { data: session };
 
-      const newSession = ctx.context.newSession;
-      if (!newSession) return;
+          const result = await pool.query(
+            `SELECT "organizationId" FROM member WHERE "userId" = $1 LIMIT 1`,
+            [session.userId]
+          );
 
-      const user = newSession.user;
-
-      const slug = user.email
-        .split("@")[0]
-        .toLowerCase()
-        .replace(/[^a-z0-9]/g, "-")
-        .replace(/-+/g, "-")
-        .slice(0, 30);
-
-      await auth.api.createOrganization({
-        body: {
-          name: `${user.name}`,
-          slug: `${slug}-${Date.now().toString(36)}`,
-          userId: user.id,
-          metadata: { plan: "free" },
+          const orgId = result.rows[0]?.organizationId;
+          return {
+            data: {
+              ...session,
+              activeOrganizationId: orgId || null,
+            },
+          };
         },
-      });
-    }),
+      },
+    },
   },
 
   plugins: [

@@ -39,9 +39,9 @@
 | 1.1.12 | Configurar Apple OAuth | Crear App ID en Apple Developer, obtener credentials | ⏭️ Diferido a producción |
 | 1.1.13 | Crear páginas de auth (UI) | `app/(auth)/sign-in/page.tsx` y `sign-up/page.tsx` con shadcn (formularios custom) | ✅ |
 | 1.1.14 | Crear componente UserButton | Componente con avatar, nombre, dropdown menu (perfil, settings, logout) | ✅ |
-| 1.1.15 | Crear componente OrgSwitcher | Componente para cambiar entre organizaciones | ⬜ |
+| 1.1.15 | Crear componente OrgSwitcher | Componente para cambiar entre organizaciones | ✅ |
 | 1.1.16 | Hook: auto-crear org en sign-up | After hook en sign-up que crea una org personal con rol `owner` | ✅ |
-| 1.1.17 | Test end-to-end de auth flow | Sign-up → org creada → session activa → dashboard accesible → sign-out funciona | ⬜ |
+| 1.1.17 | Test end-to-end de auth flow | Sign-up → org creada → session activa → dashboard accesible → sign-out funciona | ✅ (16/16 tests passed) |
 | 1.1.18 | Geolocalización en sessions | Enriquecer sessions con país, ciudad y dispositivo usando headers de Vercel (`x-vercel-ip-country`, etc.) | ⬜ (implementar en deploy a producción) |
 
 ### 1.2 Supabase — Base de datos, storage y realtime

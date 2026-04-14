@@ -30,19 +30,22 @@ export default function SignInPage() {
     e.preventDefault();
     setLoading(true);
 
-    const { error } = await signIn.email({
-      email,
-      password,
-      callbackURL: "/dashboard",
-    });
+    try {
+      const { error } = await signIn.email({
+        email,
+        password,
+        callbackURL: "/dashboard",
+      });
 
-    if (error) {
-      toast.error(error.message || "Credenciales incorrectas");
+      if (error) {
+        toast.error(error.message || "Credenciales incorrectas");
+        return;
+      }
+
+      router.push("/dashboard");
+    } finally {
       setLoading(false);
-      return;
     }
-
-    router.push("/dashboard");
   };
 
   return (
