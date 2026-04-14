@@ -1,1 +1,1 @@
-// Domain table schemas — add exports here as tables are created
+export { properties } from "./properties";
