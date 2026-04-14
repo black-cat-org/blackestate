@@ -79,7 +79,7 @@ export function OrgSwitcher() {
                 </DropdownMenuItem>
               ))}
               <DropdownMenuSeparator />
-              <DropdownMenuItem>
+              <DropdownMenuItem disabled>
                 <Plus className="size-4" />
                 Crear organización
               </DropdownMenuItem>

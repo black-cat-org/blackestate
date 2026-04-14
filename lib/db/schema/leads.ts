@@ -1,5 +1,6 @@
 import { pgTable, text, boolean, timestamp, index } from "drizzle-orm/pg-core";
 import { properties } from "./properties";
+import { leadStatusEnum, leadSourceEnum } from "./enums";
 
 export const leads = pgTable("leads", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
@@ -12,8 +13,8 @@ export const leads = pgTable("leads", {
   email: text("email"),
 
   // Lead details
-  source: text("source"), // facebook, instagram, whatsapp, tiktok, null (directo)
-  status: text("status").notNull().default("nuevo"), // nuevo, contactado, interesado, ganado, perdido, descartado
+  source: leadSourceEnum("source"),
+  status: leadStatusEnum("status").notNull().default("nuevo"),
   message: text("message"),
 
   // Preferences

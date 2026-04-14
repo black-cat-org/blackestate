@@ -1,4 +1,5 @@
 import { pgTable, text, integer, boolean, numeric, doublePrecision, real, timestamp, index } from "drizzle-orm/pg-core";
+import { propertyTypeEnum, operationTypeEnum, propertyStatusEnum, currencyEnum, surfaceUnitEnum, propertyConditionEnum, orientationEnum } from "./enums";
 
 export const properties = pgTable("properties", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
@@ -8,16 +9,16 @@ export const properties = pgTable("properties", {
   title: text("title").notNull(),
   description: text("description").notNull(),
   shortDescription: text("short_description"),
-  type: text("type").notNull(), // house, apartment, land, commercial, office, warehouse, cabin, ph
-  operationType: text("operation_type").notNull(), // venta, alquiler, temporal, anticretico
-  status: text("status").notNull().default("borrador"), // borrador, en_revision, activa, pausada, vendida, alquilada, rechazada
+  type: propertyTypeEnum("type").notNull(),
+  operationType: operationTypeEnum("operation_type").notNull(),
+  status: propertyStatusEnum("status").notNull().default("borrador"),
 
   // Price
   priceAmount: numeric("price_amount", { precision: 14, scale: 2 }).notNull(),
-  priceCurrency: text("price_currency").notNull(), // USD, BOB
+  priceCurrency: currencyEnum("price_currency").notNull(),
   negotiable: boolean("negotiable").notNull().default(false),
   expensesAmount: numeric("expenses_amount", { precision: 14, scale: 2 }),
-  expensesCurrency: text("expenses_currency"),
+  expensesCurrency: currencyEnum("expenses_currency"),
 
   // Address
   addressStreet: text("address_street").notNull(),
@@ -34,9 +35,9 @@ export const properties = pgTable("properties", {
 
   // Surface
   totalAreaValue: real("total_area_value"),
-  totalAreaUnit: text("total_area_unit"), // m2, ha
+  totalAreaUnit: surfaceUnitEnum("total_area_unit"),
   coveredAreaValue: real("covered_area_value"),
-  coveredAreaUnit: text("covered_area_unit"),
+  coveredAreaUnit: surfaceUnitEnum("covered_area_unit"),
 
   // Features
   rooms: integer("rooms"),
@@ -44,8 +45,8 @@ export const properties = pgTable("properties", {
   bathrooms: integer("bathrooms"),
   garages: integer("garages"),
   age: integer("age"),
-  condition: text("condition"), // nueva, excelente, buena, regular, a_reciclar
-  orientation: text("orientation"), // norte, sur, este, oeste, noreste, noroeste, sureste, suroeste
+  condition: propertyConditionEnum("condition"),
+  orientation: orientationEnum("orientation"),
 
   // Arrays
   amenities: text("amenities").array().notNull().default([]),

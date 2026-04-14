@@ -1,6 +1,7 @@
 import { pgTable, text, integer, timestamp, index } from "drizzle-orm/pg-core";
 import { leads } from "./leads";
 import { properties } from "./properties";
+import { queueItemStatusEnum } from "./enums";
 
 export const leadPropertyQueue = pgTable("lead_property_queue", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
@@ -8,7 +9,7 @@ export const leadPropertyQueue = pgTable("lead_property_queue", {
   leadId: text("lead_id").notNull().references(() => leads.id),
   propertyId: text("property_id").notNull().references(() => properties.id),
 
-  status: text("status").notNull().default("pendiente"), // pendiente, enviada, pausada
+  status: queueItemStatusEnum("status").notNull().default("pendiente"),
   sortOrder: integer("sort_order").notNull().default(0),
 
   estimatedSendAt: timestamp("estimated_send_at", { withTimezone: true }),
@@ -21,4 +22,5 @@ export const leadPropertyQueue = pgTable("lead_property_queue", {
 }, (t) => [
   index("lpq_lead_id_idx").on(t.leadId),
   index("lpq_org_id_idx").on(t.organizationId),
+  index("lpq_lead_sort_idx").on(t.leadId, t.sortOrder),
 ]);

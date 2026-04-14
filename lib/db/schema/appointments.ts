@@ -1,6 +1,7 @@
 import { pgTable, text, timestamp, index } from "drizzle-orm/pg-core";
 import { leads } from "./leads";
 import { properties } from "./properties";
+import { appointmentStatusEnum } from "./enums";
 
 export const appointments = pgTable("appointments", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
@@ -11,7 +12,7 @@ export const appointments = pgTable("appointments", {
   startsAt: timestamp("starts_at", { withTimezone: true }).notNull(),
   endsAt: timestamp("ends_at", { withTimezone: true }).notNull(),
 
-  status: text("status").notNull().default("solicitada"), // solicitada, confirmada, completada, cancelada
+  status: appointmentStatusEnum("status").notNull().default("solicitada"),
   notes: text("notes"),
 
   // Timestamps
@@ -26,4 +27,5 @@ export const appointments = pgTable("appointments", {
   index("appointments_lead_id_idx").on(t.leadId),
   index("appointments_status_idx").on(t.status),
   index("appointments_starts_at_idx").on(t.startsAt),
+  index("appointments_org_starts_idx").on(t.organizationId, t.startsAt),
 ]);
