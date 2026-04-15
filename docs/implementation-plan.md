@@ -13,7 +13,7 @@
 | Capa | Nombre | Dependencias | Estado |
 |------|--------|-------------|--------|
 | 1 | Fundación (Auth + DB) | Ninguna | ✅ Completada |
-| 2 | Data Layer Real | Capa 1 | 🔄 En progreso (schema done, queries pendientes) |
+| 2 | Data Layer Real | Capa 1 | 🔄 En progreso (Clean Architecture done, RLS done, queries done. Pendiente: Storage, transfers, seed data, tests RLS) |
 | 3 | Lógica Asíncrona y AI | Capa 2 | ⬜ Pendiente |
 | 4 | Observabilidad y Notificaciones | Capa 3 | ⬜ Pendiente |
 | 5 | Soporte y Marketing | Capa 4 | ⬜ Pendiente |
@@ -78,7 +78,7 @@
 | 2.1.12 | Diseñar tabla `analytics_events` | 5 columnas: event_type, metadata (jsonb), created_at. Append-only, sin updatedAt/deletedAt | ✅ |
 | 2.1.13 | Diseñar tabla `ai_contents` | 11 columnas: type, platform, text, published_at/to, timestamps + soft delete. FK → properties | ✅ |
 | 2.1.14 | Diseñar tabla `agent_profiles` | 12 columnas: bio, social links, avatar_url, timestamps + soft delete. UNIQUE(user_id, org_id). FK → user, organization | ✅ |
-| 2.1.15 | **RLS — Row Level Security** | Seguridad a nivel de DB. Drizzle NO bypasea RLS — todas las queries pasan por `withRLS()` con `SET LOCAL role = 'authenticated'`. Ver subtareas abajo. | ⬜ |
+| 2.1.15 | **RLS — Row Level Security** | Seguridad a nivel de DB. Drizzle NO bypasea RLS — todas las queries pasan por `withRLS()` con `SET LOCAL role = 'authenticated'`. Ver subtareas abajo. | ✅ (core done, tests + partial indexes pending) |
 
 #### 2.1.15 — RLS (subtareas)
 
@@ -141,7 +141,7 @@
 | 2.1.21 | Soft delete | `deleted_at timestamptz` en todas las tablas de dominio (excepto analytics_events que es append-only) | ✅ |
 | 2.1.22 | `$onUpdate` timestamps | `updatedAt` con `.$onUpdate(() => new Date())` en todas las tablas mutables | ✅ |
 | 2.1.23 | Migrar enums a inglés | Código + DB migrados. 10 enums renombrados con `ALTER TYPE RENAME VALUE`. Defaults actualizados automáticamente. Código y DB sincronizados. | ✅ |
-| 2.1.24 | Nullability audit | Se ejecuta como sub-paso de CADA migración de data layer (2.2.2-2.2.9). Para cada entidad: (1) listar columnas nullable en DB schema, (2) verificar que el entity type marca esos campos como optional (`?`), (3) verificar que el mapper convierte `null → undefined`, (4) grep en componentes que consumen la entidad para detectar accesos sin optional chaining a campos opcionales. Patrón: Model (`null`) → Mapper (`undefined`) → Entity (`field?`) → Component (`?.`). | ⬜ |
+| 2.1.24 | Nullability audit | Completed for properties (22 nullable columns verified, 3 bugs found and fixed: addressNumber, zero values, non-null assertions). Leads: phone/email/source made optional, 6 components updated. Appointments: leadPhone made optional. Pattern established in CLAUDE.md. | ✅ |
 
 ### 2.2 Clean Architecture Refactor + Data Layer Migration
 
@@ -169,7 +169,7 @@
 | 2.2.1.8 | Backward compatibility | `lib/data/properties.ts` re-exports to actions. `lib/types/property.ts` re-exports to entity. Old imports keep working. | ✅ |
 | 2.2.1.9 | Architecture fixes from code review | `SessionContext` moved to shared domain. Domain no longer imports from infrastructure. Soft-delete defense-in-depth added. Public actions separated. | ✅ |
 | 2.2.1.10 | Move components + update pages | ⏭️ Deferred — components stay in `components/properties/` until all features are migrated, then move in batch. |  |
-| 2.2.1.11 | Null safety audit — properties | Pending full audit of nullable columns vs entity fields vs component access patterns. | ⬜ |
+| 2.2.1.11 | Null safety audit — properties | 22/22 nullable columns verified. Bugs fixed: addressNumber end-to-end, zero-value handling, non-null assertions replaced with defaults. Components verified safe. | ✅ |
 | 2.2.1.12 | Build + code review | Build passes. Code review: 7 issues found, all fixed. Architecture validated. | ✅ |
 
 #### 2.2.2 — Leads feature
@@ -238,6 +238,14 @@
 | 2.2.9.2 | Delete `lib/types/` | Deleted. Entity types in `features/*/domain/`. Shared types in `features/shared/domain/`. | ✅ |
 | 2.2.9.3 | Update `CLAUDE.md` | Project structure section reflects `features/` architecture. | ✅ |
 | 2.2.9.4 | Full build | Build passes. 0 old imports. 0 backward compat files. 0 empty directories. | ✅ |
+
+#### Known issues (deferred — not blocking, fix when touching related features)
+
+| # | Issue | Location | Fix when |
+|---|---|---|---|
+| 2.2.K1 | `MarketingSection` dead code — component exists but not connected to settings layout or navigation | `features/settings/presentation/components/sections/marketing-section.tsx` | When building settings marketing section |
+| 2.2.K2 | Hardcoded email `gonzalo@blackestate.com` in brochure PDF footer — should use AgentProfile email | `features/ai-contents/presentation/components/ai-brochure-generator.tsx:176` | When implementing real brochure generation (Capa 3.2) |
+| 2.2.K3 | Amenity labels duplicated inline instead of importing from `lib/constants/property.ts` | `features/ai-contents/presentation/components/ai-brochure-generator.tsx:141-162` | When implementing real brochure generation (Capa 3.2) |
 
 ### 2.4 Transferencia de propiedades (enterprise)
 
