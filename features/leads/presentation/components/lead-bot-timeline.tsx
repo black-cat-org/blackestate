@@ -41,15 +41,15 @@ import { PROPERTY_TYPE_LABELS, OPERATION_TYPE_LABELS } from "@/lib/constants/pro
 import { LeadPropertyQueueItem } from "./lead-property-queue-item"
 import { AddPropertyDialog } from "./add-property-dialog"
 import {
-  reorderQueue,
-  sendQueueItemNow,
-  removeFromQueue,
-  addToQueue,
-} from "@/lib/data/leads"
+  reorderQueueAction,
+  sendQueueItemNowAction,
+  removeFromQueueAction,
+  addToQueueAction,
+} from "@/features/leads/presentation/actions"
 import { toast } from "sonner"
-import type { Property } from "@/lib/types/property"
+import type { Property } from "@/features/properties/domain/property.entity"
 import type { SentProperty } from "@/lib/types/bot"
-import type { CatalogTracking, QueueStatus, QueueStatusId, PropertyQueueItem } from "@/lib/types/lead"
+import type { CatalogTracking, QueueStatus, QueueStatusId, PropertyQueueItem } from "@/features/leads/domain/lead.entity"
 
 // ─── Queue status config ───────────────────────────────────
 
@@ -158,12 +158,12 @@ export function LeadBotTimeline({
     const newIndex = queue.findIndex((q) => q.id === over.id)
     const reordered = arrayMove(queue, oldIndex, newIndex)
     setQueue(reordered)
-    await reorderQueue(leadId, reordered.map((q) => q.id))
+    await reorderQueueAction(leadId, reordered.map((q) => q.id))
   }, [queue, leadId])
 
   const handleSendNow = async (queueItemId: string) => {
     try {
-      const updated = await sendQueueItemNow(leadId, queueItemId)
+      const updated = await sendQueueItemNowAction(leadId, queueItemId)
       setQueue((prev) => prev.map((q) => (q.id === queueItemId ? updated : q)))
       toast.success("Propiedad enviada")
     } catch {
@@ -173,7 +173,7 @@ export function LeadBotTimeline({
 
   const handleRemove = async (queueItemId: string) => {
     try {
-      await removeFromQueue(leadId, queueItemId)
+      await removeFromQueueAction(leadId, queueItemId)
       setQueue((prev) => prev.filter((q) => q.id !== queueItemId))
       toast.success("Propiedad removida de la cola")
     } catch {
@@ -187,7 +187,7 @@ export function LeadBotTimeline({
       return
     }
     try {
-      const item = await addToQueue(leadId, p.id, p.title)
+      const item = await addToQueueAction(leadId, p.id, p.title)
       setQueue((prev) => [...prev, item])
       toast.success("Propiedad agregada a la cola")
     } catch {

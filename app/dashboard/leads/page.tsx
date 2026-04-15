@@ -13,8 +13,8 @@ import { DashboardHeader } from "@/components/dashboard-header"
 import { LeadFiltersBar } from "@/features/leads/presentation/components/lead-filters"
 import { LeadDataTable } from "@/features/leads/presentation/components/lead-data-table"
 import { useLeadsFilter } from "@/hooks/use-leads-filter"
-import { getLeads } from "@/lib/data/leads"
-import type { Lead } from "@/lib/types/lead"
+import { getLeadsAction } from "@/features/leads/presentation/actions"
+import type { Lead } from "@/features/leads/domain/lead.entity"
 
 export default function ContactsPage() {
   const [leads, setLeads] = useState<Lead[]>([])
@@ -22,7 +22,7 @@ export default function ContactsPage() {
   const { filters, setFilters, filteredLeads } = useLeadsFilter(leads)
 
   useEffect(() => {
-    getLeads().then((data) => {
+    getLeadsAction().then((data) => {
       setLeads(data)
       setLoading(false)
     })

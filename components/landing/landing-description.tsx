@@ -1,4 +1,4 @@
-import type { Property } from "@/lib/types/property"
+import type { Property } from "@/features/properties/domain/property.entity"
 
 interface LandingDescriptionProps {
   property: Property

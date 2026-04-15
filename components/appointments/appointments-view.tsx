@@ -26,8 +26,8 @@ import { APPOINTMENT_STATUS_LABELS } from "@/lib/constants/bot"
 import { createAppointment } from "@/lib/data/bot"
 import { toast } from "sonner"
 import type { Appointment } from "@/lib/types/bot"
-import type { Lead } from "@/lib/types/lead"
-import type { Property } from "@/lib/types/property"
+import type { Lead } from "@/features/leads/domain/lead.entity"
+import type { Property } from "@/features/properties/domain/property.entity"
 
 interface AppointmentsViewProps {
   appointments: Appointment[]

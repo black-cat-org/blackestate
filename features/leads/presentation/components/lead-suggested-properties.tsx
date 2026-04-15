@@ -18,8 +18,8 @@ import {
 import { PROPERTY_TYPE_LABELS, OPERATION_TYPE_LABELS } from "@/lib/constants/property"
 import { formatPrice } from "@/lib/utils/format"
 import { toast } from "sonner"
-import type { Property } from "@/lib/types/property"
-import type { Lead } from "@/lib/types/lead"
+import type { Property } from "@/features/properties/domain/property.entity"
+import type { Lead } from "@/features/leads/domain/lead.entity"
 
 interface LeadSuggestedPropertiesProps {
   lead: Lead

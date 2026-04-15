@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import { leadColumns } from "./lead-columns"
-import type { Lead } from "@/lib/types/lead"
+import type { Lead } from "@/features/leads/domain/lead.entity"
 
 export function LeadDataTable({ leads }: { leads: Lead[] }) {
   const [sorting, setSorting] = useState<SortingState>([])

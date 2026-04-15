@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/dialog"
 import { PROPERTY_TYPE_LABELS, OPERATION_TYPE_LABELS } from "@/lib/constants/property"
 import { formatPrice } from "@/lib/utils/format"
-import type { Property } from "@/lib/types/property"
+import type { Property } from "@/features/properties/domain/property.entity"
 
 interface AddPropertyDialogProps {
   title?: string

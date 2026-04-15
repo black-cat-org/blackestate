@@ -1,14 +1,14 @@
-import { getLeads } from "@/lib/data/leads"
-import { getProperties } from "@/lib/data/properties"
+import { getLeadsAction } from "@/features/leads/presentation/actions"
+import { getPropertiesAction } from "@/features/properties/presentation/actions"
 import { getAppointments, getAllActivities, getUnreadNotificationCount } from "@/lib/data/bot"
 import { LEAD_STATUS_LABELS } from "@/lib/constants/lead"
 import { SOURCE_LABELS } from "@/lib/constants/sources"
-import type { LeadStatus } from "@/lib/types/lead"
+import type { LeadStatus } from "@/features/leads/domain/lead.entity"
 
 export async function getDashboardStats() {
   const [leads, properties, appointments, unreadNotifications] = await Promise.all([
-    getLeads(),
-    getProperties(),
+    getLeadsAction(),
+    getPropertiesAction(),
     getAppointments(),
     getUnreadNotificationCount(),
   ])
@@ -37,7 +37,7 @@ export async function getDashboardStats() {
 }
 
 export async function getLeadsBySource() {
-  const leads = await getLeads()
+  const leads = await getLeadsAction()
   const counts: Record<string, number> = {}
 
   for (const lead of leads) {
@@ -55,7 +55,7 @@ export async function getLeadsBySource() {
 }
 
 export async function getLeadsByStatus() {
-  const leads = await getLeads()
+  const leads = await getLeadsAction()
   const counts: Record<string, number> = {}
 
   for (const lead of leads) {
@@ -81,7 +81,7 @@ export async function getLeadsByStatus() {
 }
 
 export async function getPropertyStatusDistribution() {
-  const properties = await getProperties()
+  const properties = await getPropertiesAction()
   const counts: Record<string, number> = {}
 
   for (const prop of properties) {

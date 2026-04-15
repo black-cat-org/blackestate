@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import { generateDescriptionFromFormData, generateShortDescriptionFromFormData } from "@/lib/services/ai-mock"
 import { toast } from "sonner"
-import type { PropertyFormData } from "@/lib/types/property"
+import type { PropertyFormData } from "@/features/properties/domain/property.entity"
 
 export function DescriptionStep({ form }: { form: UseFormReturn<PropertyFormData> }) {
   const { register, formState: { errors }, setValue } = form

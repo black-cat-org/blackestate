@@ -1,5 +1,5 @@
-import { getLeads } from "@/lib/data/leads"
-import { getProperties } from "@/lib/data/properties"
+import { getLeadsAction } from "@/features/leads/presentation/actions"
+import { getPropertiesAction } from "@/features/properties/presentation/actions"
 import { getAppointments, getSentPropertiesAll } from "@/lib/data/bot"
 import { LEAD_STATUS_LABELS } from "@/lib/constants/lead"
 import { SOURCE_LABELS } from "@/lib/constants/sources"
@@ -17,7 +17,7 @@ import type {
   BotFunnelStep,
   AlertItem,
 } from "@/lib/types/analytics"
-import type { LeadStatus } from "@/lib/types/lead"
+import type { LeadStatus } from "@/features/leads/domain/lead.entity"
 
 // ============================================================
 // Shared helpers
@@ -44,7 +44,7 @@ function synth(base: number, i: number, j: number = 0): number {
 // ============================================================
 
 export async function getOverviewStats(): Promise<StatCardData[]> {
-  const leads = await getLeads()
+  const leads = await getLeadsAction()
 
   const newLeads = leads.filter((l) => l.status === "new").length
   const closedLeads = leads.filter((l) => l.status === "won").length
@@ -111,7 +111,7 @@ export async function getConversionsByMonth(): Promise<TimeSeriesPoint[]> {
 export async function getLeadsSourceDistribution(): Promise<
   { source: string; label: string; count: number; percentage: number }[]
 > {
-  const leads = await getLeads()
+  const leads = await getLeadsAction()
   const counts: Record<string, number> = {}
 
   for (const lead of leads) {
@@ -132,7 +132,7 @@ export async function getLeadsSourceDistribution(): Promise<
 
 export async function getAlerts(): Promise<AlertItem[]> {
   const [leads, appointments] = await Promise.all([
-    getLeads(),
+    getLeadsAction(),
     getAppointments(),
   ])
 
@@ -173,7 +173,7 @@ export async function getAlerts(): Promise<AlertItem[]> {
 
 export async function getHighlights(): Promise<string[]> {
   const [leads, appointments] = await Promise.all([
-    getLeads(),
+    getLeadsAction(),
     getAppointments(),
   ])
 
@@ -207,7 +207,7 @@ export async function getHighlights(): Promise<string[]> {
 // ============================================================
 
 export async function getLeadsStats(): Promise<StatCardData[]> {
-  const leads = await getLeads()
+  const leads = await getLeadsAction()
   const activeLeads = leads.filter((l) => l.status !== "discarded")
   const total = activeLeads.length
   const closed = activeLeads.filter((l) => l.status === "won").length
@@ -257,7 +257,7 @@ export async function getLeadsStats(): Promise<StatCardData[]> {
 }
 
 export async function getConversionFunnel(): Promise<FunnelStep[]> {
-  const leads = await getLeads()
+  const leads = await getLeadsAction()
   const statusOrder: LeadStatus[] = ["new", "contacted", "interested", "won", "lost", "discarded"]
 
   return statusOrder.map((status) => ({
@@ -279,7 +279,7 @@ export async function getLeadsBySourceOverTime(): Promise<TimeSeriesPoint[]> {
 }
 
 export async function getConversionBySource(): Promise<SourceMetric[]> {
-  const leads = await getLeads()
+  const leads = await getLeadsAction()
   const sourceKeys = ["facebook", "instagram", "whatsapp", "tiktok", "other"]
 
   return sourceKeys.map((source, idx) => {
@@ -340,7 +340,7 @@ export async function getBotEngagement(): Promise<{
 export async function getLeadsByPropertyType(): Promise<
   { type: string; label: string; count: number }[]
 > {
-  const [leads, properties] = await Promise.all([getLeads(), getProperties()])
+  const [leads, properties] = await Promise.all([getLeadsAction(), getPropertiesAction()])
 
   const propertyTypeMap: Record<string, string> = {}
   for (const p of properties) {
@@ -369,7 +369,7 @@ export async function getLeadsByPropertyType(): Promise<
 // ============================================================
 
 export async function getPropertiesStats(): Promise<StatCardData[]> {
-  const properties = await getProperties()
+  const properties = await getPropertiesAction()
   const active = properties.filter((p) => p.status === "active")
 
   // Average price in USD for active properties with USD pricing
@@ -453,7 +453,7 @@ export async function getAvgPriceByZone(): Promise<ZonePricing[]> {
 export async function getPropertyTypeDistribution(): Promise<
   { type: string; label: string; count: number; percentage: number }[]
 > {
-  const properties = await getProperties()
+  const properties = await getPropertiesAction()
   const total = properties.length
   const counts: Record<string, number> = {}
 

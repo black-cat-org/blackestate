@@ -18,7 +18,7 @@ import {
   EQUIPMENT_OPTIONS,
   AMENITIES_OPTIONS,
 } from "@/lib/constants/property"
-import type { PropertyFormData } from "@/lib/types/property"
+import type { PropertyFormData } from "@/features/properties/domain/property.entity"
 
 export function FeaturesStep({ form }: { form: UseFormReturn<PropertyFormData> }) {
   const { register, setValue, watch } = form

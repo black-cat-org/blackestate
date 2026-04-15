@@ -1,10 +1,12 @@
 import type {
-  Currency,
   OperationType,
   PropertyStatus,
   PropertyType,
+} from "@/features/properties/domain/property.entity";
+import type {
+  Currency,
   SurfaceUnit,
-} from "@/lib/types/property";
+} from "@/features/shared/domain/value-objects";
 
 export const PROPERTY_TYPE_LABELS: Record<PropertyType, string> = {
   house: "Casa",

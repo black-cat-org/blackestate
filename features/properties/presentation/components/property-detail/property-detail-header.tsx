@@ -13,10 +13,10 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { PropertyStatusBadge } from "../property-status-badge"
 import { OPERATION_TYPE_LABELS, PROPERTY_TYPE_LABELS, STATUS_TRANSITIONS } from "@/lib/constants/property"
-import { updateProperty } from "@/lib/data/properties"
+import { updatePropertyAction } from "@/features/properties/presentation/actions"
 import { toast } from "sonner"
 import { ShareLinksDialog } from "../share-links-dialog"
-import type { Property } from "@/lib/types/property"
+import type { Property } from "@/features/properties/domain/property.entity"
 
 export function PropertyDetailHeader({ property }: { property: Property }) {
   const router = useRouter()
@@ -25,7 +25,7 @@ export function PropertyDetailHeader({ property }: { property: Property }) {
 
   const handleStatusChange = async (newStatus: Property["status"]) => {
     try {
-      await updateProperty(property.id, { status: newStatus })
+      await updatePropertyAction(property.id, { status: newStatus })
       toast.success("Estado actualizado")
       router.refresh()
     } catch {

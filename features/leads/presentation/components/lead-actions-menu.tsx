@@ -21,9 +21,9 @@ import {
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { LEAD_STATUS_TRANSITIONS } from "@/lib/constants/lead"
-import { updateLead, deleteLead } from "@/lib/data/leads"
+import { updateLeadAction, deleteLeadAction } from "@/features/leads/presentation/actions"
 import { toast } from "sonner"
-import type { Lead } from "@/lib/types/lead"
+import type { Lead } from "@/features/leads/domain/lead.entity"
 
 export function LeadActionsMenu({ lead }: { lead: Lead }) {
   const router = useRouter()
@@ -33,7 +33,7 @@ export function LeadActionsMenu({ lead }: { lead: Lead }) {
 
   const handleStatusChange = async (newStatus: Lead["status"]) => {
     try {
-      await updateLead(lead.id, { status: newStatus })
+      await updateLeadAction(lead.id, { status: newStatus })
       toast.success("Estado actualizado")
       router.refresh()
     } catch {
@@ -44,7 +44,7 @@ export function LeadActionsMenu({ lead }: { lead: Lead }) {
   const handleDelete = async () => {
     setDeleting(true)
     try {
-      await deleteLead(lead.id)
+      await deleteLeadAction(lead.id)
       setDeleteDialogOpen(false)
       toast.success("Lead eliminado")
       router.refresh()

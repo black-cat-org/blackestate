@@ -13,7 +13,7 @@ import { generateCaption } from "@/lib/services/ai-mock"
 import { createAiContent } from "@/lib/data/ai-contents"
 import { AI_PLATFORM_LABELS, AI_PLATFORM_ICONS } from "@/lib/constants/ai"
 import { getHashtags } from "@/lib/data/hashtags"
-import type { Property } from "@/lib/types/property"
+import type { Property } from "@/features/properties/domain/property.entity"
 import type { AiPlatform } from "@/lib/types/ai-content"
 
 interface AiCaptionGeneratorProps {

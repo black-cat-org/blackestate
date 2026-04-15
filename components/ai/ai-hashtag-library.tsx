@@ -11,7 +11,7 @@ import { toast } from "sonner"
 import { getHashtags, addHashtag, addHashtags, removeHashtag } from "@/lib/data/hashtags"
 import { createAiContent } from "@/lib/data/ai-contents"
 import { generateHashtags } from "@/lib/services/ai-mock"
-import type { Property } from "@/lib/types/property"
+import type { Property } from "@/features/properties/domain/property.entity"
 
 interface AiHashtagLibraryProps {
   property: Property

@@ -6,7 +6,7 @@ import { GripVertical, Send, Trash2, Clock, CheckCircle2, Pause } from "lucide-r
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { formatRelativeTime } from "@/lib/utils/relative-time"
-import type { PropertyQueueItem } from "@/lib/types/lead"
+import type { PropertyQueueItem } from "@/features/leads/domain/lead.entity"
 
 interface LeadPropertyQueueItemProps {
   item: PropertyQueueItem

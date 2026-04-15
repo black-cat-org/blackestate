@@ -4,7 +4,7 @@ import { UseFormReturn } from "react-hook-form"
 import { ImagePlus } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import type { PropertyFormData } from "@/lib/types/property"
+import type { PropertyFormData } from "@/features/properties/domain/property.entity"
 
 export function MediaStep({ form }: { form: UseFormReturn<PropertyFormData> }) {
   const { register } = form

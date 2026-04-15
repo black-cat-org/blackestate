@@ -1,6 +1,6 @@
 import type { Metadata } from "next"
 import { notFound } from "next/navigation"
-import { getPublicPropertyById } from "@/lib/data/properties"
+import { getPublicPropertyAction } from "@/features/properties/presentation/public-actions"
 import { PROPERTY_TYPE_LABELS, OPERATION_TYPE_LABELS } from "@/lib/constants/property"
 import { formatPrice } from "@/lib/utils/format"
 import { sanitizeSource } from "@/lib/constants/sources"
@@ -22,7 +22,7 @@ interface PageProps {
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { id } = await params
-  const property = await getPublicPropertyById(id)
+  const property = await getPublicPropertyAction(id)
 
   if (!property) {
     return { title: "Propiedad no encontrada | Black Estate" }
@@ -48,7 +48,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 export default async function PropertyLandingPage({ params, searchParams }: PageProps) {
   const { id } = await params
   const { src } = await searchParams
-  const property = await getPublicPropertyById(id)
+  const property = await getPublicPropertyAction(id)
 
   if (!property) {
     notFound()

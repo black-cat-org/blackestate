@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useMemo } from "react"
-import type { Lead, LeadFilters } from "@/lib/types/lead"
+import type { Lead, LeadFilters } from "@/features/leads/domain/lead.entity"
 
 const DEFAULT_FILTERS: LeadFilters = {
   search: "",

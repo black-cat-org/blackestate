@@ -11,7 +11,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { ChevronLeftIcon, ChevronRightIcon, ExternalLink, ImageIcon, Video, XIcon } from "lucide-react"
 import { useLightbox } from "@/hooks/use-lightbox"
-import type { Property } from "@/lib/types/property"
+import type { Property } from "@/features/properties/domain/property.entity"
 
 export function PropertyDetailGallery({ property }: { property: Property }) {
   const photos = property.media.photos

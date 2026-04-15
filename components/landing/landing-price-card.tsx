@@ -1,4 +1,4 @@
-import type { Property } from "@/lib/types/property"
+import type { Property } from "@/features/properties/domain/property.entity"
 import { formatPrice, formatSurface } from "@/lib/utils/format"
 import { AGENT_CONFIG } from "@/lib/constants/agent"
 import { Card, CardContent } from "@/components/ui/card"

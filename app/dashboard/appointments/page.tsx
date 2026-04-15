@@ -9,14 +9,14 @@ import {
 import { DashboardHeader } from "@/components/dashboard-header"
 import { AppointmentsView } from "@/components/appointments/appointments-view"
 import { getAppointments } from "@/lib/data/bot"
-import { getLeads } from "@/lib/data/leads"
-import { getProperties } from "@/lib/data/properties"
+import { getLeadsAction } from "@/features/leads/presentation/actions"
+import { getPropertiesAction } from "@/features/properties/presentation/actions"
 
 export default async function AppointmentsPage() {
   const [appointments, leads, properties] = await Promise.all([
     getAppointments(),
-    getLeads(),
-    getProperties(),
+    getLeadsAction(),
+    getPropertiesAction(),
   ])
 
   return (

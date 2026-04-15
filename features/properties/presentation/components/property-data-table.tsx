@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import { propertyColumns } from "./property-columns"
-import type { Property } from "@/lib/types/property"
+import type { Property } from "@/features/properties/domain/property.entity"
 
 export function PropertyDataTable({ properties }: { properties: Property[] }) {
   const [sorting, setSorting] = useState<SortingState>([])

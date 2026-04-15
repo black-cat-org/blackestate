@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { extractCoordsFromGoogleMapsUrl } from "@/lib/utils/google-maps"
 import { reverseGeocode } from "@/lib/utils/reverse-geocode"
-import type { PropertyFormData } from "@/lib/types/property"
+import type { PropertyFormData } from "@/features/properties/domain/property.entity"
 
 export function LocationStep({ form }: { form: UseFormReturn<PropertyFormData> }) {
   const { register, formState: { errors }, setValue, watch } = form

@@ -1,7 +1,7 @@
 "use server"
 
-import { createLead } from "@/lib/data/leads"
-import { trackVisit } from "@/lib/data/leads"
+import { createLeadAction } from "@/features/leads/presentation/actions"
+import { trackVisitAction as trackVisit } from "@/features/leads/presentation/public-actions"
 import { leadFormSchema } from "@/lib/validations/lead"
 
 export async function submitLeadAction(
@@ -24,7 +24,7 @@ export async function submitLeadAction(
   }
 
   try {
-    await createLead({
+    await createLeadAction({
       propertyId,
       source: source ?? undefined,
       ...parsed.data,

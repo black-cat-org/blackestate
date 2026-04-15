@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useMemo } from "react"
-import type { Property, PropertyFilters, PropertyViewMode } from "@/lib/types/property"
+import type { Property, PropertyFilters, PropertyViewMode } from "@/features/properties/domain/property.entity"
 
 const DEFAULT_FILTERS: PropertyFilters = {
   search: "",

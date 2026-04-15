@@ -15,7 +15,7 @@ import { Separator } from "@/components/ui/separator"
 import { ShareLinkItem } from "./share-link-item"
 import { VALID_SOURCES, SOURCE_LABELS, type LeadSource } from "@/lib/constants/sources"
 import { toast } from "sonner"
-import type { Property } from "@/lib/types/property"
+import type { Property } from "@/features/properties/domain/property.entity"
 
 const SOURCE_ICONS: Record<LeadSource, React.ReactNode> = {
   facebook: <Facebook className="size-4" />,

@@ -13,12 +13,12 @@ import { LeadDetailInfo } from "@/features/leads/presentation/components/lead-de
 import { LeadBotTimeline } from "@/features/leads/presentation/components/lead-bot-timeline"
 import { LeadTimeline } from "@/features/leads/presentation/components/lead-timeline"
 import {
-  getLeadById,
-  getCatalogTracking,
-  getQueueStatus,
-  getPropertyQueue,
-} from "@/lib/data/leads"
-import { getPropertyById, getProperties } from "@/lib/data/properties"
+  getLeadByIdAction,
+  getCatalogTrackingAction,
+  getQueueStatusAction,
+  getPropertyQueueAction,
+} from "@/features/leads/presentation/actions"
+import { getPropertyByIdAction, getPropertiesAction } from "@/features/properties/presentation/actions"
 import {
   getMessagesByLead,
   getActivitiesByLead,
@@ -31,7 +31,7 @@ export default async function ContactDetailPage({
   params: Promise<{ id: string }>
 }) {
   const { id } = await params
-  const lead = await getLeadById(id)
+  const lead = await getLeadByIdAction(id)
 
   if (!lead) {
     notFound()
@@ -47,14 +47,14 @@ export default async function ContactDetailPage({
     queueStatus,
     propertyQueue,
   ] = await Promise.all([
-    getPropertyById(lead.propertyId),
-    getProperties(),
+    getPropertyByIdAction(lead.propertyId),
+    getPropertiesAction(),
     getMessagesByLead(id),
     getActivitiesByLead(id),
     getSentPropertiesByLead(id),
-    getCatalogTracking(id),
-    getQueueStatus(id),
-    getPropertyQueue(id),
+    getCatalogTrackingAction(id),
+    getQueueStatusAction(id),
+    getPropertyQueueAction(id),
   ])
 
   const originSentInfo = sentProperties.find((sp) => sp.propertyId === lead.propertyId)

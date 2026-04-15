@@ -1,7 +1,7 @@
 "use client"
 
 import { PropertyFormWizard } from "./property-form/property-form-wizard"
-import type { PropertyFormData } from "@/lib/types/property"
+import type { PropertyFormData } from "@/features/properties/domain/property.entity"
 
 interface PropertyEditFormProps {
   propertyId: string

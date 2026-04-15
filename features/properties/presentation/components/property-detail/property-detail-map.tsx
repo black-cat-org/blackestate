@@ -2,10 +2,10 @@
 
 import { MapPin, ShieldCheck, Eye } from "lucide-react"
 import { PropertyMap } from "@/components/maps/property-map"
-import type { PropertyAddress } from "@/lib/types/property"
+import type { PostalAddress } from "@/features/shared/domain/value-objects"
 
 interface PropertyDetailMapProps {
-  address: PropertyAddress
+  address: PostalAddress
   hideExactLocation: boolean
 }
 

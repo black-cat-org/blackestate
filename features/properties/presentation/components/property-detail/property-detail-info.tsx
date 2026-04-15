@@ -9,7 +9,7 @@ import {
   AMENITIES_OPTIONS,
   CURRENCY_SYMBOLS,
 } from "@/lib/constants/property"
-import type { Property } from "@/lib/types/property"
+import type { Property } from "@/features/properties/domain/property.entity"
 
 function InfoSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (

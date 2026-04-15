@@ -13,7 +13,8 @@ import {
   EQUIPMENT_OPTIONS,
   AMENITIES_OPTIONS,
 } from "@/lib/constants/property"
-import type { PropertyFormData, PropertyType, OperationType, Currency, SurfaceUnit } from "@/lib/types/property"
+import type { PropertyFormData, PropertyType, OperationType } from "@/features/properties/domain/property.entity"
+import type { Currency, SurfaceUnit } from "@/features/shared/domain/value-objects"
 
 interface SummarySectionProps {
   title: string

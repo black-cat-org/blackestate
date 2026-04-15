@@ -1,5 +1,5 @@
 import { CURRENCY_SYMBOLS, SURFACE_UNIT_LABELS } from "@/lib/constants/property"
-import type { CurrencyAmount, SurfaceArea } from "@/lib/types/property"
+import type { CurrencyAmount, SurfaceArea } from "@/features/shared/domain/value-objects"
 
 export function formatPrice(price: CurrencyAmount): string {
   const symbol = CURRENCY_SYMBOLS[price.currency]

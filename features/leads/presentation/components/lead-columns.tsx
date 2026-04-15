@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { LeadStatusBadge } from "./lead-status-badge"
 import { LeadSourceBadge } from "./lead-source-badge"
 import { LeadActionsMenu } from "./lead-actions-menu"
-import type { Lead } from "@/lib/types/lead"
+import type { Lead } from "@/features/leads/domain/lead.entity"
 
 export const leadColumns: ColumnDef<Lead>[] = [
   {

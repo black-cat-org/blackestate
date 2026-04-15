@@ -10,7 +10,7 @@ import {
 import { DashboardHeader } from "@/components/dashboard-header"
 import { PropertyDetailHeader } from "@/features/properties/presentation/components/property-detail/property-detail-header"
 import { PropertyDetailTabs } from "@/features/properties/presentation/components/property-detail/property-detail-tabs"
-import { getPropertyById } from "@/lib/data/properties"
+import { getPropertyByIdAction } from "@/features/properties/presentation/actions"
 
 export default async function PropertyDetailPage({
   params,
@@ -18,7 +18,7 @@ export default async function PropertyDetailPage({
   params: Promise<{ id: string }>
 }) {
   const { id } = await params
-  const property = await getPropertyById(id)
+  const property = await getPropertyByIdAction(id)
 
   if (!property) {
     notFound()

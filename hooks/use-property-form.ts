@@ -3,7 +3,7 @@
 import { useState, useCallback } from "react"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
-import type { PropertyFormData } from "@/lib/types/property"
+import type { PropertyFormData } from "@/features/properties/domain/property.entity"
 
 const propertyDataSchema = z.object({
   type: z.string().min(1, "Selecciona un tipo de propiedad"),

@@ -9,9 +9,9 @@ import { FeaturesStep } from "./steps/features-step"
 import { MediaStep } from "./steps/media-step"
 import { DescriptionStep } from "./steps/description-step"
 import { SummaryStep } from "./steps/summary-step"
-import { createProperty, updateProperty } from "@/lib/data/properties"
+import { createPropertyAction, updatePropertyAction } from "@/features/properties/presentation/actions"
 import { toast } from "sonner"
-import type { PropertyFormData, Property } from "@/lib/types/property"
+import type { PropertyFormData, Property } from "@/features/properties/domain/property.entity"
 
 interface PropertyFormWizardProps {
   propertyId?: string
@@ -69,12 +69,12 @@ export function PropertyFormWizard({ propertyId, initialData }: PropertyFormWiza
     const values = form.getValues()
     try {
       if (isEditing) {
-        await updateProperty(propertyId, { ...buildPropertyData(values), status: "paused" })
+        await updatePropertyAction(propertyId, { ...buildPropertyData(values), status: "paused" })
         toast.success("Propiedad guardada como borrador")
         router.push(`/dashboard/properties/${propertyId}`)
       } else {
-        const property = await createProperty(values as PropertyFormData)
-        await updateProperty(property.id, { status: "paused" })
+        const property = await createPropertyAction(values as PropertyFormData)
+        await updatePropertyAction(property.id, { status: "paused" })
         toast.success("Propiedad guardada como borrador")
         router.push("/dashboard/properties")
       }
@@ -87,12 +87,12 @@ export function PropertyFormWizard({ propertyId, initialData }: PropertyFormWiza
     const values = form.getValues()
     try {
       if (isEditing) {
-        await updateProperty(propertyId, { ...buildPropertyData(values), status: "active" })
+        await updatePropertyAction(propertyId, { ...buildPropertyData(values), status: "active" })
         toast.success("Propiedad publicada")
         router.push(`/dashboard/properties/${propertyId}`)
       } else {
-        const property = await createProperty(values as PropertyFormData)
-        await updateProperty(property.id, { status: "active" })
+        const property = await createPropertyAction(values as PropertyFormData)
+        await updatePropertyAction(property.id, { status: "active" })
         toast.success("Propiedad publicada")
         router.push("/dashboard/properties")
       }

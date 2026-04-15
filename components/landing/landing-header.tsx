@@ -1,4 +1,4 @@
-import type { Property } from "@/lib/types/property"
+import type { Property } from "@/features/properties/domain/property.entity"
 import { PROPERTY_TYPE_LABELS, OPERATION_TYPE_LABELS } from "@/lib/constants/property"
 import { Badge } from "@/components/ui/badge"
 import { MapPinIcon } from "lucide-react"

@@ -19,7 +19,7 @@ import { MarketingKitContentCard } from "@/components/ai/marketing-kit-content-c
 import { MarketingKitGeneratorDialog } from "@/components/ai/marketing-kit-generator-dialog"
 import { computeKitStatus } from "@/hooks/use-marketing-kit"
 import { getAiContentsByProperty, deleteAiContentsByProperty } from "@/lib/data/ai-contents"
-import type { Property } from "@/lib/types/property"
+import type { Property } from "@/features/properties/domain/property.entity"
 import type { AiContent, AiContentType, AiPlatform } from "@/lib/types/ai-content"
 
 interface MarketingKitViewProps {

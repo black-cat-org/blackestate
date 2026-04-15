@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/select"
 import { LEAD_STATUS_LABELS } from "@/lib/constants/lead"
 import { SOURCE_LABELS } from "@/lib/constants/sources"
-import type { LeadFilters } from "@/lib/types/lead"
+import type { LeadFilters } from "@/features/leads/domain/lead.entity"
 
 interface LeadFiltersBarProps {
   filters: LeadFilters

@@ -1,6 +1,6 @@
 import { PropertyCard } from "./property-card"
 import { computeKitStatus } from "@/hooks/use-marketing-kit"
-import type { Property } from "@/lib/types/property"
+import type { Property } from "@/features/properties/domain/property.entity"
 import type { AiContent } from "@/lib/types/ai-content"
 
 interface PropertyCardsGridProps {

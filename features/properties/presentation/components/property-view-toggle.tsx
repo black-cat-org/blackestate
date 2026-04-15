@@ -2,7 +2,7 @@
 
 import { LayoutGrid, List } from "lucide-react"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
-import type { PropertyViewMode } from "@/lib/types/property"
+import type { PropertyViewMode } from "@/features/properties/domain/property.entity"
 
 interface PropertyViewToggleProps {
   viewMode: PropertyViewMode

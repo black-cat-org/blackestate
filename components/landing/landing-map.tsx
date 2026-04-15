@@ -1,11 +1,11 @@
 "use client"
 
-import type { PropertyAddress } from "@/lib/types/property"
+import type { PostalAddress } from "@/features/shared/domain/value-objects"
 import { PropertyMap } from "@/components/maps/property-map"
 import { MapPinIcon } from "lucide-react"
 
 interface LandingMapProps {
-  address: PropertyAddress
+  address: PostalAddress
   hideExactLocation: boolean
 }
 

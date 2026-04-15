@@ -16,7 +16,7 @@ import {
   OPERATION_TYPE_LABELS,
   CURRENCY_LABELS,
 } from "@/lib/constants/property"
-import type { PropertyFormData } from "@/lib/types/property"
+import type { PropertyFormData } from "@/features/properties/domain/property.entity"
 
 export function BasicDataStep({ form }: { form: UseFormReturn<PropertyFormData> }) {
   const { register, formState: { errors }, setValue, watch } = form

@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils"
 import { PROPERTY_STATUS_LABELS, PROPERTY_STATUS_COLORS } from "@/lib/constants/property"
-import type { PropertyStatus } from "@/lib/types/property"
+import type { PropertyStatus } from "@/features/properties/domain/property.entity"
 
 export function PropertyStatusBadge({ status }: { status: PropertyStatus }) {
   return (

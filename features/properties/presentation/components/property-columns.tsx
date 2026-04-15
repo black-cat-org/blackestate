@@ -8,7 +8,7 @@ import { PropertyStatusBadge } from "./property-status-badge"
 import { PropertyActionsMenu } from "./property-actions-menu"
 import { PROPERTY_TYPE_LABELS, OPERATION_TYPE_LABELS } from "@/lib/constants/property"
 import { formatPrice } from "@/lib/utils/format"
-import type { Property } from "@/lib/types/property"
+import type { Property } from "@/features/properties/domain/property.entity"
 
 export const propertyColumns: ColumnDef<Property>[] = [
   {

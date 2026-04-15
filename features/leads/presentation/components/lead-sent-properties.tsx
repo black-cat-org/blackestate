@@ -7,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { SENT_PROPERTY_STATUS_LABELS, SENT_PROPERTY_STATUS_COLORS } from "@/lib/constants/bot"
 import type { SentProperty } from "@/lib/types/bot"
-import type { Property } from "@/lib/types/property"
+import type { Property } from "@/features/properties/domain/property.entity"
 import { PROPERTY_TYPE_LABELS, OPERATION_TYPE_LABELS } from "@/lib/constants/property"
 import { formatPrice } from "@/lib/utils/format"
 

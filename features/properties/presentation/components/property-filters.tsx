@@ -14,7 +14,7 @@ import {
   OPERATION_TYPE_LABELS,
   PROPERTY_STATUS_LABELS,
 } from "@/lib/constants/property"
-import type { PropertyFilters } from "@/lib/types/property"
+import type { PropertyFilters } from "@/features/properties/domain/property.entity"
 
 interface PropertyFiltersBarProps {
   filters: PropertyFilters

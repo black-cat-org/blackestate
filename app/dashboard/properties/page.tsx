@@ -18,9 +18,9 @@ import { PropertyViewToggle } from "@/features/properties/presentation/component
 import { PropertyCardsGrid } from "@/features/properties/presentation/components/property-cards-grid"
 import { PropertyDataTable } from "@/features/properties/presentation/components/property-data-table"
 import { usePropertiesFilter } from "@/hooks/use-properties-filter"
-import { getProperties } from "@/lib/data/properties"
+import { getPropertiesAction } from "@/features/properties/presentation/actions"
 import { getAiContents } from "@/lib/data/ai-contents"
-import type { Property } from "@/lib/types/property"
+import type { Property } from "@/features/properties/domain/property.entity"
 import type { AiContent } from "@/lib/types/ai-content"
 
 export default function PropertiesPage() {
@@ -31,7 +31,7 @@ export default function PropertiesPage() {
     usePropertiesFilter(properties)
 
   useEffect(() => {
-    Promise.all([getProperties(), getAiContents()]).then(([props, aiContents]) => {
+    Promise.all([getPropertiesAction(), getAiContents()]).then(([props, aiContents]) => {
       setProperties(props)
       setContents(aiContents)
       setLoading(false)

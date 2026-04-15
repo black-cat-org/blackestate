@@ -1,4 +1,4 @@
-import type { Property } from "@/lib/types/property"
+import type { Property } from "@/features/properties/domain/property.entity"
 import { CONDITION_OPTIONS, ORIENTATION_OPTIONS } from "@/lib/constants/property"
 import { formatSurface } from "@/lib/utils/format"
 import {

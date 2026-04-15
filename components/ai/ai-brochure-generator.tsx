@@ -9,7 +9,7 @@ import { toast } from "sonner"
 import { PROPERTY_TYPE_LABELS, OPERATION_TYPE_LABELS } from "@/lib/constants/property"
 import { formatPrice, formatSurface } from "@/lib/utils/format"
 import { createAiContent } from "@/lib/data/ai-contents"
-import type { Property } from "@/lib/types/property"
+import type { Property } from "@/features/properties/domain/property.entity"
 
 interface AiBrochureGeneratorProps {
   property: Property

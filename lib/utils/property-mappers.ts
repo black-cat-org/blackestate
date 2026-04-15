@@ -1,4 +1,4 @@
-import type { Property, PropertyFormData } from "@/lib/types/property"
+import type { Property, PropertyFormData } from "@/features/properties/domain/property.entity"
 
 export function propertyToFormData(property: Property): PropertyFormData {
   return {

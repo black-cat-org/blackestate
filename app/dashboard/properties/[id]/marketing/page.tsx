@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/breadcrumb"
 import { DashboardHeader } from "@/components/dashboard-header"
 import { MarketingKitView } from "@/components/ai/marketing-kit-view"
-import { getPropertyById } from "@/lib/data/properties"
+import { getPropertyByIdAction } from "@/features/properties/presentation/actions"
 
 export default async function MarketingKitPage({
   params,
@@ -17,7 +17,7 @@ export default async function MarketingKitPage({
   params: Promise<{ id: string }>
 }) {
   const { id } = await params
-  const property = await getPropertyById(id)
+  const property = await getPropertyByIdAction(id)
 
   if (!property) {
     notFound()

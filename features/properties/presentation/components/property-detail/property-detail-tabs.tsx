@@ -1,7 +1,7 @@
 import { PropertyDetailGallery } from "./property-detail-gallery"
 import { PropertyDetailInfo } from "./property-detail-info"
 import { PropertyDetailMap } from "./property-detail-map"
-import type { Property } from "@/lib/types/property"
+import type { Property } from "@/features/properties/domain/property.entity"
 
 interface PropertyDetailTabsProps {
   property: Property

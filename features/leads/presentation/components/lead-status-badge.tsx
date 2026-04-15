@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils"
 import { LEAD_STATUS_LABELS, LEAD_STATUS_COLORS } from "@/lib/constants/lead"
-import type { LeadStatus } from "@/lib/types/lead"
+import type { LeadStatus } from "@/features/leads/domain/lead.entity"
 
 export function LeadStatusBadge({ status }: { status: LeadStatus }) {
   return (

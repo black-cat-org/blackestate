@@ -9,7 +9,7 @@ import {
 import { AiCaptionGenerator } from "@/components/ai/ai-caption-generator"
 import { AiHashtagLibrary } from "@/components/ai/ai-hashtag-library"
 import { AiBrochureGenerator } from "@/components/ai/ai-brochure-generator"
-import type { Property } from "@/lib/types/property"
+import type { Property } from "@/features/properties/domain/property.entity"
 import type { AiContentType, AiPlatform } from "@/lib/types/ai-content"
 
 const DIALOG_TITLES: Record<string, string> = {

@@ -1,4 +1,4 @@
-import type { Property, PropertyFormData } from "@/lib/types/property"
+import type { Property, PropertyFormData } from "@/features/properties/domain/property.entity"
 import type { AiPlatform } from "@/lib/types/ai-content"
 import { PROPERTY_TYPE_LABELS, OPERATION_TYPE_LABELS, EQUIPMENT_OPTIONS, AMENITIES_OPTIONS, SURFACE_UNIT_LABELS } from "@/lib/constants/property"
 import { formatPrice, formatSurface } from "@/lib/utils/format"

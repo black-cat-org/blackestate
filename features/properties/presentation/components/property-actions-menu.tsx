@@ -16,10 +16,10 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
 import { STATUS_TRANSITIONS } from "@/lib/constants/property"
-import { updateProperty, duplicateProperty, deleteProperty } from "@/lib/data/properties"
+import { updatePropertyAction, duplicatePropertyAction, deletePropertyAction } from "@/features/properties/presentation/actions"
 import { toast } from "sonner"
 import { ShareLinksDialog } from "./share-links-dialog"
-import type { Property } from "@/lib/types/property"
+import type { Property } from "@/features/properties/domain/property.entity"
 
 export function PropertyActionsMenu({ property }: { property: Property }) {
   const router = useRouter()
@@ -28,7 +28,7 @@ export function PropertyActionsMenu({ property }: { property: Property }) {
 
   const handleStatusChange = async (newStatus: Property["status"]) => {
     try {
-      await updateProperty(property.id, { status: newStatus })
+      await updatePropertyAction(property.id, { status: newStatus })
       toast.success("Estado actualizado")
       router.refresh()
     } catch {
@@ -38,7 +38,7 @@ export function PropertyActionsMenu({ property }: { property: Property }) {
 
   const handleDuplicate = async () => {
     try {
-      await duplicateProperty(property.id)
+      await duplicatePropertyAction(property.id)
       toast.success("Propiedad duplicada")
       router.refresh()
     } catch {
@@ -48,7 +48,7 @@ export function PropertyActionsMenu({ property }: { property: Property }) {
 
   const handleDelete = async () => {
     try {
-      await deleteProperty(property.id)
+      await deletePropertyAction(property.id)
       toast.success("Propiedad eliminada")
       router.refresh()
     } catch {

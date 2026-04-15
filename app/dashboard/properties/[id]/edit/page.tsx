@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/breadcrumb"
 import { DashboardHeader } from "@/components/dashboard-header"
 import { PropertyEditForm } from "@/features/properties/presentation/components/property-edit-form"
-import { getPropertyById } from "@/lib/data/properties"
+import { getPropertyByIdAction } from "@/features/properties/presentation/actions"
 import { propertyToFormData } from "@/lib/utils/property-mappers"
 
 export default async function EditPropertyPage({
@@ -18,7 +18,7 @@ export default async function EditPropertyPage({
   params: Promise<{ id: string }>
 }) {
   const { id } = await params
-  const property = await getPropertyById(id)
+  const property = await getPropertyByIdAction(id)
 
   if (!property) {
     notFound()

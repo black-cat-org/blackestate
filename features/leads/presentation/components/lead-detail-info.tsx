@@ -1,8 +1,8 @@
 import Link from "next/link"
 import { Phone, Mail, Building2, MessageSquare, Calendar, Bell } from "lucide-react"
 import { Separator } from "@/components/ui/separator"
-import type { Lead } from "@/lib/types/lead"
-import type { Property } from "@/lib/types/property"
+import type { Lead } from "@/features/leads/domain/lead.entity"
+import type { Property } from "@/features/properties/domain/property.entity"
 
 function InfoSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
