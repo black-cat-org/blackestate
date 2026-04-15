@@ -29,7 +29,7 @@ interface LeadChatDialogProps {
   onOpenChange: (open: boolean) => void
   messages: BotMessage[]
   leadName: string
-  leadPhone: string
+  leadPhone?: string
 }
 
 export function LeadChatDialog({ open, onOpenChange, messages, leadName, leadPhone }: LeadChatDialogProps) {

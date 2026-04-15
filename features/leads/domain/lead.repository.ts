@@ -29,6 +29,7 @@ export interface ILeadRepository {
   addToQueue(ctx: SessionContext, leadId: string, propertyId: string, propertyTitle: string): Promise<PropertyQueueItem>
   removeFromQueue(ctx: SessionContext, leadId: string, queueItemId: string): Promise<void>
   sendQueueItemNow(ctx: SessionContext, leadId: string, queueItemId: string): Promise<PropertyQueueItem>
+  reorderQueue(ctx: SessionContext, leadId: string, itemIds: string[]): Promise<PropertyQueueItem[]>
 
   // Catalog tracking
   getCatalogTracking(ctx: SessionContext, leadId: string): Promise<CatalogTracking>

@@ -1,6 +1,6 @@
 import { SOURCE_LABELS, type LeadSource, VALID_SOURCES } from "@/lib/constants/sources"
 
-export function LeadSourceBadge({ source }: { source: string | null }) {
+export function LeadSourceBadge({ source }: { source?: string | null }) {
   if (!source) {
     return <span className="text-muted-foreground text-sm">-</span>
   }

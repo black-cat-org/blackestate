@@ -50,6 +50,15 @@ export async function sendQueueItemNowUseCase(
   return repo.sendQueueItemNow(ctx, leadId, queueItemId)
 }
 
+export async function reorderQueueUseCase(
+  ctx: SessionContext,
+  leadId: string,
+  itemIds: string[],
+): Promise<PropertyQueueItem[]> {
+  const repo = new DrizzleLeadRepository()
+  return repo.reorderQueue(ctx, leadId, itemIds)
+}
+
 export async function getCatalogTrackingUseCase(
   ctx: SessionContext,
   leadId: string,

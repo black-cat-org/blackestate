@@ -1,4 +1,4 @@
-import { eq, and, isNull, asc } from "drizzle-orm"
+import { eq, and, isNull, asc, sql } from "drizzle-orm"
 
 import type { ILeadRepository, CreateLeadDTO } from "@/features/leads/domain/lead.repository"
 import type {
@@ -103,7 +103,7 @@ export class DrizzleLeadRepository implements ILeadRepository {
       tx
         .update(leads)
         .set(updateData)
-        .where(eq(leads.id, id))
+        .where(and(eq(leads.id, id), isNull(leads.deletedAt)))
         .returning(),
     )
     if (rows.length === 0) {
@@ -133,33 +133,29 @@ export class DrizzleLeadRepository implements ILeadRepository {
     ctx: SessionContext,
     leadId: string,
   ): Promise<QueueStatus> {
-    // Derive queue status from lead status and queue items
-    const leadRows = await withRLS(ctx, (tx) =>
-      tx
+    return withRLS(ctx, async (tx) => {
+      const leadRows = await tx
         .select({ status: leads.status })
         .from(leads)
         .where(and(eq(leads.id, leadId), isNull(leads.deletedAt)))
-        .limit(1),
-    )
+        .limit(1)
 
-    if (leadRows.length === 0) {
-      return { status: "waiting" }
-    }
+      if (leadRows.length === 0) {
+        return { status: "waiting" as const }
+      }
 
-    const leadStatus = leadRows[0].status
-    const statusMap: Record<string, QueueStatusId> = {
-      won: "inactive_won",
-      lost: "inactive_lost",
-      discarded: "inactive_discarded",
-    }
+      const leadStatus = leadRows[0].status
+      const statusMap: Record<string, QueueStatusId> = {
+        won: "inactive_won",
+        lost: "inactive_lost",
+        discarded: "inactive_discarded",
+      }
 
-    if (statusMap[leadStatus]) {
-      return { status: statusMap[leadStatus] }
-    }
+      if (statusMap[leadStatus]) {
+        return { status: statusMap[leadStatus] }
+      }
 
-    // Check if there are pending queue items
-    const queueItems = await withRLS(ctx, (tx) =>
-      tx
+      const queueItems = await tx
         .select({ status: leadPropertyQueue.status })
         .from(leadPropertyQueue)
         .where(
@@ -167,20 +163,20 @@ export class DrizzleLeadRepository implements ILeadRepository {
             eq(leadPropertyQueue.leadId, leadId),
             isNull(leadPropertyQueue.deletedAt),
           ),
-        ),
-    )
+        )
 
-    if (queueItems.length === 0) {
-      return { status: "waiting" }
-    }
+      if (queueItems.length === 0) {
+        return { status: "waiting" as const }
+      }
 
-    const hasPending = queueItems.some((q) => q.status === "pending")
-    const hasPaused = queueItems.some((q) => q.status === "paused")
+      const hasPending = queueItems.some((q) => q.status === "pending")
+      const hasPaused = queueItems.some((q) => q.status === "paused")
 
-    if (hasPaused) return { status: "paused_conversation" }
-    if (hasPending) return { status: "active" }
+      if (hasPaused) return { status: "paused_conversation" as const }
+      if (hasPending) return { status: "active" as const }
 
-    return { status: "waiting" }
+      return { status: "waiting" as const }
+    })
   }
 
   async getPropertyQueue(
@@ -276,31 +272,67 @@ export class DrizzleLeadRepository implements ILeadRepository {
     _leadId: string,
     queueItemId: string,
   ): Promise<PropertyQueueItem> {
-    const rows = await withRLS(ctx, (tx) =>
-      tx
+    return withRLS(ctx, async (tx) => {
+      const rows = await tx
         .update(leadPropertyQueue)
         .set({ status: "sent", sentAt: new Date() })
         .where(eq(leadPropertyQueue.id, queueItemId))
-        .returning(),
-    )
+        .returning()
 
-    if (rows.length === 0) {
-      throw new Error("Queue item not found or no permission")
-    }
+      if (rows.length === 0) {
+        throw new Error("Queue item not found or no permission")
+      }
 
-    // Fetch property title for the returned entity
-    const propertyRows = await withRLS(ctx, (tx) =>
-      tx
+      const propertyRows = await tx
         .select({ title: properties.title })
         .from(properties)
         .where(eq(properties.id, rows[0].propertyId))
-        .limit(1),
-    )
+        .limit(1)
 
-    return mapQueueItemRowToEntity(
-      rows[0],
-      propertyRows[0]?.title ?? "Unknown property",
-    )
+      return mapQueueItemRowToEntity(
+        rows[0],
+        propertyRows[0]?.title ?? "",
+      )
+    })
+  }
+
+  async reorderQueue(
+    ctx: SessionContext,
+    leadId: string,
+    itemIds: string[],
+  ): Promise<PropertyQueueItem[]> {
+    return withRLS(ctx, async (tx) => {
+      for (let i = 0; i < itemIds.length; i++) {
+        await tx
+          .update(leadPropertyQueue)
+          .set({ sortOrder: i })
+          .where(
+            and(
+              eq(leadPropertyQueue.id, itemIds[i]),
+              eq(leadPropertyQueue.leadId, leadId),
+            ),
+          )
+      }
+
+      const rows = await tx
+        .select({
+          queueItem: leadPropertyQueue,
+          propertyTitle: properties.title,
+        })
+        .from(leadPropertyQueue)
+        .leftJoin(properties, eq(leadPropertyQueue.propertyId, properties.id))
+        .where(
+          and(
+            eq(leadPropertyQueue.leadId, leadId),
+            isNull(leadPropertyQueue.deletedAt),
+          ),
+        )
+        .orderBy(asc(leadPropertyQueue.sortOrder))
+
+      return rows.map((r) =>
+        mapQueueItemRowToEntity(r.queueItem, r.propertyTitle ?? ""),
+      )
+    })
   }
 
   // ---------------------------------------------------------------------------
@@ -357,30 +389,24 @@ export class DrizzleLeadRepository implements ILeadRepository {
   }
 
   async getVisitsByProperty(propertyId: string): Promise<PropertyVisit[]> {
-    // Public query — no RLS.
     const rows = await db
       .select()
       .from(analyticsEvents)
       .where(
         and(
           eq(analyticsEvents.eventType, "property_visit"),
+          sql`${analyticsEvents.metadata} @> ${JSON.stringify({ propertyId })}::jsonb`,
         ),
       )
 
-    // Filter by propertyId from metadata (JSONB)
-    return rows
-      .filter((r) => {
-        const meta = r.metadata as Record<string, unknown>
-        return meta?.propertyId === propertyId
-      })
-      .map((r) => {
-        const meta = r.metadata as Record<string, unknown>
-        return {
-          id: r.id,
-          propertyId,
-          source: (meta?.source as string) ?? undefined,
-          timestamp: r.createdAt.toISOString(),
-        }
-      })
+    return rows.map((r) => {
+      const meta = r.metadata as Record<string, unknown>
+      return {
+        id: r.id,
+        propertyId,
+        source: (meta?.source as string) ?? undefined,
+        timestamp: r.createdAt.toISOString(),
+      }
+    })
   }
 }

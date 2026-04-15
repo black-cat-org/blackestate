@@ -19,8 +19,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { LeadStatusBadge } from "@/components/contacts/lead-status-badge"
-import { LeadSourceBadge } from "@/components/contacts/lead-source-badge"
+import { LeadStatusBadge } from "@/features/leads/presentation/components/lead-status-badge"
+import { LeadSourceBadge } from "@/features/leads/presentation/components/lead-source-badge"
 import { LEAD_STATUS_TRANSITIONS } from "@/lib/constants/lead"
 import { updateLead, deleteLead } from "@/lib/data/leads"
 import { toast } from "sonner"

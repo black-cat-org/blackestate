@@ -19,8 +19,8 @@ export function useLeadsFilter(leads: Lead[]) {
       if (filters.search) {
         const q = filters.search.toLowerCase()
         const matchName = l.name.toLowerCase().includes(q)
-        const matchEmail = l.email.toLowerCase().includes(q)
-        const matchPhone = l.phone.toLowerCase().includes(q)
+        const matchEmail = l.email?.toLowerCase().includes(q) ?? false
+        const matchPhone = l.phone?.toLowerCase().includes(q) ?? false
         if (!matchName && !matchEmail && !matchPhone) return false
       }
       return true

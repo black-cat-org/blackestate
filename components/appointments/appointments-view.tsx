@@ -84,7 +84,7 @@ export function AppointmentsView({ appointments: initialAppointments, leads, pro
       const apt = await createAppointment({
         leadId: lead.id,
         leadName: lead.name,
-        leadPhone: lead.phone,
+        leadPhone: lead.phone ?? "",
         propertyId: property.id,
         propertyTitle: property.title,
         date: newApt.date,

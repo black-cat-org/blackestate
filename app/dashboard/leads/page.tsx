@@ -10,8 +10,8 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb"
 import { DashboardHeader } from "@/components/dashboard-header"
-import { LeadFiltersBar } from "@/components/contacts/lead-filters"
-import { LeadDataTable } from "@/components/contacts/lead-data-table"
+import { LeadFiltersBar } from "@/features/leads/presentation/components/lead-filters"
+import { LeadDataTable } from "@/features/leads/presentation/components/lead-data-table"
 import { useLeadsFilter } from "@/hooks/use-leads-filter"
 import { getLeads } from "@/lib/data/leads"
 import type { Lead } from "@/lib/types/lead"

@@ -26,15 +26,23 @@ export function LeadDetailInfo({
         <div className="space-y-2 text-sm">
           <div className="flex items-center gap-2">
             <Phone className="size-4 text-muted-foreground" />
-            <a href={`tel:${lead.phone}`} className="hover:underline">
-              {lead.phone}
-            </a>
+            {lead.phone ? (
+              <a href={`tel:${lead.phone}`} className="hover:underline">
+                {lead.phone}
+              </a>
+            ) : (
+              <span className="text-muted-foreground">—</span>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <Mail className="size-4 text-muted-foreground" />
-            <a href={`mailto:${lead.email}`} className="hover:underline">
-              {lead.email}
-            </a>
+            {lead.email ? (
+              <a href={`mailto:${lead.email}`} className="hover:underline">
+                {lead.email}
+              </a>
+            ) : (
+              <span className="text-muted-foreground">—</span>
+            )}
           </div>
         </div>
       </InfoSection>

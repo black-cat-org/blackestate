@@ -13,6 +13,7 @@ import {
   addToQueueUseCase,
   removeFromQueueUseCase,
   sendQueueItemNowUseCase,
+  reorderQueueUseCase,
   getCatalogTrackingUseCase,
 } from "@/features/leads/application/manage-queue.use-case"
 import type {
@@ -103,6 +104,14 @@ export async function sendQueueItemNowAction(
 ): Promise<PropertyQueueItem> {
   const ctx = await getSessionContext()
   return sendQueueItemNowUseCase(ctx, leadId, queueItemId)
+}
+
+export async function reorderQueueAction(
+  leadId: string,
+  itemIds: string[],
+): Promise<PropertyQueueItem[]> {
+  const ctx = await getSessionContext()
+  return reorderQueueUseCase(ctx, leadId, itemIds)
 }
 
 export async function getCatalogTrackingAction(

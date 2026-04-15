@@ -8,10 +8,10 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb"
 import { DashboardHeader } from "@/components/dashboard-header"
-import { LeadDetailHeader } from "@/components/contacts/lead-detail-header"
-import { LeadDetailInfo } from "@/components/contacts/lead-detail-info"
-import { LeadBotTimeline } from "@/components/contacts/lead-bot-timeline"
-import { LeadTimeline } from "@/components/contacts/lead-timeline"
+import { LeadDetailHeader } from "@/features/leads/presentation/components/lead-detail-header"
+import { LeadDetailInfo } from "@/features/leads/presentation/components/lead-detail-info"
+import { LeadBotTimeline } from "@/features/leads/presentation/components/lead-bot-timeline"
+import { LeadTimeline } from "@/features/leads/presentation/components/lead-timeline"
 import {
   getLeadById,
   getCatalogTracking,

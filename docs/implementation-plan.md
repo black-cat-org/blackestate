@@ -176,12 +176,12 @@
 
 | # | Tarea | Detalle | Estado |
 |---|-------|---------|--------|
-| 2.2.2.1 | Domain layer | `lead.entity.ts` + `lead.repository.ts`. Includes `Lead`, `LeadFilters`, `QueueStatusId`, `QueueItemStatus` types. | ⬜ |
-| 2.2.2.2 | Infrastructure layer | `lead.model.ts` + `lead.mapper.ts` + `drizzle-lead.repository.ts`. CRUD + queue operations. | ⬜ |
-| 2.2.2.3 | Application layer | Use cases: `get-leads`, `get-lead-by-id`, `create-lead`, `update-lead-status`, `manage-queue`. | ⬜ |
-| 2.2.2.4 | Presentation layer | `actions.ts` + move `components/contacts/` → `features/leads/presentation/components/`. | ⬜ |
-| 2.2.2.5 | Null safety audit — leads | Full audit for lead entity. | ⬜ |
-| 2.2.2.6 | Build + code review | | ⬜ |
+| 2.2.2.1 | Domain layer | `lead.entity.ts` (Lead, LeadSource, QueueStatusId, PropertyQueueItem, etc.) + `lead.repository.ts` (ILeadRepository with CRUD + queue + visits). | ✅ |
+| 2.2.2.2 | Infrastructure layer | `lead.model.ts` + `lead.mapper.ts` (null↔undefined, `??` consistent) + `drizzle-lead.repository.ts` (withRLS, single-transaction queue ops, JSONB propertyId filter for visits, isNull defense-in-depth). | ✅ |
+| 2.2.2.3 | Application layer | 9 use case files: get-leads, get-lead-by-id, get-leads-by-property, create-lead, update-lead, delete-lead, manage-queue (6 ops incl reorderQueue), track-visit, get-suggested-properties (pure domain logic). | ✅ |
+| 2.2.2.4 | Presentation layer | `actions.ts` (13 auth actions) + `public-actions.ts` (2 public). Components moved from `components/contacts/`. Backward compat in `lib/data/leads.ts` + `lib/types/lead.ts`. | ✅ |
+| 2.2.2.5 | Null safety fixes | `phone?`, `email?`, `source?` made optional in entity. Components updated: `lead-detail-info`, `lead-source-badge`, `lead-timeline`, `lead-chat-dialog`, `appointments-view`, `use-leads-filter`. | ✅ |
+| 2.2.2.6 | Code review fixes | 8 issues found, all fixed: JSONB filter (#1), isNull on update (#2), single-transaction queue (#3,#4), duplicate formatRelativeTime (#5), leadPhone optional (#6), reorderQueue implemented (#7), `??` consistency (#8). | ✅ |
 
 #### 2.2.3 — Appointments feature
 

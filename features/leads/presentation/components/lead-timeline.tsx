@@ -14,9 +14,10 @@ import {
   UserPlus,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { LeadChatDialog } from "@/components/contacts/lead-chat-dialog"
+import { LeadChatDialog } from "@/features/leads/presentation/components/lead-chat-dialog"
 import { BOT_ACTIVITY_LABELS } from "@/lib/constants/bot"
 import type { BotActivity, BotActivityType, BotMessage } from "@/lib/types/bot"
+import { formatRelativeTime } from "@/lib/utils/relative-time"
 
 const ICON_MAP: Record<BotActivityType, React.ComponentType<{ className?: string }>> = {
   property_sent: Send,
@@ -31,29 +32,11 @@ const ICON_MAP: Record<BotActivityType, React.ComponentType<{ className?: string
   lead_created: UserPlus,
 }
 
-function formatRelativeTime(timestamp: string): string {
-  const date = new Date(timestamp)
-  const now = new Date()
-  const diffMs = now.getTime() - date.getTime()
-  const diffMins = Math.floor(diffMs / 60000)
-  const diffHours = Math.floor(diffMs / 3600000)
-  const diffDays = Math.floor(diffMs / 86400000)
-
-  if (diffMins < 1) return "Justo ahora"
-  if (diffMins < 60) return `Hace ${diffMins} min`
-  if (diffHours < 24) return `Hace ${diffHours}h`
-  if (diffDays === 1) {
-    return `Ayer a las ${date.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" })}`
-  }
-  if (diffDays < 7) return `Hace ${diffDays} días`
-  return date.toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })
-}
-
 interface LeadTimelineProps {
   activities: BotActivity[]
   messages: BotMessage[]
   leadName: string
-  leadPhone: string
+  leadPhone?: string
 }
 
 export function LeadTimeline({ activities, messages, leadName, leadPhone }: LeadTimelineProps) {
