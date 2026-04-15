@@ -151,26 +151,26 @@
 
 | # | Tarea | Detalle | Estado |
 |---|-------|---------|--------|
-| 2.2.0.1 | Create `features/` directory | Root-level directory for all feature modules | ⬜ |
-| 2.2.0.2 | Create `features/shared/` | `domain/value-objects.ts` (shared interfaces: CurrencyAmount, SurfaceArea, PropertyAddress, PropertyMedia). `infrastructure/rls.ts` + `session-context.ts` (move from `lib/db/`). | ⬜ |
-| 2.2.0.3 | Configure path alias | Add `@/features/*` alias in `tsconfig.json` if needed (may already work via `@/*`) | ⬜ |
+| 2.2.0.1 | Create `features/` directory | Root-level directory for all feature modules | ✅ |
+| 2.2.0.2 | Create `features/shared/` | `domain/value-objects.ts`, `domain/session-context.ts` (SessionContext interface), `infrastructure/rls.ts`, `infrastructure/session-context.ts`. | ✅ |
+| 2.2.0.3 | Configure path alias | `@/*` already resolves `features/` — no changes needed. | ✅ |
 
 #### 2.2.1 — Properties feature (template module — do this first, then replicate)
 
 | # | Tarea | Detalle | Estado |
 |---|-------|---------|--------|
-| 2.2.1.1 | `features/properties/domain/property.entity.ts` | Move `Property` interface from `lib/types/property.ts`. Uses `undefined` for optional fields (NEVER `null`). Imports shared value objects. | ⬜ |
-| 2.2.1.2 | `features/properties/domain/property.repository.ts` | `IPropertyRepository` interface: `findAll(ctx)`, `findById(ctx, id)`, `create(ctx, data)`, `update(ctx, id, data)`, `softDelete(ctx, id)`, `duplicate(ctx, id)`, `findPublicById(id)`. Typed with domain entities. | ⬜ |
-| 2.2.1.3 | `features/properties/infrastructure/property.model.ts` | Type alias from Drizzle `$inferSelect`. Documents which columns are nullable. This is the DB shape (uses `null`). | ⬜ |
-| 2.2.1.4 | `features/properties/infrastructure/property.mapper.ts` | `mapRowToEntity(row): Property` and `mapFormDataToInsert(data, ctx): InsertModel`. Null safety audit: verify every nullable column maps to optional field. | ⬜ |
-| 2.2.1.5 | `features/properties/infrastructure/drizzle-property.repository.ts` | Implements `IPropertyRepository`. All queries via `withRLS()`. Uses mapper. Includes `findPublicById()` (direct `db`, no RLS, redacts location). | ⬜ |
-| 2.2.1.6 | `features/properties/application/` use cases | One file per action: `get-properties`, `get-property-by-id`, `create-property`, `update-property`, `delete-property`, `duplicate-property`. Each instantiates repository and delegates. | ⬜ |
-| 2.2.1.7 | `features/properties/presentation/actions.ts` | Server Actions with `"use server"`. Thin: `getSessionContext()` + call use case. Zod validation at boundary for create/update. | ⬜ |
-| 2.2.1.8 | Move property components | Move `components/properties/` → `features/properties/presentation/components/`. Update all imports. | ⬜ |
-| 2.2.1.9 | Update `app/` pages | Update imports in `app/dashboard/properties/**` and `app/p/[id]/` to point to `features/properties/presentation/`. | ⬜ |
-| 2.2.1.10 | Null safety audit — properties | Full audit: list nullable columns in schema → verify entity optional fields → verify mapper conversions → grep components for unsafe access on optional fields. | ⬜ |
-| 2.2.1.11 | Delete old files | Remove `lib/data/properties.ts`, `lib/types/property.ts` (replaced by feature module). Update any remaining imports. | ⬜ |
-| 2.2.1.12 | Build + code review | `npm run build` must pass. Run code reviewer to validate architecture compliance. | ⬜ |
+| 2.2.1.1 | `features/properties/domain/property.entity.ts` | Property entity + value types. Imports from shared value objects. Uses `undefined` for optional. | ✅ |
+| 2.2.1.2 | `features/properties/domain/property.repository.ts` | `IPropertyRepository` interface (port). Imports `SessionContext` from shared domain (not infrastructure). | ✅ |
+| 2.2.1.3 | `features/properties/infrastructure/property.model.ts` | Type alias from Drizzle `$inferSelect`/`$inferInsert`. | ✅ |
+| 2.2.1.4 | `features/properties/infrastructure/property.mapper.ts` | `mapRowToEntity`, `mapFormDataToInsert`, `mapPartialEntityToUpdate`. Null↔undefined conversion. | ✅ |
+| 2.2.1.5 | `features/properties/infrastructure/drizzle-property.repository.ts` | Implements `IPropertyRepository`. withRLS for auth queries. Defense-in-depth `isNull(deletedAt)`. `findPublicById` redacts location. | ✅ |
+| 2.2.1.6 | `features/properties/application/` use cases | 7 use cases: get-properties, get-property-by-id, create, update, delete, duplicate, get-public-property. | ✅ |
+| 2.2.1.7 | `features/properties/presentation/actions.ts` | Auth Server Actions (thin). `public-actions.ts` separated for unauthenticated public queries. | ✅ |
+| 2.2.1.8 | Backward compatibility | `lib/data/properties.ts` re-exports to actions. `lib/types/property.ts` re-exports to entity. Old imports keep working. | ✅ |
+| 2.2.1.9 | Architecture fixes from code review | `SessionContext` moved to shared domain. Domain no longer imports from infrastructure. Soft-delete defense-in-depth added. Public actions separated. | ✅ |
+| 2.2.1.10 | Move components + update pages | ⏭️ Deferred — components stay in `components/properties/` until all features are migrated, then move in batch. |  |
+| 2.2.1.11 | Null safety audit — properties | Pending full audit of nullable columns vs entity fields vs component access patterns. | ⬜ |
+| 2.2.1.12 | Build + code review | Build passes. Code review: 7 issues found, all fixed. Architecture validated. | ✅ |
 
 #### 2.2.2 — Leads feature
 

@@ -11,11 +11,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { PropertyStatusBadge } from "@/components/properties/property-status-badge"
+import { PropertyStatusBadge } from "../property-status-badge"
 import { OPERATION_TYPE_LABELS, PROPERTY_TYPE_LABELS, STATUS_TRANSITIONS } from "@/lib/constants/property"
 import { updateProperty } from "@/lib/data/properties"
 import { toast } from "sonner"
-import { ShareLinksDialog } from "@/components/properties/share-links-dialog"
+import { ShareLinksDialog } from "../share-links-dialog"
 import type { Property } from "@/lib/types/property"
 
 export function PropertyDetailHeader({ property }: { property: Property }) {

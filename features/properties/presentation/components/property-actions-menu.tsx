@@ -18,7 +18,7 @@ import { Button } from "@/components/ui/button"
 import { STATUS_TRANSITIONS } from "@/lib/constants/property"
 import { updateProperty, duplicateProperty, deleteProperty } from "@/lib/data/properties"
 import { toast } from "sonner"
-import { ShareLinksDialog } from "@/components/properties/share-links-dialog"
+import { ShareLinksDialog } from "./share-links-dialog"
 import type { Property } from "@/lib/types/property"
 
 export function PropertyActionsMenu({ property }: { property: Property }) {

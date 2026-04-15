@@ -9,7 +9,7 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb"
 import { DashboardHeader } from "@/components/dashboard-header"
-import { PropertyFormWizard } from "@/components/properties/property-form/property-form-wizard"
+import { PropertyFormWizard } from "@/features/properties/presentation/components/property-form/property-form-wizard"
 
 export default function NewPropertyPage() {
   return (

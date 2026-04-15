@@ -17,6 +17,7 @@ export function propertyToFormData(property: Property): PropertyFormData {
     city: property.address.city,
     neighborhood: property.address.neighborhood || "",
     street: property.address.street,
+    number: property.address.number || "",
     floor: property.address.floor || "",
     apartment: property.address.apartment || "",
     googleMapsUrl: property.address.googleMapsUrl || "",

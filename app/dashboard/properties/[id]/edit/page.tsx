@@ -8,7 +8,7 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb"
 import { DashboardHeader } from "@/components/dashboard-header"
-import { PropertyEditForm } from "@/components/properties/property-edit-form"
+import { PropertyEditForm } from "@/features/properties/presentation/components/property-edit-form"
 import { getPropertyById } from "@/lib/data/properties"
 import { propertyToFormData } from "@/lib/utils/property-mappers"
 

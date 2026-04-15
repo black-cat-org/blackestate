@@ -85,10 +85,16 @@ export function LocationStep({ form }: { form: UseFormReturn<PropertyFormData> }
           <Label htmlFor="neighborhood">Barrio</Label>
           <Input id="neighborhood" {...register("neighborhood")} placeholder="Ej: Equipetrol" />
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="street">Calle *</Label>
-          <Input id="street" {...register("street")} placeholder="Ej: Av. San Martín" />
-          {errors.street && <p className="text-sm text-destructive">{errors.street.message}</p>}
+        <div className="grid gap-4 sm:grid-cols-[1fr_auto]">
+          <div className="space-y-2">
+            <Label htmlFor="street">Calle *</Label>
+            <Input id="street" {...register("street")} placeholder="Ej: Av. San Martín" />
+            {errors.street && <p className="text-sm text-destructive">{errors.street.message}</p>}
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="number">Número</Label>
+            <Input id="number" {...register("number")} placeholder="Ej: 1500" className="w-28" />
+          </div>
         </div>
       </div>
 

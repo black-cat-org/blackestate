@@ -1,6 +1,6 @@
-import { PropertyDetailGallery } from "@/components/properties/property-detail/property-detail-gallery"
-import { PropertyDetailInfo } from "@/components/properties/property-detail/property-detail-info"
-import { PropertyDetailMap } from "@/components/properties/property-detail/property-detail-map"
+import { PropertyDetailGallery } from "./property-detail-gallery"
+import { PropertyDetailInfo } from "./property-detail-info"
+import { PropertyDetailMap } from "./property-detail-map"
 import type { Property } from "@/lib/types/property"
 
 interface PropertyDetailTabsProps {

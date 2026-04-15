@@ -12,7 +12,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
-import { ShareLinkItem } from "@/components/properties/share-link-item"
+import { ShareLinkItem } from "./share-link-item"
 import { VALID_SOURCES, SOURCE_LABELS, type LeadSource } from "@/lib/constants/sources"
 import { toast } from "sonner"
 import type { Property } from "@/lib/types/property"

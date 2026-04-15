@@ -75,6 +75,7 @@ const defaultValues: PropertyFormData = {
   city: "",
   neighborhood: "",
   street: "",
+  number: "",
   floor: "",
   apartment: "",
   googleMapsUrl: "",

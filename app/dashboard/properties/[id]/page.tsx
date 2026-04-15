@@ -8,8 +8,8 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb"
 import { DashboardHeader } from "@/components/dashboard-header"
-import { PropertyDetailHeader } from "@/components/properties/property-detail/property-detail-header"
-import { PropertyDetailTabs } from "@/components/properties/property-detail/property-detail-tabs"
+import { PropertyDetailHeader } from "@/features/properties/presentation/components/property-detail/property-detail-header"
+import { PropertyDetailTabs } from "@/features/properties/presentation/components/property-detail/property-detail-tabs"
 import { getPropertyById } from "@/lib/data/properties"
 
 export default async function PropertyDetailPage({
