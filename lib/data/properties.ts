@@ -1,531 +1,263 @@
+"use server"
+
+import { eq, and, isNull } from "drizzle-orm"
+import { properties } from "@/lib/db/schema"
+import { db } from "@/lib/db"
+import { withRLS, type SessionContext } from "@/lib/db/rls"
+import { getSessionContext } from "@/lib/db/session-context"
 import type { Property, PropertyFormData } from "@/lib/types/property"
 
-const mockProperties: Property[] = [
-  {
-    id: "1",
-    title: "Casa moderna en Palermo",
-    description: "Hermosa casa de 3 plantas con diseño contemporáneo. Amplios ambientes, mucha luz natural. Ideal para familia. Ubicada en una de las mejores zonas de Palermo.",
-    shortDescription: "Casa 3 plantas, diseño contemporáneo en Palermo",
-    type: "house",
-    operationType: "sale",
-    status: "active",
-    price: { amount: 450000, currency: "USD" },
-    negotiable: true,
-    expenses: { amount: 35000, currency: "BOB" },
-    address: {
-      street: "Honduras",
-      number: "4500",
-      city: "Buenos Aires",
-      state: "CABA",
-      country: "Argentina",
-      neighborhood: "Palermo",
+// ---------------------------------------------------------------------------
+// Row ↔ Property mapper
+// ---------------------------------------------------------------------------
 
-      lat: -34.5875,
-      lng: -58.4262,
-    },
-    totalArea: { value: 320, unit: "m2" },
-    coveredArea: { value: 280, unit: "m2" },
-    rooms: 6,
-    bedrooms: 4,
-    bathrooms: 3,
-    garages: 2,
-    age: 5,
-    condition: "excellent",
-    orientation: "north",
-    amenities: ["pool", "grill_area", "garden", "terrace", "heating", "air_conditioning"],
-    hideExactLocation: true,
-    media: {
-      photos: [
-        "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=1200&q=80",
-        "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1200&q=80",
-        "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=1200&q=80",
-      ],
-      videoUrl: "https://youtube.com/watch?v=example1",
-      blueprints: [],
-    },
-    createdAt: "2026-01-15T10:00:00Z",
-    updatedAt: "2026-02-10T14:30:00Z",
-  },
-  {
-    id: "2",
-    title: "Departamento 2 amb en Belgrano",
-    description: "Luminoso departamento de 2 ambientes con balcón. Edificio con amenities completos. Apto profesional.",
-    type: "apartment",
-    operationType: "rent",
-    status: "active",
-    price: { amount: 650000, currency: "BOB" },
-    negotiable: false,
-    expenses: { amount: 120000, currency: "BOB" },
-    address: {
-      street: "Cabildo",
-      number: "2200",
-      floor: "8",
-      apartment: "A",
-      city: "Buenos Aires",
-      state: "CABA",
-      country: "Argentina",
-      neighborhood: "Belgrano",
+type PropertyRow = typeof properties.$inferSelect
 
-      lat: -34.5594,
-      lng: -58.4561,
-    },
-    totalArea: { value: 55, unit: "m2" },
-    coveredArea: { value: 48, unit: "m2" },
-    rooms: 2,
-    bedrooms: 1,
-    bathrooms: 1,
-    garages: 0,
-    age: 15,
-    condition: "good",
-    orientation: "east",
-    amenities: ["balcony", "ascensor", "seguridad", "laundry", "gym"],
-    hideExactLocation: true,
-    media: {
-      photos: [
-        "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=1200&q=80",
-        "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=1200&q=80",
-      ],
-      blueprints: [],
-    },
-    createdAt: "2026-02-01T09:00:00Z",
-    updatedAt: "2026-02-15T11:00:00Z",
-  },
-  {
-    id: "3",
-    title: "Terreno en zona residencial",
-    description: "Amplio terreno en zona residencial con todos los servicios. Ideal para construcción de vivienda unifamiliar o proyecto de desarrollo.",
-    type: "land",
-    operationType: "sale",
-    status: "active",
-    price: { amount: 120000, currency: "USD" },
-    negotiable: true,
+function mapRowToProperty(row: PropertyRow): Property {
+  return {
+    id: row.id,
+    title: row.title,
+    description: row.description,
+    shortDescription: row.shortDescription ?? undefined,
+    type: row.type,
+    operationType: row.operationType,
+    status: row.status,
+    price: { amount: Number(row.priceAmount), currency: row.priceCurrency },
+    negotiable: row.negotiable,
+    expenses: row.expensesAmount
+      ? { amount: Number(row.expensesAmount), currency: row.expensesCurrency! }
+      : undefined,
     address: {
-      street: "Los Robles",
-      number: "350",
-      city: "Pilar",
-      state: "Buenos Aires",
-      country: "Argentina",
-      neighborhood: "La Lonja",
-      lat: -34.4536,
-      lng: -58.9142,
+      street: row.addressStreet,
+      number: row.addressNumber ?? undefined,
+      floor: row.addressFloor ?? undefined,
+      apartment: row.addressApartment ?? undefined,
+      city: row.addressCity,
+      state: row.addressState,
+      country: row.addressCountry,
+      neighborhood: row.addressNeighborhood ?? undefined,
+      lat: row.addressLat ?? undefined,
+      lng: row.addressLng ?? undefined,
+      googleMapsUrl: row.addressGoogleMapsUrl ?? undefined,
     },
-    totalArea: { value: 800, unit: "m2" },
-    amenities: [],
-    hideExactLocation: true,
+    totalArea: row.totalAreaValue
+      ? { value: row.totalAreaValue, unit: row.totalAreaUnit! }
+      : undefined,
+    coveredArea: row.coveredAreaValue
+      ? { value: row.coveredAreaValue, unit: row.coveredAreaUnit! }
+      : undefined,
+    rooms: row.rooms ?? undefined,
+    bedrooms: row.bedrooms ?? undefined,
+    bathrooms: row.bathrooms ?? undefined,
+    garages: row.garages ?? undefined,
+    age: row.age ?? undefined,
+    condition: row.condition ?? undefined,
+    orientation: row.orientation ?? undefined,
+    amenities: row.amenities,
+    hideExactLocation: row.hideExactLocation,
     media: {
-      photos: [
-        "https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=1200&q=80",
-        "https://images.unsplash.com/photo-1628624747186-a941c476b7ef?w=1200&q=80",
-      ],
-      blueprints: [],
+      photos: row.photos,
+      videoUrl: row.videoUrl ?? undefined,
+      virtualTourUrl: row.virtualTourUrl ?? undefined,
+      blueprints: row.blueprints,
     },
-    createdAt: "2026-01-20T08:00:00Z",
-    updatedAt: "2026-01-20T08:00:00Z",
-  },
-  {
-    id: "4",
-    title: "Local comercial sobre Av. Santa Fe",
-    description: "Local comercial a la calle con gran vidriera. Excelente ubicación comercial con alto tránsito peatonal.",
-    type: "commercial",
-    operationType: "rent",
-    status: "paused",
-    price: { amount: 3500, currency: "USD" },
-    negotiable: false,
-    expenses: { amount: 85000, currency: "BOB" },
-    address: {
-      street: "Av. Santa Fe",
-      number: "3200",
-      city: "Buenos Aires",
-      state: "CABA",
-      country: "Argentina",
-      neighborhood: "Palermo",
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+  }
+}
 
-      lat: -34.5891,
-      lng: -58.4098,
-    },
-    totalArea: { value: 180, unit: "m2" },
-    coveredArea: { value: 180, unit: "m2" },
-    bathrooms: 2,
-    condition: "good",
-    amenities: ["aire_acondicionado"],
-    hideExactLocation: true,
-    media: {
-      photos: [
-        "https://images.unsplash.com/photo-1604328698692-f76ea9498e76?w=1200&q=80",
-        "https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=1200&q=80",
-      ],
-      blueprints: [],
-    },
-    createdAt: "2025-12-10T10:00:00Z",
-    updatedAt: "2026-02-01T09:00:00Z",
-  },
-  {
-    id: "5",
-    title: "Oficina premium en Microcentro",
-    description: "Oficina equipada en edificio AAA. Piso completo con sala de reuniones, recepción y office. Vista panorámica.",
-    type: "office",
-    operationType: "rent",
-    status: "in_review",
-    price: { amount: 5800, currency: "USD" },
-    negotiable: true,
-    expenses: { amount: 250000, currency: "BOB" },
-    address: {
-      street: "Av. Corrientes",
-      number: "456",
-      floor: "15",
-      city: "Buenos Aires",
-      state: "CABA",
-      country: "Argentina",
-      neighborhood: "Microcentro",
+function mapFormDataToInsert(data: PropertyFormData, ctx: SessionContext) {
+  return {
+    organizationId: ctx.orgId,
+    createdByUserId: ctx.userId,
+    title: data.title,
+    description: data.description,
+    shortDescription: data.shortDescription || null,
+    type: data.type as Property["type"],
+    operationType: data.operationType as Property["operationType"],
+    priceAmount: String(data.price),
+    priceCurrency: data.currency,
+    negotiable: data.negotiable,
+    expensesAmount: data.expenses ? String(data.expenses) : null,
+    expensesCurrency: data.expenses ? data.expensesCurrency : null,
+    addressStreet: data.street,
+    addressFloor: data.floor || null,
+    addressApartment: data.apartment || null,
+    addressCity: data.city,
+    addressState: data.state,
+    addressCountry: data.country,
+    addressNeighborhood: data.neighborhood || null,
+    addressLat: data.lat ? Number(data.lat) : null,
+    addressLng: data.lng ? Number(data.lng) : null,
+    addressGoogleMapsUrl: data.googleMapsUrl || null,
+    totalAreaValue: data.totalArea ? Number(data.totalArea) : null,
+    totalAreaUnit: data.totalArea ? data.surfaceUnit : null,
+    coveredAreaValue: data.coveredArea ? Number(data.coveredArea) : null,
+    coveredAreaUnit: data.coveredArea ? data.surfaceUnit : null,
+    rooms: data.rooms ? Number(data.rooms) : null,
+    bedrooms: data.bedrooms ? Number(data.bedrooms) : null,
+    bathrooms: data.bathrooms ? Number(data.bathrooms) : null,
+    garages: data.garages ? Number(data.garages) : null,
+    age: data.age ? Number(data.age) : null,
+    condition: (data.condition as Property["condition"]) || null,
+    orientation: (data.orientation as Property["orientation"]) || null,
+    amenities: data.amenities,
+    hideExactLocation: data.hideExactLocation,
+    photos: data.photos,
+    videoUrl: data.videoUrl || null,
+    virtualTourUrl: data.virtualTourUrl || null,
+    blueprints: data.blueprints,
+  }
+}
 
-      lat: -34.6037,
-      lng: -58.3816,
-    },
-    totalArea: { value: 350, unit: "m2" },
-    coveredArea: { value: 350, unit: "m2" },
-    rooms: 8,
-    bathrooms: 4,
-    condition: "excellent",
-    orientation: "north",
-    amenities: ["ascensor", "seguridad", "aire_acondicionado", "heating"],
-    hideExactLocation: true,
-    media: {
-      photos: [
-        "https://images.unsplash.com/photo-1497366216548-37526070297c?w=1200&q=80",
-        "https://images.unsplash.com/photo-1497366811353-6870744d04b2?w=1200&q=80",
-      ],
-      blueprints: [],
-    },
-    createdAt: "2026-02-05T12:00:00Z",
-    updatedAt: "2026-02-18T16:00:00Z",
-  },
-  {
-    id: "6",
-    title: "PH reciclado en Villa Crespo",
-    description: "PH de 3 ambientes totalmente reciclado con patio propio. Sin expensas. Techos altos y mucha luz.",
-    type: "ph",
-    operationType: "sale",
-    status: "active",
-    price: { amount: 185000, currency: "USD" },
-    negotiable: true,
-    address: {
-      street: "Gurruchaga",
-      number: "780",
-      city: "Buenos Aires",
-      state: "CABA",
-      country: "Argentina",
-      neighborhood: "Villa Crespo",
-
-      lat: -34.5968,
-      lng: -58.4372,
-    },
-    totalArea: { value: 95, unit: "m2" },
-    coveredArea: { value: 85, unit: "m2" },
-    rooms: 3,
-    bedrooms: 2,
-    bathrooms: 1,
-    garages: 0,
-    age: 60,
-    condition: "excellent",
-    orientation: "west",
-    amenities: ["quincho", "terraza", "heating"],
-    hideExactLocation: false,
-    media: {
-      photos: [
-        "https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?w=1200&q=80",
-        "https://images.unsplash.com/photo-1600573472592-401b489a3cdc?w=1200&q=80",
-      ],
-      blueprints: [],
-    },
-    createdAt: "2026-01-28T14:00:00Z",
-    updatedAt: "2026-02-12T10:00:00Z",
-  },
-  {
-    id: "7",
-    title: "Depósito industrial en Avellaneda",
-    description: "Depósito con oficinas. Acceso para camiones. Zona industrial consolidada. Habilitación al día.",
-    type: "warehouse",
-    operationType: "rent",
-    status: "draft",
-    price: { amount: 4200, currency: "USD" },
-    negotiable: false,
-    address: {
-      street: "Av. Mitre",
-      number: "1800",
-      city: "Avellaneda",
-      state: "Buenos Aires",
-      country: "Argentina",
-      lat: -34.6632,
-      lng: -58.3657,
-    },
-    totalArea: { value: 1200, unit: "m2" },
-    coveredArea: { value: 900, unit: "m2" },
-    bathrooms: 2,
-    condition: "fair",
-    amenities: [],
-    hideExactLocation: true,
-    media: {
-      photos: [
-        "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=1200&q=80",
-      ],
-      blueprints: [],
-    },
-    createdAt: "2026-02-20T08:00:00Z",
-    updatedAt: "2026-02-20T08:00:00Z",
-  },
-  {
-    id: "8",
-    title: "Cabaña en Bariloche con vista al lago",
-    description: "Cabaña de montaña con vista al Lago Nahuel Huapi. Construcción en madera y piedra. Ideal para alquiler temporario.",
-    shortDescription: "Cabaña con vista al lago, ideal alquiler temporario",
-    type: "cabin",
-    operationType: "sale",
-    status: "sold",
-    price: { amount: 290000, currency: "USD" },
-    negotiable: false,
-    address: {
-      street: "Circuito Chico",
-      number: "km 18",
-      city: "San Carlos de Bariloche",
-      state: "Río Negro",
-      country: "Argentina",
-      lat: -41.0768,
-      lng: -71.4382,
-    },
-    totalArea: { value: 2500, unit: "m2" },
-    coveredArea: { value: 140, unit: "m2" },
-    rooms: 4,
-    bedrooms: 3,
-    bathrooms: 2,
-    garages: 1,
-    age: 12,
-    condition: "excellent",
-    orientation: "north",
-    amenities: ["pileta", "quincho", "jardin", "heating"],
-    hideExactLocation: true,
-    media: {
-      photos: [
-        "https://images.unsplash.com/photo-1510798831971-661eb04b3739?w=1200&q=80",
-        "https://images.unsplash.com/photo-1449158743715-0a90ebb6d2d8?w=1200&q=80",
-        "https://images.unsplash.com/photo-1587061949409-02df41d5e562?w=1200&q=80",
-      ],
-      virtualTourUrl: "https://example.com/tour",
-      blueprints: [],
-    },
-    createdAt: "2025-11-05T10:00:00Z",
-    updatedAt: "2026-01-30T15:00:00Z",
-  },
-  {
-    id: "9",
-    title: "Dpto 3 amb temporal en Recoleta",
-    description: "Departamento amueblado para alquiler temporal. Excelente ubicación, cerca de todo. Ideal para expatriados.",
-    type: "apartment",
-    operationType: "short_term",
-    status: "rented",
-    price: { amount: 1800, currency: "USD" },
-    negotiable: false,
-    expenses: { amount: 95000, currency: "BOB" },
-    address: {
-      street: "Av. Alvear",
-      number: "1500",
-      floor: "6",
-      apartment: "B",
-      city: "Buenos Aires",
-      state: "CABA",
-      country: "Argentina",
-      neighborhood: "Recoleta",
-
-      lat: -34.5885,
-      lng: -58.3938,
-    },
-    totalArea: { value: 90, unit: "m2" },
-    coveredArea: { value: 85, unit: "m2" },
-    rooms: 3,
-    bedrooms: 2,
-    bathrooms: 1,
-    garages: 1,
-    age: 30,
-    condition: "good",
-    orientation: "northeast",
-    amenities: ["balcony", "ascensor", "seguridad", "aire_acondicionado", "heating", "gym"],
-    hideExactLocation: true,
-    media: {
-      photos: [
-        "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=1200&q=80",
-        "https://images.unsplash.com/photo-1560185893-a55cbc8c57e8?w=1200&q=80",
-      ],
-      blueprints: [],
-    },
-    createdAt: "2025-12-20T09:00:00Z",
-    updatedAt: "2026-02-08T11:00:00Z",
-  },
-  {
-    id: "10",
-    title: "Casa quinta en Escobar",
-    description: "Casa quinta con parque, pileta y cancha de tenis. Barrio cerrado con seguridad 24hs. Ideal para familia.",
-    shortDescription: "Casa quinta con parque, pileta y cancha de tenis",
-    type: "house",
-    operationType: "sale",
-    status: "rejected",
-    price: { amount: 380000, currency: "USD" },
-    negotiable: true,
-    expenses: { amount: 180000, currency: "BOB" },
-    address: {
-      street: "Los Sauces",
-      number: "200",
-      city: "Escobar",
-      state: "Buenos Aires",
-      country: "Argentina",
-      neighborhood: "El Cazador",
-      lat: -34.3456,
-      lng: -58.7961,
-    },
-    totalArea: { value: 5000, unit: "m2" },
-    coveredArea: { value: 400, unit: "m2" },
-    rooms: 8,
-    bedrooms: 5,
-    bathrooms: 4,
-    garages: 3,
-    age: 10,
-    condition: "excellent",
-    orientation: "north",
-    amenities: ["pileta", "quincho", "jardin", "terraza", "seguridad", "heating", "aire_acondicionado"],
-    hideExactLocation: false,
-    media: {
-      photos: [
-        "https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=1200&q=80",
-        "https://images.unsplash.com/photo-1583608205776-bfd35f0d9f83?w=1200&q=80",
-        "https://images.unsplash.com/photo-1600047509807-ba8f99d2cdde?w=1200&q=80",
-      ],
-      blueprints: [],
-    },
-    createdAt: "2026-01-10T10:00:00Z",
-    updatedAt: "2026-02-14T09:00:00Z",
-  },
-]
-
-let properties = [...mockProperties]
+// ---------------------------------------------------------------------------
+// CRUD Operations (all use RLS via session context)
+// ---------------------------------------------------------------------------
 
 export async function getProperties(): Promise<Property[]> {
-  return Promise.resolve([...properties])
+  const ctx = await getSessionContext()
+  const rows = await withRLS(ctx, (tx) =>
+    tx.select().from(properties)
+  )
+  return rows.map(mapRowToProperty)
 }
 
 export async function getPropertyById(id: string): Promise<Property | undefined> {
-  return Promise.resolve(properties.find((p) => p.id === id))
+  const ctx = await getSessionContext()
+  const rows = await withRLS(ctx, (tx) =>
+    tx.select().from(properties).where(eq(properties.id, id)).limit(1)
+  )
+  return rows[0] ? mapRowToProperty(rows[0]) : undefined
 }
 
 export async function createProperty(data: PropertyFormData): Promise<Property> {
-  const newProperty: Property = {
-    id: String(properties.length + 1),
-    title: data.title,
-    description: data.description,
-    shortDescription: data.shortDescription || undefined,
-    type: data.type as Property["type"],
-    operationType: data.operationType as Property["operationType"],
-    status: "draft",
-    price: { amount: Number(data.price), currency: data.currency },
-    negotiable: data.negotiable,
-    expenses: data.expenses ? { amount: Number(data.expenses), currency: data.expensesCurrency } : undefined,
-    address: {
-      street: data.street,
-      floor: data.floor || undefined,
-      apartment: data.apartment || undefined,
-      city: data.city,
-      state: data.state,
-      country: data.country,
-      neighborhood: data.neighborhood || undefined,
-      lat: data.lat ? Number(data.lat) : undefined,
-      lng: data.lng ? Number(data.lng) : undefined,
-      googleMapsUrl: data.googleMapsUrl || undefined,
-    },
-    totalArea: data.totalArea ? { value: Number(data.totalArea), unit: data.surfaceUnit } : undefined,
-    coveredArea: data.coveredArea ? { value: Number(data.coveredArea), unit: data.surfaceUnit } : undefined,
-    rooms: data.rooms ? Number(data.rooms) : undefined,
-    bedrooms: data.bedrooms ? Number(data.bedrooms) : undefined,
-    bathrooms: data.bathrooms ? Number(data.bathrooms) : undefined,
-    garages: data.garages ? Number(data.garages) : undefined,
-    age: data.age ? Number(data.age) : undefined,
-    condition: (data.condition as Property["condition"]) || undefined,
-    orientation: (data.orientation as Property["orientation"]) || undefined,
-    amenities: data.amenities,
-    hideExactLocation: data.hideExactLocation,
-    media: {
-      photos: data.photos,
-      videoUrl: data.videoUrl || undefined,
-      virtualTourUrl: data.virtualTourUrl || undefined,
-      blueprints: data.blueprints,
-    },
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  }
-  properties = [newProperty, ...properties]
-  return Promise.resolve(newProperty)
+  const ctx = await getSessionContext()
+  const insert = mapFormDataToInsert(data, ctx)
+  const rows = await withRLS(ctx, (tx) =>
+    tx.insert(properties).values(insert).returning()
+  )
+  return mapRowToProperty(rows[0])
 }
 
 export async function updateProperty(id: string, data: Partial<Property>): Promise<Property> {
-  const index = properties.findIndex((p) => p.id === id)
-  if (index === -1) throw new Error("Property not found")
-  properties[index] = { ...properties[index], ...data, updatedAt: new Date().toISOString() }
-  return Promise.resolve(properties[index])
+  const ctx = await getSessionContext()
+
+  const updateData: Record<string, unknown> = {}
+
+  if (data.title !== undefined) updateData.title = data.title
+  if (data.description !== undefined) updateData.description = data.description
+  if (data.shortDescription !== undefined) updateData.shortDescription = data.shortDescription ?? null
+  if (data.type !== undefined) updateData.type = data.type
+  if (data.operationType !== undefined) updateData.operationType = data.operationType
+  if (data.status !== undefined) updateData.status = data.status
+  if (data.negotiable !== undefined) updateData.negotiable = data.negotiable
+  if (data.amenities !== undefined) updateData.amenities = data.amenities
+  if (data.hideExactLocation !== undefined) updateData.hideExactLocation = data.hideExactLocation
+
+  if (data.price) {
+    updateData.priceAmount = String(data.price.amount)
+    updateData.priceCurrency = data.price.currency
+  }
+  if (data.expenses !== undefined) {
+    updateData.expensesAmount = data.expenses ? String(data.expenses.amount) : null
+    updateData.expensesCurrency = data.expenses ? data.expenses.currency : null
+  }
+  if (data.address) {
+    if (data.address.street !== undefined) updateData.addressStreet = data.address.street
+    if (data.address.number !== undefined) updateData.addressNumber = data.address.number ?? null
+    if (data.address.floor !== undefined) updateData.addressFloor = data.address.floor ?? null
+    if (data.address.apartment !== undefined) updateData.addressApartment = data.address.apartment ?? null
+    if (data.address.city !== undefined) updateData.addressCity = data.address.city
+    if (data.address.state !== undefined) updateData.addressState = data.address.state
+    if (data.address.country !== undefined) updateData.addressCountry = data.address.country
+    if (data.address.neighborhood !== undefined) updateData.addressNeighborhood = data.address.neighborhood ?? null
+    if (data.address.lat !== undefined) updateData.addressLat = data.address.lat ?? null
+    if (data.address.lng !== undefined) updateData.addressLng = data.address.lng ?? null
+    if (data.address.googleMapsUrl !== undefined) updateData.addressGoogleMapsUrl = data.address.googleMapsUrl ?? null
+  }
+  if (data.totalArea !== undefined) {
+    updateData.totalAreaValue = data.totalArea ? data.totalArea.value : null
+    updateData.totalAreaUnit = data.totalArea ? data.totalArea.unit : null
+  }
+  if (data.coveredArea !== undefined) {
+    updateData.coveredAreaValue = data.coveredArea ? data.coveredArea.value : null
+    updateData.coveredAreaUnit = data.coveredArea ? data.coveredArea.unit : null
+  }
+  if (data.rooms !== undefined) updateData.rooms = data.rooms ?? null
+  if (data.bedrooms !== undefined) updateData.bedrooms = data.bedrooms ?? null
+  if (data.bathrooms !== undefined) updateData.bathrooms = data.bathrooms ?? null
+  if (data.garages !== undefined) updateData.garages = data.garages ?? null
+  if (data.age !== undefined) updateData.age = data.age ?? null
+  if (data.condition !== undefined) updateData.condition = data.condition ?? null
+  if (data.orientation !== undefined) updateData.orientation = data.orientation ?? null
+  if (data.media) {
+    if (data.media.photos !== undefined) updateData.photos = data.media.photos
+    if (data.media.videoUrl !== undefined) updateData.videoUrl = data.media.videoUrl ?? null
+    if (data.media.virtualTourUrl !== undefined) updateData.virtualTourUrl = data.media.virtualTourUrl ?? null
+    if (data.media.blueprints !== undefined) updateData.blueprints = data.media.blueprints
+  }
+
+  const rows = await withRLS(ctx, (tx) =>
+    tx.update(properties).set(updateData).where(eq(properties.id, id)).returning()
+  )
+  if (rows.length === 0) throw new Error("Property not found or no permission")
+  return mapRowToProperty(rows[0])
 }
 
 export async function deleteProperty(id: string): Promise<void> {
-  properties = properties.filter((p) => p.id !== id)
-  return Promise.resolve()
+  const ctx = await getSessionContext()
+  const rows = await withRLS(ctx, (tx) =>
+    tx.update(properties)
+      .set({ deletedAt: new Date() })
+      .where(eq(properties.id, id))
+      .returning({ id: properties.id })
+  )
+  if (rows.length === 0) throw new Error("Property not found or no permission")
 }
 
 export async function duplicateProperty(id: string): Promise<Property> {
-  const original = properties.find((p) => p.id === id)
-  if (!original) throw new Error("Property not found")
-  const duplicate: Property = {
-    ...original,
-    id: String(properties.length + 1),
-    title: `${original.title} (copia)`,
-    status: "draft",
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  }
-  properties = [duplicate, ...properties]
-  return Promise.resolve(duplicate)
+  const ctx = await getSessionContext()
+
+  return withRLS(ctx, async (tx) => {
+    const original = await tx.select().from(properties).where(and(eq(properties.id, id), isNull(properties.deletedAt))).limit(1)
+    if (original.length === 0) throw new Error("Property not found")
+
+    const { id: _id, createdAt: _ca, updatedAt: _ua, deletedAt: _da, ...rest } = original[0]
+    const rows = await tx.insert(properties).values({
+      ...rest,
+      createdByUserId: ctx.userId,
+      title: `${rest.title} (copy)`,
+      status: "draft",
+    }).returning()
+
+    return mapRowToProperty(rows[0])
+  })
 }
 
-export function propertyToFormData(property: Property): PropertyFormData {
-  return {
-    title: property.title,
-    description: property.description,
-    shortDescription: property.shortDescription || "",
-    type: property.type,
-    operationType: property.operationType,
-    price: property.price.amount,
-    currency: property.price.currency,
-    negotiable: property.negotiable,
-    expenses: property.expenses?.amount ?? "",
-    expensesCurrency: property.expenses?.currency ?? "USD",
-    country: property.address.country,
-    state: property.address.state,
-    city: property.address.city,
-    neighborhood: property.address.neighborhood || "",
-    street: property.address.street,
-    floor: property.address.floor || "",
-    apartment: property.address.apartment || "",
-    googleMapsUrl: property.address.googleMapsUrl || "",
-    lat: property.address.lat?.toString() || "",
-    lng: property.address.lng?.toString() || "",
-    totalArea: property.totalArea?.value ?? "",
-    coveredArea: property.coveredArea?.value ?? "",
-    surfaceUnit: property.totalArea?.unit || property.coveredArea?.unit || "m2",
-    rooms: property.rooms ?? "",
-    bedrooms: property.bedrooms ?? "",
-    bathrooms: property.bathrooms ?? "",
-    garages: property.garages ?? "",
-    age: property.age ?? "",
-    condition: property.condition || "",
-    orientation: property.orientation || "",
-    amenities: property.amenities,
-    hideExactLocation: property.hideExactLocation,
-    photos: property.media.photos,
-    videoUrl: property.media.videoUrl || "",
-    virtualTourUrl: property.media.virtualTourUrl || "",
-    blueprints: property.media.blueprints,
+// ---------------------------------------------------------------------------
+// Public query (no auth required — for landing pages)
+// ---------------------------------------------------------------------------
+
+export async function getPublicPropertyById(id: string): Promise<Property | undefined> {
+  const rows = await db
+    .select()
+    .from(properties)
+    .where(
+      and(
+        eq(properties.id, id),
+        eq(properties.status, "active"),
+        isNull(properties.deletedAt),
+      )
+    )
+    .limit(1)
+
+  if (!rows[0]) return undefined
+
+  const property = mapRowToProperty(rows[0])
+  if (property.hideExactLocation) {
+    property.address.lat = undefined
+    property.address.lng = undefined
+    property.address.googleMapsUrl = undefined
   }
+  return property
 }

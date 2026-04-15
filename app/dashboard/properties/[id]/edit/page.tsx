@@ -9,7 +9,8 @@ import {
 } from "@/components/ui/breadcrumb"
 import { DashboardHeader } from "@/components/dashboard-header"
 import { PropertyEditForm } from "@/components/properties/property-edit-form"
-import { getPropertyById, propertyToFormData } from "@/lib/data/properties"
+import { getPropertyById } from "@/lib/data/properties"
+import { propertyToFormData } from "@/lib/utils/property-mappers"
 
 export default async function EditPropertyPage({
   params,

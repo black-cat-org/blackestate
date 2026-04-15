@@ -147,7 +147,7 @@
 | # | Tarea | Detalle | Estado |
 |---|-------|---------|--------|
 | 2.2.1 | Capa de acceso a datos | `withRLS()` en `lib/db/rls.ts` + `getSessionContext()` en `lib/db/session-context.ts`. Reemplaza `withOrg()` — RLS a nivel de DB, no de aplicación. | ✅ (implementado en 2.1.15) |
-| 2.2.2 | Migrar `lib/data/properties.ts` | Reemplazar CRUD mock por queries reales: `getProperties()`, `getPropertyById()`, `createProperty()`, `updateProperty()`, `deleteProperty()` | ⬜ |
+| 2.2.2 | Migrar `lib/data/properties.ts` | CRUD real via Drizzle + `withRLS()`. 7 funciones: `getProperties`, `getPropertyById`, `createProperty`, `updateProperty`, `deleteProperty` (soft), `duplicateProperty`, `getPublicPropertyById` (sin auth, redacta ubicación). `propertyToFormData` extraído a `lib/utils/property-mappers.ts`. `"use server"` directive. Build OK. Code review passed. | ✅ |
 | 2.2.3 | Migrar `lib/data/leads.ts` | Reemplazar CRUD mock: `getLeads()`, `getLeadById()`, `createLead()`, `updateLeadStatus()`, queue operations | ⬜ |
 | 2.2.4 | Migrar `lib/data/bot.ts` | Reemplazar mock: `getBotActivities()`, `getBotMessages()`, `getBotConfig()`, `updateBotConfig()` | ⬜ |
 | 2.2.5 | Migrar `lib/data/analytics.ts` | Reemplazar mock: queries agregadas contra `analytics_events`, `leads`, `properties` | ⬜ |
