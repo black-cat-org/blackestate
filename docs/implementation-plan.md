@@ -112,6 +112,7 @@
 | 2.1.15.8 | Crear `withRLS()` | `lib/db/rls.ts` — Transaction wrapper con `SET LOCAL role = 'authenticated'` + claims + `includeDeleted` flag. Build OK. | ✅ |
 | 2.1.15.9 | Crear `getSessionContext()` | `lib/db/session-context.ts` — Extrae userId, orgId, role de Better Auth + consulta `platform_admins`. Build OK. | ✅ |
 | 2.1.15.10 | Tests RLS | Verificar: agent no edita de otro, org isolation funciona, papelera respeta roles, super admin flag funciona. | ⬜ |
+| 2.1.15.15 | Partial indexes en `deleted_at` | `CREATE INDEX ... ON table(id) WHERE deleted_at IS NULL` en tablas de alto tráfico (properties, leads, appointments). Requiere SQL raw. | ⬜ |
 | 2.1.15.11 | Permiso `org:properties:assign` | Agregar a owner/admin en Better Auth permissions. Agent no puede transferir. | ⬜ |
 | 2.1.15.12 | Tabla `property_transfers` | Audit trail: `from_user_id`, `to_user_id`, `transferred_by_user_id`, `property_ids TEXT[]`, counts de cascade (leads, appointments, ai_contents, queue_items), `acknowledged_at`, `notes`, `created_at`. RLS: org isolation, SELECT para involucrados + owner/admin. | ⬜ |
 | 2.1.15.13 | `transferProperties()` | Server Action: bulk transfer N propiedades + cascade (leads, appointments, ai_contents, lead_property_queue). Actualiza `created_by_user_id` en todo. Crea registro en `property_transfers`. Todo en una transacción. Solo owner/admin. | ⬜ |

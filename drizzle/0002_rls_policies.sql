@@ -239,180 +239,227 @@ USING (
 );
 
 -- ---------------------------------------------------------------------------
--- 4. INSERT Policies — can only insert into own org
+-- 4. INSERT Policies — own org + super admin bypass
 -- ---------------------------------------------------------------------------
 
 CREATE POLICY "properties_insert" ON public.properties
 FOR INSERT TO authenticated
 WITH CHECK (
-  organization_id = (SELECT current_setting('request.jwt.claims', true)::jsonb ->> 'org_id')
+  (SELECT current_setting('request.jwt.claims', true)::jsonb ->> 'is_super_admin')::boolean = true
+  OR organization_id = (SELECT current_setting('request.jwt.claims', true)::jsonb ->> 'org_id')
 );
 
 CREATE POLICY "leads_insert" ON public.leads
 FOR INSERT TO authenticated
 WITH CHECK (
-  organization_id = (SELECT current_setting('request.jwt.claims', true)::jsonb ->> 'org_id')
+  (SELECT current_setting('request.jwt.claims', true)::jsonb ->> 'is_super_admin')::boolean = true
+  OR organization_id = (SELECT current_setting('request.jwt.claims', true)::jsonb ->> 'org_id')
 );
 
 CREATE POLICY "appointments_insert" ON public.appointments
 FOR INSERT TO authenticated
 WITH CHECK (
-  organization_id = (SELECT current_setting('request.jwt.claims', true)::jsonb ->> 'org_id')
+  (SELECT current_setting('request.jwt.claims', true)::jsonb ->> 'is_super_admin')::boolean = true
+  OR organization_id = (SELECT current_setting('request.jwt.claims', true)::jsonb ->> 'org_id')
 );
 
 CREATE POLICY "ai_contents_insert" ON public.ai_contents
 FOR INSERT TO authenticated
 WITH CHECK (
-  organization_id = (SELECT current_setting('request.jwt.claims', true)::jsonb ->> 'org_id')
+  (SELECT current_setting('request.jwt.claims', true)::jsonb ->> 'is_super_admin')::boolean = true
+  OR organization_id = (SELECT current_setting('request.jwt.claims', true)::jsonb ->> 'org_id')
 );
 
 CREATE POLICY "lpq_insert" ON public.lead_property_queue
 FOR INSERT TO authenticated
 WITH CHECK (
-  organization_id = (SELECT current_setting('request.jwt.claims', true)::jsonb ->> 'org_id')
+  (SELECT current_setting('request.jwt.claims', true)::jsonb ->> 'is_super_admin')::boolean = true
+  OR organization_id = (SELECT current_setting('request.jwt.claims', true)::jsonb ->> 'org_id')
 );
 
 CREATE POLICY "bot_config_insert" ON public.bot_config
 FOR INSERT TO authenticated
 WITH CHECK (
-  organization_id = (SELECT current_setting('request.jwt.claims', true)::jsonb ->> 'org_id')
+  (SELECT current_setting('request.jwt.claims', true)::jsonb ->> 'is_super_admin')::boolean = true
+  OR organization_id = (SELECT current_setting('request.jwt.claims', true)::jsonb ->> 'org_id')
 );
 
 CREATE POLICY "bot_conversations_insert" ON public.bot_conversations
 FOR INSERT TO authenticated
 WITH CHECK (
-  organization_id = (SELECT current_setting('request.jwt.claims', true)::jsonb ->> 'org_id')
+  (SELECT current_setting('request.jwt.claims', true)::jsonb ->> 'is_super_admin')::boolean = true
+  OR organization_id = (SELECT current_setting('request.jwt.claims', true)::jsonb ->> 'org_id')
 );
 
 CREATE POLICY "bot_messages_insert" ON public.bot_messages
 FOR INSERT TO authenticated
 WITH CHECK (
-  organization_id = (SELECT current_setting('request.jwt.claims', true)::jsonb ->> 'org_id')
+  (SELECT current_setting('request.jwt.claims', true)::jsonb ->> 'is_super_admin')::boolean = true
+  OR organization_id = (SELECT current_setting('request.jwt.claims', true)::jsonb ->> 'org_id')
 );
 
 CREATE POLICY "analytics_events_insert" ON public.analytics_events
 FOR INSERT TO authenticated
 WITH CHECK (
-  organization_id = (SELECT current_setting('request.jwt.claims', true)::jsonb ->> 'org_id')
+  (SELECT current_setting('request.jwt.claims', true)::jsonb ->> 'is_super_admin')::boolean = true
+  OR organization_id = (SELECT current_setting('request.jwt.claims', true)::jsonb ->> 'org_id')
 );
 
 CREATE POLICY "agent_profiles_insert" ON public.agent_profiles
 FOR INSERT TO authenticated
 WITH CHECK (
-  organization_id = (SELECT current_setting('request.jwt.claims', true)::jsonb ->> 'org_id')
+  (SELECT current_setting('request.jwt.claims', true)::jsonb ->> 'is_super_admin')::boolean = true
+  OR organization_id = (SELECT current_setting('request.jwt.claims', true)::jsonb ->> 'org_id')
 );
 
 CREATE POLICY "property_transfers_insert" ON public.property_transfers
 FOR INSERT TO authenticated
 WITH CHECK (
-  organization_id = (SELECT current_setting('request.jwt.claims', true)::jsonb ->> 'org_id')
-  AND (SELECT current_setting('request.jwt.claims', true)::jsonb ->> 'org_role') IN ('owner', 'admin')
+  (SELECT current_setting('request.jwt.claims', true)::jsonb ->> 'is_super_admin')::boolean = true
+  OR (
+    organization_id = (SELECT current_setting('request.jwt.claims', true)::jsonb ->> 'org_id')
+    AND (SELECT current_setting('request.jwt.claims', true)::jsonb ->> 'org_role') IN ('owner', 'admin')
+    AND transferred_by_user_id = (SELECT current_setting('request.jwt.claims', true)::jsonb ->> 'sub')
+  )
 );
 
 -- ---------------------------------------------------------------------------
--- 5. UPDATE Policies — role-based write access
+-- 5. UPDATE Policies — role-based write access + super admin bypass
 -- ---------------------------------------------------------------------------
 
--- Owner/admin: any record in org. Agent: only own records.
+-- Owner/admin: any record in org. Agent: only own records. Super admin: any.
 CREATE POLICY "properties_update" ON public.properties
 FOR UPDATE TO authenticated
 USING (
-  organization_id = (SELECT current_setting('request.jwt.claims', true)::jsonb ->> 'org_id')
-  AND deleted_at IS NULL
-  AND (
-    (SELECT current_setting('request.jwt.claims', true)::jsonb ->> 'org_role') IN ('owner', 'admin')
-    OR created_by_user_id = (SELECT current_setting('request.jwt.claims', true)::jsonb ->> 'sub')
+  (SELECT current_setting('request.jwt.claims', true)::jsonb ->> 'is_super_admin')::boolean = true
+  OR (
+    organization_id = (SELECT current_setting('request.jwt.claims', true)::jsonb ->> 'org_id')
+    AND deleted_at IS NULL
+    AND (
+      (SELECT current_setting('request.jwt.claims', true)::jsonb ->> 'org_role') IN ('owner', 'admin')
+      OR created_by_user_id = (SELECT current_setting('request.jwt.claims', true)::jsonb ->> 'sub')
+    )
   )
 );
 
 CREATE POLICY "leads_update" ON public.leads
 FOR UPDATE TO authenticated
 USING (
-  organization_id = (SELECT current_setting('request.jwt.claims', true)::jsonb ->> 'org_id')
-  AND deleted_at IS NULL
-  AND (
-    (SELECT current_setting('request.jwt.claims', true)::jsonb ->> 'org_role') IN ('owner', 'admin')
-    OR created_by_user_id = (SELECT current_setting('request.jwt.claims', true)::jsonb ->> 'sub')
+  (SELECT current_setting('request.jwt.claims', true)::jsonb ->> 'is_super_admin')::boolean = true
+  OR (
+    organization_id = (SELECT current_setting('request.jwt.claims', true)::jsonb ->> 'org_id')
+    AND deleted_at IS NULL
+    AND (
+      (SELECT current_setting('request.jwt.claims', true)::jsonb ->> 'org_role') IN ('owner', 'admin')
+      OR created_by_user_id = (SELECT current_setting('request.jwt.claims', true)::jsonb ->> 'sub')
+    )
   )
 );
 
 CREATE POLICY "appointments_update" ON public.appointments
 FOR UPDATE TO authenticated
 USING (
-  organization_id = (SELECT current_setting('request.jwt.claims', true)::jsonb ->> 'org_id')
-  AND deleted_at IS NULL
-  AND (
-    (SELECT current_setting('request.jwt.claims', true)::jsonb ->> 'org_role') IN ('owner', 'admin')
-    OR created_by_user_id = (SELECT current_setting('request.jwt.claims', true)::jsonb ->> 'sub')
+  (SELECT current_setting('request.jwt.claims', true)::jsonb ->> 'is_super_admin')::boolean = true
+  OR (
+    organization_id = (SELECT current_setting('request.jwt.claims', true)::jsonb ->> 'org_id')
+    AND deleted_at IS NULL
+    AND (
+      (SELECT current_setting('request.jwt.claims', true)::jsonb ->> 'org_role') IN ('owner', 'admin')
+      OR created_by_user_id = (SELECT current_setting('request.jwt.claims', true)::jsonb ->> 'sub')
+    )
   )
 );
 
 CREATE POLICY "ai_contents_update" ON public.ai_contents
 FOR UPDATE TO authenticated
 USING (
-  organization_id = (SELECT current_setting('request.jwt.claims', true)::jsonb ->> 'org_id')
-  AND deleted_at IS NULL
-  AND (
-    (SELECT current_setting('request.jwt.claims', true)::jsonb ->> 'org_role') IN ('owner', 'admin')
-    OR created_by_user_id = (SELECT current_setting('request.jwt.claims', true)::jsonb ->> 'sub')
+  (SELECT current_setting('request.jwt.claims', true)::jsonb ->> 'is_super_admin')::boolean = true
+  OR (
+    organization_id = (SELECT current_setting('request.jwt.claims', true)::jsonb ->> 'org_id')
+    AND deleted_at IS NULL
+    AND (
+      (SELECT current_setting('request.jwt.claims', true)::jsonb ->> 'org_role') IN ('owner', 'admin')
+      OR created_by_user_id = (SELECT current_setting('request.jwt.claims', true)::jsonb ->> 'sub')
+    )
   )
 );
 
 CREATE POLICY "lpq_update" ON public.lead_property_queue
 FOR UPDATE TO authenticated
 USING (
-  organization_id = (SELECT current_setting('request.jwt.claims', true)::jsonb ->> 'org_id')
-  AND deleted_at IS NULL
-  AND (
-    (SELECT current_setting('request.jwt.claims', true)::jsonb ->> 'org_role') IN ('owner', 'admin')
-    OR created_by_user_id = (SELECT current_setting('request.jwt.claims', true)::jsonb ->> 'sub')
+  (SELECT current_setting('request.jwt.claims', true)::jsonb ->> 'is_super_admin')::boolean = true
+  OR (
+    organization_id = (SELECT current_setting('request.jwt.claims', true)::jsonb ->> 'org_id')
+    AND deleted_at IS NULL
+    AND (
+      (SELECT current_setting('request.jwt.claims', true)::jsonb ->> 'org_role') IN ('owner', 'admin')
+      OR created_by_user_id = (SELECT current_setting('request.jwt.claims', true)::jsonb ->> 'sub')
+    )
   )
 );
 
--- System-managed tables: only owner/admin can update
+-- System-managed tables: only owner/admin (or super admin) can update
 CREATE POLICY "bot_config_update" ON public.bot_config
 FOR UPDATE TO authenticated
 USING (
-  organization_id = (SELECT current_setting('request.jwt.claims', true)::jsonb ->> 'org_id')
-  AND deleted_at IS NULL
-  AND (SELECT current_setting('request.jwt.claims', true)::jsonb ->> 'org_role') IN ('owner', 'admin')
+  (SELECT current_setting('request.jwt.claims', true)::jsonb ->> 'is_super_admin')::boolean = true
+  OR (
+    organization_id = (SELECT current_setting('request.jwt.claims', true)::jsonb ->> 'org_id')
+    AND deleted_at IS NULL
+    AND (SELECT current_setting('request.jwt.claims', true)::jsonb ->> 'org_role') IN ('owner', 'admin')
+  )
 );
 
 CREATE POLICY "bot_conversations_update" ON public.bot_conversations
 FOR UPDATE TO authenticated
 USING (
-  organization_id = (SELECT current_setting('request.jwt.claims', true)::jsonb ->> 'org_id')
-  AND deleted_at IS NULL
-  AND (SELECT current_setting('request.jwt.claims', true)::jsonb ->> 'org_role') IN ('owner', 'admin')
+  (SELECT current_setting('request.jwt.claims', true)::jsonb ->> 'is_super_admin')::boolean = true
+  OR (
+    organization_id = (SELECT current_setting('request.jwt.claims', true)::jsonb ->> 'org_id')
+    AND deleted_at IS NULL
+    AND (SELECT current_setting('request.jwt.claims', true)::jsonb ->> 'org_role') IN ('owner', 'admin')
+  )
 );
 
 CREATE POLICY "bot_messages_update" ON public.bot_messages
 FOR UPDATE TO authenticated
 USING (
-  organization_id = (SELECT current_setting('request.jwt.claims', true)::jsonb ->> 'org_id')
-  AND deleted_at IS NULL
-  AND (SELECT current_setting('request.jwt.claims', true)::jsonb ->> 'org_role') IN ('owner', 'admin')
+  (SELECT current_setting('request.jwt.claims', true)::jsonb ->> 'is_super_admin')::boolean = true
+  OR (
+    organization_id = (SELECT current_setting('request.jwt.claims', true)::jsonb ->> 'org_id')
+    AND deleted_at IS NULL
+    AND (SELECT current_setting('request.jwt.claims', true)::jsonb ->> 'org_role') IN ('owner', 'admin')
+  )
 );
 
 -- Analytics events: no UPDATE (append-only)
 
--- Agent profiles: only own profile
+-- Agent profiles: own profile OR owner/admin can update any in org (soft-delete, corrections)
 CREATE POLICY "agent_profiles_update" ON public.agent_profiles
 FOR UPDATE TO authenticated
 USING (
-  organization_id = (SELECT current_setting('request.jwt.claims', true)::jsonb ->> 'org_id')
-  AND deleted_at IS NULL
-  AND user_id = (SELECT current_setting('request.jwt.claims', true)::jsonb ->> 'sub')
+  (SELECT current_setting('request.jwt.claims', true)::jsonb ->> 'is_super_admin')::boolean = true
+  OR (
+    organization_id = (SELECT current_setting('request.jwt.claims', true)::jsonb ->> 'org_id')
+    AND deleted_at IS NULL
+    AND (
+      user_id = (SELECT current_setting('request.jwt.claims', true)::jsonb ->> 'sub')
+      OR (SELECT current_setting('request.jwt.claims', true)::jsonb ->> 'org_role') IN ('owner', 'admin')
+    )
+  )
 );
 
--- Property transfers: only acknowledge (to_user) or owner/admin
+-- Property transfers: acknowledge (to_user) or owner/admin
 CREATE POLICY "property_transfers_update" ON public.property_transfers
 FOR UPDATE TO authenticated
 USING (
-  organization_id = (SELECT current_setting('request.jwt.claims', true)::jsonb ->> 'org_id')
-  AND (
-    (SELECT current_setting('request.jwt.claims', true)::jsonb ->> 'org_role') IN ('owner', 'admin')
-    OR to_user_id = (SELECT current_setting('request.jwt.claims', true)::jsonb ->> 'sub')
+  (SELECT current_setting('request.jwt.claims', true)::jsonb ->> 'is_super_admin')::boolean = true
+  OR (
+    organization_id = (SELECT current_setting('request.jwt.claims', true)::jsonb ->> 'org_id')
+    AND (
+      (SELECT current_setting('request.jwt.claims', true)::jsonb ->> 'org_role') IN ('owner', 'admin')
+      OR to_user_id = (SELECT current_setting('request.jwt.claims', true)::jsonb ->> 'sub')
+    )
   )
 );
 

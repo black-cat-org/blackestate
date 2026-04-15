@@ -16,9 +16,9 @@ import type { SessionContext } from "./rls";
  *   const data = await withRLS(ctx, (tx) => tx.select()...);
  */
 export async function getSessionContext(): Promise<SessionContext> {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
+  const h = await headers();
+
+  const session = await auth.api.getSession({ headers: h });
 
   if (!session) {
     throw new Error("Not authenticated");
@@ -29,9 +29,7 @@ export async function getSessionContext(): Promise<SessionContext> {
     throw new Error("No active organization");
   }
 
-  const activeMember = await auth.api.getActiveMember({
-    headers: await headers(),
-  });
+  const activeMember = await auth.api.getActiveMember({ headers: h });
 
   if (!activeMember) {
     throw new Error("Not a member of the active organization");
