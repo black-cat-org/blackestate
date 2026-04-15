@@ -8,7 +8,7 @@ import { ChartHeader } from "@/components/analytics/chart-header"
 const TYPE_COLORS: Record<string, string> = {
   sale: "hsl(217, 91%, 60%)",
   rent: "hsl(142, 71%, 45%)",
-  anticretico: "hsl(45, 93%, 47%)",
+  antichretic: "hsl(45, 93%, 47%)",
   short_term: "hsl(271, 91%, 65%)",
 }
 
@@ -16,7 +16,7 @@ const chartConfig = {
   amount: { label: "Comisión" },
   sale: { label: "Venta", color: TYPE_COLORS.sale },
   rent: { label: "Alquiler", color: TYPE_COLORS.rent },
-  anticretico: { label: "Anticrético", color: TYPE_COLORS.anticretico },
+  antichretic: { label: "Anticrético", color: TYPE_COLORS.antichretic },
   short_term: { label: "Temporal", color: TYPE_COLORS.short_term },
 } satisfies ChartConfig
 

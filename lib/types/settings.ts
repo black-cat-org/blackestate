@@ -18,7 +18,7 @@ export interface BusinessSettings {
   commissionByType: {
     sale: number
     rent: number
-    anticretico: number
+    antichretic: number
     short_term: number
   }
 }

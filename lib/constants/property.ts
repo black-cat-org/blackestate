@@ -23,7 +23,7 @@ export const OPERATION_TYPE_LABELS: Record<OperationType, string> = {
   sale: "Venta",
   rent: "Alquiler",
   short_term: "Alquiler temporal",
-  anticretico: "Anticrético",
+  antichretic: "Anticrético",
 };
 
 export const PROPERTY_STATUS_LABELS: Record<PropertyStatus, string> = {

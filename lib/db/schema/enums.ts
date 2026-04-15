@@ -6,7 +6,7 @@ export const propertyTypeEnum = pgEnum("property_type", [
 ]);
 
 export const operationTypeEnum = pgEnum("operation_type", [
-  "sale", "rent", "short_term", "anticretico",
+  "sale", "rent", "short_term", "antichretic",
 ]);
 
 export const propertyStatusEnum = pgEnum("property_status", [

@@ -37,7 +37,7 @@ export const DEFAULT_BUSINESS_SETTINGS: BusinessSettings = {
   commissionByType: {
     sale: 3,
     rent: 100,
-    anticretico: 3,
+    antichretic: 3,
     short_term: 100,
   },
 }

@@ -15,7 +15,7 @@ export type PropertyType =
   | "cabin"
   | "ph"
 
-export type OperationType = "sale" | "rent" | "short_term" | "anticretico"
+export type OperationType = "sale" | "rent" | "short_term" | "antichretic"
 
 export type PropertyStatus =
   | "draft"

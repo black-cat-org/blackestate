@@ -428,7 +428,7 @@ export async function getInventoryStatus(): Promise<
     { status: "paused", label: "Pausada", fill: "hsl(25, 95%, 53%)", count: 4 },
     { status: "sold", label: "Vendida", fill: "hsl(217, 91%, 60%)", count: 3 },
     { status: "rented", label: "Alquilada", fill: "hsl(271, 91%, 65%)", count: 2 },
-    { status: "anticretico", label: "En anticrético", fill: "hsl(45, 93%, 47%)", count: 1 },
+    { status: "antichretic", label: "En anticrético", fill: "hsl(45, 93%, 47%)", count: 1 },
   ]
 
   const total = validStatuses.reduce((sum, s) => sum + s.count, 0)
@@ -583,7 +583,7 @@ export async function getPipelineByStage(): Promise<PipelineStage[]> {
       fill: "hsl(217, 91%, 60%)",
     },
     {
-      stage: "anticretico",
+      stage: "antichretic",
       label: "Anticrético",
       value: 3600,
       probability: 100,
@@ -629,8 +629,8 @@ export async function getCommissionsByOperationType(): Promise<
       percentage: 55,
     },
     {
-      type: "anticretico",
-      label: OPERATION_TYPE_LABELS["anticretico"],
+      type: "antichretic",
+      label: OPERATION_TYPE_LABELS["antichretic"],
       amount: 7200,
       percentage: 20,
     },

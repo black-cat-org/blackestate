@@ -149,8 +149,8 @@ export function BusinessSection({ data: initialData }: BusinessSectionProps) {
                 min={0}
                 max={100}
                 step={0.5}
-                value={data.commissionByType.anticretico}
-                onChange={(e) => updateCommissionByType("anticretico", Number(e.target.value))}
+                value={data.commissionByType.antichretic}
+                onChange={(e) => updateCommissionByType("antichretic", Number(e.target.value))}
               />
             </div>
             <div className="space-y-2">
