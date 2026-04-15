@@ -42,6 +42,17 @@ No test framework is configured yet.
 - **Schemas:** `lib/db/schema/` — un archivo por tabla, barrel en `index.ts`
 - **Migraciones:** `drizzle/` — archivos `.sql` generados por Drizzle Kit
 - **Config:** `drizzle.config.ts` apunta a `lib/db/schema/index.ts`
+- **RLS:** `lib/db/rls.ts` exporta `withRLS()` — transaction wrapper que aplica `SET LOCAL role = 'authenticated'` + claims. Todas las queries de usuario DEBEN pasar por `withRLS()`.
+- **Session Context:** `lib/db/session-context.ts` exporta `getSessionContext()` — extrae userId, orgId, role de Better Auth session.
+- **RLS Policies:** `drizzle/0002_rls_policies.sql` — ENABLE + FORCE RLS en todas las tablas de dominio, policies SELECT/INSERT/UPDATE por tabla.
+
+### ⚠️ RLS: Reglas Críticas
+
+- **TODA query de usuario** debe pasar por `withRLS(ctx, (tx) => ...)`. NUNCA usar `db` directo para datos de usuario.
+- `db` directo (sin RLS) solo para: Better Auth internals, Inngest background jobs cross-org, `getSessionContext()`.
+- No existe hard DELETE. Soft delete = `UPDATE SET deleted_at = now()`. No hay GRANT DELETE en ninguna tabla.
+- `created_by_user_id` es NOT NULL en: properties, leads, appointments, ai_contents, lead_property_queue.
+- Agent solo puede UPDATE sus propios registros (`created_by_user_id = sub`). Owner/admin pueden UPDATE todo en su org.
 
 ### ⚠️ PELIGRO: Drizzle Kit + Better Auth coexisten en la misma DB
 

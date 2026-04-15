@@ -5,6 +5,7 @@ import { aiContentTypeEnum, aiPlatformEnum } from "./enums";
 export const aiContents = pgTable("ai_contents", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   organizationId: text("organization_id").notNull(),
+  createdByUserId: text("created_by_user_id").notNull(),
   propertyId: text("property_id").notNull().references(() => properties.id),
 
   type: aiContentTypeEnum("type").notNull(),
@@ -21,4 +22,5 @@ export const aiContents = pgTable("ai_contents", {
 }, (t) => [
   index("ai_contents_org_id_idx").on(t.organizationId),
   index("ai_contents_property_id_idx").on(t.propertyId),
+  index("ai_contents_org_created_by_idx").on(t.organizationId, t.createdByUserId),
 ]);

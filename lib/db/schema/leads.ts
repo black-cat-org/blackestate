@@ -5,6 +5,7 @@ import { leadStatusEnum, leadSourceEnum } from "./enums";
 export const leads = pgTable("leads", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   organizationId: text("organization_id").notNull(),
+  createdByUserId: text("created_by_user_id").notNull(),
   propertyId: text("property_id").notNull().references(() => properties.id),
 
   // Contact info
@@ -32,4 +33,5 @@ export const leads = pgTable("leads", {
   index("leads_property_id_idx").on(t.propertyId),
   index("leads_status_idx").on(t.status),
   index("leads_org_status_idx").on(t.organizationId, t.status),
+  index("leads_org_created_by_idx").on(t.organizationId, t.createdByUserId),
 ]);

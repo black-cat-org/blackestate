@@ -6,6 +6,7 @@ import { appointmentStatusEnum } from "./enums";
 export const appointments = pgTable("appointments", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   organizationId: text("organization_id").notNull(),
+  createdByUserId: text("created_by_user_id").notNull(),
   leadId: text("lead_id").notNull().references(() => leads.id),
   propertyId: text("property_id").notNull().references(() => properties.id),
 
@@ -28,4 +29,5 @@ export const appointments = pgTable("appointments", {
   index("appointments_status_idx").on(t.status),
   index("appointments_starts_at_idx").on(t.startsAt),
   index("appointments_org_starts_idx").on(t.organizationId, t.startsAt),
+  index("appointments_org_created_by_idx").on(t.organizationId, t.createdByUserId),
 ]);

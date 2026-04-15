@@ -6,6 +6,7 @@ import { queueItemStatusEnum } from "./enums";
 export const leadPropertyQueue = pgTable("lead_property_queue", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   organizationId: text("organization_id").notNull(),
+  createdByUserId: text("created_by_user_id").notNull(),
   leadId: text("lead_id").notNull().references(() => leads.id),
   propertyId: text("property_id").notNull().references(() => properties.id),
 
@@ -23,4 +24,5 @@ export const leadPropertyQueue = pgTable("lead_property_queue", {
   index("lpq_lead_id_idx").on(t.leadId),
   index("lpq_org_id_idx").on(t.organizationId),
   index("lpq_lead_sort_idx").on(t.leadId, t.sortOrder),
+  index("lpq_org_created_by_idx").on(t.organizationId, t.createdByUserId),
 ]);

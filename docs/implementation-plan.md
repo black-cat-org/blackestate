@@ -102,15 +102,15 @@
 
 | # | Tarea | Detalle | Estado |
 |---|-------|---------|--------|
-| 2.1.15.1 | Agregar `created_by_user_id` | Columna `TEXT NOT NULL` en 5 tablas: `properties`, `leads`, `appointments`, `ai_contents`, `lead_property_queue`. FK → `user(id)`. Índice compuesto `(organization_id, created_by_user_id)`. Migración SQL. | ⬜ |
-| 2.1.15.2 | Crear tabla `platform_admins` | `user_id TEXT PK REFERENCES user(id) ON DELETE CASCADE`, `created_at TIMESTAMPTZ DEFAULT now()`. Para super admin futuro. | ⬜ |
-| 2.1.15.3 | ENABLE + FORCE RLS | `ALTER TABLE ... ENABLE ROW LEVEL SECURITY` + `FORCE ROW LEVEL SECURITY` en 11 tablas de dominio. No en tablas de Better Auth. | ⬜ |
-| 2.1.15.4 | Policies SELECT | Org isolation + soft delete + papelera (owner/admin ven todo borrado, agent solo lo suyo) + super admin ve todo. Aplica a las 11 tablas. | ⬜ |
-| 2.1.15.5 | Policies INSERT | Solo en org propia (`org_id = claim.org_id`). Aplica a las 11 tablas. | ⬜ |
-| 2.1.15.6 | Policies UPDATE | Owner/admin: cualquier registro de su org. Agent: solo `created_by_user_id = claim.sub`. Tablas bot/config: solo owner/admin. `analytics_events`: nadie (append-only). | ⬜ |
-| 2.1.15.7 | Bloquear DELETE | No existe policy DELETE en ninguna tabla. Soft delete = UPDATE. Integridad referencial protegida. | ⬜ |
-| 2.1.15.8 | Crear `withRLS()` | `lib/db/rls.ts` — Transaction wrapper con `SET LOCAL role` + claims + `includeDeleted` flag. Reemplaza `withOrg()`. | ⬜ |
-| 2.1.15.9 | Crear `getSessionContext()` | Helper que extrae `userId`, `orgId`, `role` de Better Auth session + consulta `platform_admins` para `isSuperAdmin`. Alimenta `withRLS()`. | ⬜ |
+| 2.1.15.1 | Agregar `created_by_user_id` | Columna `TEXT NOT NULL` en 5 tablas: `properties`, `leads`, `appointments`, `ai_contents`, `lead_property_queue`. Índice compuesto `(organization_id, created_by_user_id)`. | ✅ |
+| 2.1.15.2 | Crear tabla `platform_admins` | `user_id TEXT PK`, `created_at TIMESTAMPTZ`. Tabla `property_transfers` también creada para audit trail de transferencias. | ✅ |
+| 2.1.15.3 | ENABLE + FORCE RLS | `ALTER TABLE ... ENABLE ROW LEVEL SECURITY` + `FORCE ROW LEVEL SECURITY` en 12 tablas de dominio + `platform_admins` + `property_transfers`. SQL en `drizzle/0002_rls_policies.sql`. | ✅ |
+| 2.1.15.4 | Policies SELECT | Org isolation + soft delete + papelera role-aware + super admin. 12 policies creadas. Performance: `(SELECT current_setting(...))` cacheado. | ✅ |
+| 2.1.15.5 | Policies INSERT | Solo en org propia. 11 policies. `property_transfers` INSERT solo owner/admin. | ✅ |
+| 2.1.15.6 | Policies UPDATE | Owner/admin: todo. Agent: solo `created_by_user_id = sub`. Bot/config: solo owner/admin. Analytics: no UPDATE. | ✅ |
+| 2.1.15.7 | Bloquear DELETE | No existe policy DELETE ni GRANT DELETE. Soft delete = UPDATE. Integridad referencial protegida. | ✅ |
+| 2.1.15.8 | Crear `withRLS()` | `lib/db/rls.ts` — Transaction wrapper con `SET LOCAL role = 'authenticated'` + claims + `includeDeleted` flag. Build OK. | ✅ |
+| 2.1.15.9 | Crear `getSessionContext()` | `lib/db/session-context.ts` — Extrae userId, orgId, role de Better Auth + consulta `platform_admins`. Build OK. | ✅ |
 | 2.1.15.10 | Tests RLS | Verificar: agent no edita de otro, org isolation funciona, papelera respeta roles, super admin flag funciona. | ⬜ |
 | 2.1.15.11 | Permiso `org:properties:assign` | Agregar a owner/admin en Better Auth permissions. Agent no puede transferir. | ⬜ |
 | 2.1.15.12 | Tabla `property_transfers` | Audit trail: `from_user_id`, `to_user_id`, `transferred_by_user_id`, `property_ids TEXT[]`, counts de cascade (leads, appointments, ai_contents, queue_items), `acknowledged_at`, `notes`, `created_at`. RLS: org isolation, SELECT para involucrados + owner/admin. | ⬜ |
@@ -145,7 +145,7 @@
 
 | # | Tarea | Detalle | Estado |
 |---|-------|---------|--------|
-| 2.2.1 | Crear capa de acceso a datos | `lib/db/` con helpers `withOrg()` que inyectan filtro org_id + deleted_at. Usa Drizzle ORM | ⬜ |
+| 2.2.1 | Capa de acceso a datos | `withRLS()` en `lib/db/rls.ts` + `getSessionContext()` en `lib/db/session-context.ts`. Reemplaza `withOrg()` — RLS a nivel de DB, no de aplicación. | ✅ (implementado en 2.1.15) |
 | 2.2.2 | Migrar `lib/data/properties.ts` | Reemplazar CRUD mock por queries reales: `getProperties()`, `getPropertyById()`, `createProperty()`, `updateProperty()`, `deleteProperty()` | ⬜ |
 | 2.2.3 | Migrar `lib/data/leads.ts` | Reemplazar CRUD mock: `getLeads()`, `getLeadById()`, `createLead()`, `updateLeadStatus()`, queue operations | ⬜ |
 | 2.2.4 | Migrar `lib/data/bot.ts` | Reemplazar mock: `getBotActivities()`, `getBotMessages()`, `getBotConfig()`, `updateBotConfig()` | ⬜ |

@@ -4,6 +4,7 @@ import { propertyTypeEnum, operationTypeEnum, propertyStatusEnum, currencyEnum, 
 export const properties = pgTable("properties", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   organizationId: text("organization_id").notNull(),
+  createdByUserId: text("created_by_user_id").notNull(),
 
   // Core
   title: text("title").notNull(),
@@ -68,4 +69,5 @@ export const properties = pgTable("properties", {
   index("properties_org_id_idx").on(t.organizationId),
   index("properties_status_idx").on(t.status),
   index("properties_org_status_idx").on(t.organizationId, t.status),
+  index("properties_org_created_by_idx").on(t.organizationId, t.createdByUserId),
 ]);
