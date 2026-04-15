@@ -5,7 +5,7 @@ import { Calendar, ArrowRight } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { APPOINTMENT_STATUS_LABELS, APPOINTMENT_STATUS_COLORS } from "@/lib/constants/bot"
-import type { Appointment } from "@/lib/types/bot"
+import type { Appointment } from "@/features/appointments/domain/appointment.entity"
 
 interface UpcomingAppointmentsProps {
   appointments: Appointment[]

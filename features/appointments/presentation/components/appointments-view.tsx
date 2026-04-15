@@ -20,12 +20,12 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog"
-import { AppointmentsCalendar } from "@/components/appointments/appointments-calendar"
-import { AppointmentsKanban } from "@/components/appointments/appointments-kanban"
+import { AppointmentsCalendar } from "@/features/appointments/presentation/components/appointments-calendar"
+import { AppointmentsKanban } from "@/features/appointments/presentation/components/appointments-kanban"
 import { APPOINTMENT_STATUS_LABELS } from "@/lib/constants/bot"
-import { createAppointment } from "@/lib/data/bot"
+import { createAppointmentAction } from "@/features/appointments/presentation/actions"
 import { toast } from "sonner"
-import type { Appointment } from "@/lib/types/bot"
+import type { Appointment } from "@/features/appointments/domain/appointment.entity"
 import type { Lead } from "@/features/leads/domain/lead.entity"
 import type { Property } from "@/features/properties/domain/property.entity"
 
@@ -81,10 +81,10 @@ export function AppointmentsView({ appointments: initialAppointments, leads, pro
       return
     }
     try {
-      const apt = await createAppointment({
+      const apt = await createAppointmentAction({
         leadId: lead.id,
         leadName: lead.name,
-        leadPhone: lead.phone ?? "",
+        leadPhone: lead.phone,
         propertyId: property.id,
         propertyTitle: property.title,
         date: newApt.date,

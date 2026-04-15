@@ -1,4 +1,5 @@
-import type { BotActivityType, SentPropertyStatus, AppointmentStatus, BotConfig } from "@/lib/types/bot"
+import type { BotActivityType, SentPropertyStatus, BotConfig } from "@/lib/types/bot"
+import type { AppointmentStatus } from "@/features/appointments/domain/appointment.entity"
 
 export const BOT_ACTIVITY_LABELS: Record<BotActivityType, string> = {
   property_sent: "Propiedad enviada",

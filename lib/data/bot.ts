@@ -1,12 +1,11 @@
 import type {
   BotMessage,
   SentProperty,
-  Appointment,
-  AppointmentStatus,
   BotActivity,
   AgentNotification,
   BotConfig,
 } from "@/lib/types/bot"
+import type { Appointment, AppointmentStatus } from "@/features/appointments/domain/appointment.entity"
 import { DEFAULT_BOT_CONFIG } from "@/lib/constants/bot"
 
 // ============================================================

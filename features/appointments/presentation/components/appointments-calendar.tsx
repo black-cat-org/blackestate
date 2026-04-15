@@ -3,11 +3,11 @@
 import { useState, useMemo } from "react"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { AppointmentCard } from "@/components/appointments/appointment-card"
+import { AppointmentCard } from "@/features/appointments/presentation/components/appointment-card"
 import { getLeadColor, getLeadColorLight } from "@/lib/utils/lead-colors"
 import { formatCalendarTime } from "@/lib/utils/relative-time"
 import { APPOINTMENT_STATUS_LABELS, APPOINTMENT_STATUS_COLORS } from "@/lib/constants/bot"
-import type { Appointment } from "@/lib/types/bot"
+import type { Appointment } from "@/features/appointments/domain/appointment.entity"
 
 interface AppointmentsCalendarProps {
   appointments: Appointment[]

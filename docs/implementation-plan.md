@@ -187,9 +187,9 @@
 
 | # | Tarea | Detalle | Estado |
 |---|-------|---------|--------|
-| 2.2.3.1 | Domain + Infrastructure + Application | Entity, repository, mapper, model, use cases. | ⬜ |
-| 2.2.3.2 | Presentation | Actions + move `components/appointments/`. | ⬜ |
-| 2.2.3.3 | Null safety audit + build | | ⬜ |
+| 2.2.3.1 | Domain + Infrastructure + Application | Entity (`Appointment`, `CreateAppointmentDTO`), repository interface, mapper (UTC-safe timestamp↔date/time conversion with `Z` suffix), model, Drizzle repository (withRLS, JOIN leads+properties, lifecycle timestamps on status change), 6 use cases. | ✅ |
+| 2.2.3.2 | Presentation | `actions.ts` (6 actions). Components moved from `components/appointments/`. All imports updated to `@/features/appointments/`. Old dir deleted. | ✅ |
+| 2.2.3.3 | Code review fixes | 5 issues fixed: timezone-safe `toISOString().slice()` (#1), UTC `Z` suffix on create (#2), `isNull(deletedAt)` on updateStatus re-fetch (#3) + softDelete (#4), `leadPhone: undefined` instead of `""` (#5). | ✅ |
 
 #### 2.2.4 — Bot feature
 

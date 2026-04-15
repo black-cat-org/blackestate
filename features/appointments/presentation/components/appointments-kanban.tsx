@@ -1,9 +1,9 @@
 "use client"
 
 import { useMemo } from "react"
-import { AppointmentCard } from "@/components/appointments/appointment-card"
+import { AppointmentCard } from "@/features/appointments/presentation/components/appointment-card"
 import { APPOINTMENT_STATUS_LABELS, APPOINTMENT_STATUS_COLORS } from "@/lib/constants/bot"
-import type { Appointment, AppointmentStatus } from "@/lib/types/bot"
+import type { Appointment, AppointmentStatus } from "@/features/appointments/domain/appointment.entity"
 
 const COLUMNS: AppointmentStatus[] = ["requested", "confirmed", "completed", "cancelled"]
 

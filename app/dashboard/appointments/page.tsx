@@ -7,14 +7,14 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb"
 import { DashboardHeader } from "@/components/dashboard-header"
-import { AppointmentsView } from "@/components/appointments/appointments-view"
-import { getAppointments } from "@/lib/data/bot"
+import { AppointmentsView } from "@/features/appointments/presentation/components/appointments-view"
+import { getAppointmentsAction } from "@/features/appointments/presentation/actions"
 import { getLeadsAction } from "@/features/leads/presentation/actions"
 import { getPropertiesAction } from "@/features/properties/presentation/actions"
 
 export default async function AppointmentsPage() {
   const [appointments, leads, properties] = await Promise.all([
-    getAppointments(),
+    getAppointmentsAction(),
     getLeadsAction(),
     getPropertiesAction(),
   ])

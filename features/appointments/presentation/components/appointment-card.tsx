@@ -11,10 +11,10 @@ import {
   APPOINTMENT_STATUS_COLORS,
 } from "@/lib/constants/bot"
 import { AGENT_CONFIG } from "@/lib/constants/agent"
-import { updateAppointmentStatus } from "@/lib/data/bot"
+import { updateAppointmentStatusAction } from "@/features/appointments/presentation/actions"
 import { getLeadColor } from "@/lib/utils/lead-colors"
 import { toast } from "sonner"
-import type { Appointment, AppointmentStatus } from "@/lib/types/bot"
+import type { Appointment, AppointmentStatus } from "@/features/appointments/domain/appointment.entity"
 
 interface AppointmentCardProps {
   appointment: Appointment
@@ -33,7 +33,7 @@ export function AppointmentCard({ appointment, onUpdate, showDate }: Appointment
 
   async function handleTransition(newStatus: AppointmentStatus) {
     try {
-      const updated = await updateAppointmentStatus(appointment.id, newStatus)
+      const updated = await updateAppointmentStatusAction(appointment.id, newStatus)
       onUpdate(appointment.id, updated)
       toast.success(`Cita ${APPOINTMENT_STATUS_LABELS[newStatus].toLowerCase()}`)
     } catch {
@@ -41,7 +41,7 @@ export function AppointmentCard({ appointment, onUpdate, showDate }: Appointment
     }
   }
 
-  const whatsappUrl = `https://wa.me/${appointment.leadPhone.replace(/[\s+\-]/g, "")}?text=${encodeURIComponent(
+  const whatsappUrl = `https://wa.me/${(appointment.leadPhone ?? "").replace(/[\s+\-]/g, "")}?text=${encodeURIComponent(
     AGENT_CONFIG.whatsappMessage(appointment.propertyTitle, appointment.propertyId)
   )}`
 
