@@ -33,11 +33,11 @@ export async function withRLS<T>(
       is_super_admin: ctx.isSuperAdmin ?? false,
     })
 
-    await tx.execute(sql`SET LOCAL role = 'authenticated'`)
-    await tx.execute(sql`SET LOCAL request.jwt.claims = ${claims}`)
+    await tx.execute(sql.raw(`SET LOCAL role = 'authenticated'`))
+    await tx.execute(sql.raw(`SET LOCAL request.jwt.claims = '${claims.replace(/'/g, "''")}'`))
 
     if (opts?.includeDeleted) {
-      await tx.execute(sql`SET LOCAL app.include_deleted = 'true'`)
+      await tx.execute(sql.raw(`SET LOCAL app.include_deleted = 'true'`))
     }
 
     return callback(tx)

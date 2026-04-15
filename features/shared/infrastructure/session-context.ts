@@ -20,7 +20,19 @@ export async function getSessionContext(): Promise<SessionContext> {
     throw new Error("Not authenticated")
   }
 
-  const orgId = session.session.activeOrganizationId
+  let orgId = session.session.activeOrganizationId
+
+  if (!orgId) {
+    const orgs = await auth.api.listOrganizations({ headers: h })
+    if (orgs && orgs.length > 0) {
+      await auth.api.setActiveOrganization({
+        headers: h,
+        body: { organizationId: orgs[0].id },
+      })
+      orgId = orgs[0].id
+    }
+  }
+
   if (!orgId) {
     throw new Error("No active organization")
   }
