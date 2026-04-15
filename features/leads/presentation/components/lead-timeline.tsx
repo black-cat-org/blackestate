@@ -16,7 +16,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { LeadChatDialog } from "@/features/leads/presentation/components/lead-chat-dialog"
 import { BOT_ACTIVITY_LABELS } from "@/lib/constants/bot"
-import type { BotActivity, BotActivityType, BotMessage } from "@/lib/types/bot"
+import type { BotActivity, BotActivityType, BotMessage } from "@/features/bot/domain/bot.entity"
 import { formatRelativeTime } from "@/lib/utils/relative-time"
 
 const ICON_MAP: Record<BotActivityType, React.ComponentType<{ className?: string }>> = {

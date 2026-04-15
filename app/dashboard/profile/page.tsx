@@ -7,11 +7,11 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb"
 import { DashboardHeader } from "@/components/dashboard-header"
-import { ProfileSection } from "@/components/settings/sections/profile-section"
-import { getAgentProfile } from "@/lib/data/settings"
+import { ProfileSection } from "@/features/settings/presentation/components/sections/profile-section"
+import { getAgentProfileAction } from "@/features/settings/presentation/actions"
 
 export default async function ProfilePage() {
-  const profile = await getAgentProfile()
+  const profile = await getAgentProfileAction()
 
   return (
     <>

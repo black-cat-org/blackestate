@@ -20,10 +20,10 @@ import {
 } from "@/features/leads/presentation/actions"
 import { getPropertyByIdAction, getPropertiesAction } from "@/features/properties/presentation/actions"
 import {
-  getMessagesByLead,
-  getActivitiesByLead,
-  getSentPropertiesByLead,
-} from "@/lib/data/bot"
+  getMessagesByLeadAction,
+  getActivitiesByLeadAction,
+  getSentPropertiesByLeadAction,
+} from "@/features/bot/presentation/actions"
 
 export default async function ContactDetailPage({
   params,
@@ -49,9 +49,9 @@ export default async function ContactDetailPage({
   ] = await Promise.all([
     getPropertyByIdAction(lead.propertyId),
     getPropertiesAction(),
-    getMessagesByLead(id),
-    getActivitiesByLead(id),
-    getSentPropertiesByLead(id),
+    getMessagesByLeadAction(id),
+    getActivitiesByLeadAction(id),
+    getSentPropertiesByLeadAction(id),
     getCatalogTrackingAction(id),
     getQueueStatusAction(id),
     getPropertyQueueAction(id),

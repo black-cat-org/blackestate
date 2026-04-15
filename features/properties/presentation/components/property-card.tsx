@@ -10,7 +10,7 @@ import { PROPERTY_TYPE_LABELS, OPERATION_TYPE_LABELS } from "@/lib/constants/pro
 import { MARKETING_KIT_TOTAL } from "@/lib/constants/ai"
 import { formatPrice, formatSurface } from "@/lib/utils/format"
 import type { Property } from "@/features/properties/domain/property.entity"
-import type { MarketingKitStatus } from "@/lib/types/ai-content"
+import type { MarketingKitStatus } from "@/features/ai-contents/domain/ai-content.entity"
 
 interface PropertyCardProps {
   property: Property

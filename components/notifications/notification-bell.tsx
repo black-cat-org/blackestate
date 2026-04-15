@@ -12,12 +12,12 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
 import {
-  getNotifications,
-  getUnreadNotificationCount,
-  markNotificationRead,
-  markAllNotificationsRead,
-} from "@/lib/data/bot"
-import type { AgentNotification } from "@/lib/types/bot"
+  getNotificationsAction,
+  getUnreadNotificationCountAction,
+  markNotificationReadAction,
+  markAllNotificationsReadAction,
+} from "@/features/bot/presentation/actions"
+import type { AgentNotification } from "@/features/bot/domain/bot.entity"
 
 function formatRelativeTime(timestamp: string): string {
   const date = new Date(timestamp)
@@ -42,8 +42,8 @@ export function NotificationBell() {
   useEffect(() => {
     async function load() {
       const [notifs, count] = await Promise.all([
-        getNotifications(),
-        getUnreadNotificationCount(),
+        getNotificationsAction(),
+        getUnreadNotificationCountAction(),
       ])
       setNotifications(notifs.slice(0, 10))
       setUnreadCount(count)
@@ -53,7 +53,7 @@ export function NotificationBell() {
 
   async function handleClick(notification: AgentNotification) {
     if (!notification.read) {
-      await markNotificationRead(notification.id)
+      await markNotificationReadAction(notification.id)
       setNotifications((prev) =>
         prev.map((n) => (n.id === notification.id ? { ...n, read: true } : n))
       )
@@ -65,7 +65,7 @@ export function NotificationBell() {
   }
 
   async function handleMarkAllRead() {
-    await markAllNotificationsRead()
+    await markAllNotificationsReadAction()
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })))
     setUnreadCount(0)
   }

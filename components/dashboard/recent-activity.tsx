@@ -16,7 +16,7 @@ import {
   ArrowRight,
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import type { BotActivity, BotActivityType } from "@/lib/types/bot"
+import type { BotActivity, BotActivityType } from "@/features/bot/domain/bot.entity"
 
 const ICON_MAP: Record<BotActivityType, React.ComponentType<{ className?: string }>> = {
   property_sent: Send,

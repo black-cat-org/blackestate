@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/dialog"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
-import type { BotMessage, MessageStatus } from "@/lib/types/bot"
+import type { BotMessage, MessageStatus } from "@/features/bot/domain/bot.entity"
 
 function MessageStatusIcon({ status }: { status: MessageStatus }) {
   if (status === "sent") return <Check className="size-3 text-muted-foreground" />

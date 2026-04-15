@@ -48,7 +48,7 @@ import {
 } from "@/features/leads/presentation/actions"
 import { toast } from "sonner"
 import type { Property } from "@/features/properties/domain/property.entity"
-import type { SentProperty } from "@/lib/types/bot"
+import type { SentProperty } from "@/features/bot/domain/bot.entity"
 import type { CatalogTracking, QueueStatus, QueueStatusId, PropertyQueueItem } from "@/features/leads/domain/lead.entity"
 
 // ─── Queue status config ───────────────────────────────────

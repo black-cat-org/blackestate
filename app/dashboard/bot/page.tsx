@@ -7,13 +7,13 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb"
 import { DashboardHeader } from "@/components/dashboard-header"
-import { BotView } from "@/components/bot/bot-view"
-import { getAllActivities, getAllMessages } from "@/lib/data/bot"
+import { BotView } from "@/features/bot/presentation/components/bot-view"
+import { getAllActivitiesAction, getAllMessagesAction } from "@/features/bot/presentation/actions"
 
 export default async function BotPage() {
   const [activities, messages] = await Promise.all([
-    getAllActivities(),
-    getAllMessages(),
+    getAllActivitiesAction(),
+    getAllMessagesAction(),
   ])
 
   return (

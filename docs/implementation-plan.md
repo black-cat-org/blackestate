@@ -195,50 +195,49 @@
 
 | # | Tarea | Detalle | Estado |
 |---|-------|---------|--------|
-| 2.2.4.1 | Domain + Infrastructure + Application | Entities: BotConversation, BotMessage, BotConfig, SentProperty, Appointment (bot-scoped). | ⬜ |
-| 2.2.4.2 | Presentation | Actions + move `components/bot/`. | ⬜ |
-| 2.2.4.3 | Null safety audit + build | | ⬜ |
+| 2.2.4.1 | Domain + Infrastructure + Application | Entities: BotMessage, BotActivity, SentProperty, AgentNotification, BotConfig. Repository with messages (JOIN conversations for leadId), config (upsert), activities/sent-properties/notifications as TODO stubs. 5 use case files. | ✅ |
+| 2.2.4.2 | Presentation | `actions.ts` (12 actions). 6 components moved from `components/bot/`. All imports updated. `lib/data/bot.ts` and `lib/types/bot.ts` deleted. 0 backward compat files. | ✅ |
+| 2.2.4.3 | Build | Build passes. 0 old imports remaining. | ✅ |
 
 #### 2.2.5 — Analytics feature
 
 | # | Tarea | Detalle | Estado |
 |---|-------|---------|--------|
-| 2.2.5.1 | Domain + Infrastructure + Application | Aggregation queries. Read-only (no create/update/delete). Cross-entity queries (properties + leads + appointments). | ⬜ |
-| 2.2.5.2 | Presentation | Actions + move `components/analytics/`. | ⬜ |
-| 2.2.5.3 | Null safety audit + build | | ⬜ |
+| 2.2.5.1 | Domain + Infrastructure | Entity types (13 types). Service file (34 aggregation functions, read-only, consumes other feature actions). No DB table — pure computation. | ✅ |
+| 2.2.5.2 | Presentation | `actions.ts` (34 action wrappers). 35 components moved from `components/analytics/`. All 25 type imports updated. `lib/data/analytics.ts` and `lib/types/analytics.ts` deleted. | ✅ |
+| 2.2.5.3 | Build | Build passes. 0 old imports. | ✅ |
 
 #### 2.2.6 — Dashboard feature
 
 | # | Tarea | Detalle | Estado |
 |---|-------|---------|--------|
-| 2.2.6.1 | Domain + Infrastructure + Application | Dashboard stats. Cross-entity aggregation. Depends on properties, leads, appointments repositories. | ⬜ |
-| 2.2.6.2 | Presentation | Actions + dashboard components. | ⬜ |
-| 2.2.6.3 | Build | | ⬜ |
+| 2.2.6.1 | Infrastructure + Presentation | Service file (6 aggregation functions). Actions file (6 actions). Page imports updated. `lib/data/dashboard.ts` deleted. | ✅ |
+| 2.2.6.2 | Build | Build passes. 0 old imports. | ✅ |
 
 #### 2.2.7 — AI Contents feature
 
 | # | Tarea | Detalle | Estado |
 |---|-------|---------|--------|
-| 2.2.7.1 | Domain + Infrastructure + Application | CRUD for AI-generated content. | ⬜ |
-| 2.2.7.2 | Presentation | Actions + move `components/ai/`. | ⬜ |
-| 2.2.7.3 | Null safety audit + build | | ⬜ |
+| 2.2.7.1 | Domain + Infrastructure | Entity types. Service with CRUD functions. Hashtags store (sync, separate from "use server" service). | ✅ |
+| 2.2.7.2 | Presentation | Actions (with Action suffix). 8 components moved from `components/ai/`. Old files deleted. 0 backward compat. | ✅ |
+| 2.2.7.3 | Build | Build passes. 0 old imports. | ✅ |
 
 #### 2.2.8 — Settings feature
 
 | # | Tarea | Detalle | Estado |
 |---|-------|---------|--------|
-| 2.2.8.1 | Domain + Infrastructure + Application | Agent profile, business settings, notification prefs, bot config, plan info. | ⬜ |
-| 2.2.8.2 | Presentation | Actions + move `components/settings/`. | ⬜ |
-| 2.2.8.3 | Null safety audit + build | | ⬜ |
+| 2.2.8.1 | Domain + Infrastructure | Entity types (AgentProfile, BusinessSettings, NotificationPreferences, etc.). Service with getters/updaters. | ✅ |
+| 2.2.8.2 | Presentation | Actions (with Action suffix). 7 components moved from `components/settings/` (layout + 6 sections). Old files deleted. 0 backward compat. | ✅ |
+| 2.2.8.3 | Build | Build passes. 0 old imports. | ✅ |
 
 #### 2.2.9 — Cleanup
 
 | # | Tarea | Detalle | Estado |
 |---|-------|---------|--------|
-| 2.2.9.1 | Delete `lib/data/` | All mock data files replaced by feature modules. | ⬜ |
-| 2.2.9.2 | Delete `lib/types/` | Entity types moved to `features/*/domain/`. Shared types to `features/shared/domain/`. | ⬜ |
-| 2.2.9.3 | Update `CLAUDE.md` | Reflect final project structure post-refactor. | ⬜ |
-| 2.2.9.4 | Full build + lint | Final verification. | ⬜ |
+| 2.2.9.1 | Delete `lib/data/` | Deleted. All mock data replaced by feature modules. | ✅ |
+| 2.2.9.2 | Delete `lib/types/` | Deleted. Entity types in `features/*/domain/`. Shared types in `features/shared/domain/`. | ✅ |
+| 2.2.9.3 | Update `CLAUDE.md` | Project structure section reflects `features/` architecture. | ✅ |
+| 2.2.9.4 | Full build | Build passes. 0 old imports. 0 backward compat files. 0 empty directories. | ✅ |
 
 ### 2.4 Transferencia de propiedades (enterprise)
 

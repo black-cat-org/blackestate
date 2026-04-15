@@ -19,9 +19,9 @@ import { PropertyCardsGrid } from "@/features/properties/presentation/components
 import { PropertyDataTable } from "@/features/properties/presentation/components/property-data-table"
 import { usePropertiesFilter } from "@/hooks/use-properties-filter"
 import { getPropertiesAction } from "@/features/properties/presentation/actions"
-import { getAiContents } from "@/lib/data/ai-contents"
+import { getAiContentsAction } from "@/features/ai-contents/presentation/actions"
 import type { Property } from "@/features/properties/domain/property.entity"
-import type { AiContent } from "@/lib/types/ai-content"
+import type { AiContent } from "@/features/ai-contents/domain/ai-content.entity"
 
 export default function PropertiesPage() {
   const [properties, setProperties] = useState<Property[]>([])
@@ -31,7 +31,7 @@ export default function PropertiesPage() {
     usePropertiesFilter(properties)
 
   useEffect(() => {
-    Promise.all([getPropertiesAction(), getAiContents()]).then(([props, aiContents]) => {
+    Promise.all([getPropertiesAction(), getAiContentsAction()]).then(([props, aiContents]) => {
       setProperties(props)
       setContents(aiContents)
       setLoading(false)

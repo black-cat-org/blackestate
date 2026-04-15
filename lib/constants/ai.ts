@@ -1,5 +1,5 @@
 import { Facebook, Instagram, Hash, MessageCircle, type LucideIcon } from "lucide-react"
-import type { AiContentType, AiPlatform } from "@/lib/types/ai-content"
+import type { AiContentType, AiPlatform } from "@/features/ai-contents/domain/ai-content.entity"
 
 export const AI_CONTENT_TYPE_LABELS: Record<AiContentType, string> = {
   description: "Descripción",

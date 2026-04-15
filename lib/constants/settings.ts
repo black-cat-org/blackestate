@@ -7,7 +7,7 @@ import type {
   IntegrationSettings,
   MarketingSettings,
   PlanInfo,
-} from "@/lib/types/settings"
+} from "@/features/settings/domain/settings.entity"
 
 export const SETTINGS_SECTIONS: { key: SettingsSection; label: string; icon: typeof User; description: string }[] = [
   { key: "business", label: "Negocio", icon: Briefcase, description: "Empresa, moneda y comisiones" },

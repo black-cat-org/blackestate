@@ -1,4 +1,4 @@
-import type { AiContent, AiPlatform, MarketingKitStatus } from "@/lib/types/ai-content"
+import type { AiContent, AiPlatform, MarketingKitStatus } from "@/features/ai-contents/domain/ai-content.entity"
 import { MARKETING_KIT_TOTAL } from "@/lib/constants/ai"
 
 const PLATFORMS: AiPlatform[] = ["instagram", "facebook", "tiktok", "whatsapp"]

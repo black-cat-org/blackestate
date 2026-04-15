@@ -8,7 +8,7 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb"
 import { DashboardHeader } from "@/components/dashboard-header"
-import { MarketingKitView } from "@/components/ai/marketing-kit-view"
+import { MarketingKitView } from "@/features/ai-contents/presentation/components/marketing-kit-view"
 import { getPropertyByIdAction } from "@/features/properties/presentation/actions"
 
 export default async function MarketingKitPage({

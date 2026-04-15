@@ -12,21 +12,21 @@ import { LeadsFunnelChart } from "@/components/dashboard/leads-funnel-chart"
 import { UpcomingAppointments } from "@/components/dashboard/upcoming-appointments"
 import { RecentActivity } from "@/components/dashboard/recent-activity"
 import {
-  getDashboardStats,
-  getLeadsBySource,
-  getLeadsByStatus,
-  getUpcomingAppointments,
-  getRecentActivities,
-} from "@/lib/data/dashboard"
+  getDashboardStatsAction,
+  getLeadsBySourceAction,
+  getLeadsByStatusAction,
+  getUpcomingAppointmentsAction,
+  getRecentActivitiesAction,
+} from "@/features/dashboard/presentation/actions"
 
 export default async function DashboardPage() {
   const [stats, leadsBySource, leadsByStatus, upcomingAppointments, recentActivities] =
     await Promise.all([
-      getDashboardStats(),
-      getLeadsBySource(),
-      getLeadsByStatus(),
-      getUpcomingAppointments(),
-      getRecentActivities(8),
+      getDashboardStatsAction(),
+      getLeadsBySourceAction(),
+      getLeadsByStatusAction(),
+      getUpcomingAppointmentsAction(),
+      getRecentActivitiesAction(8),
     ])
 
   return (
