@@ -102,7 +102,7 @@ export default async function ContactDetailPage({
           activities={activities}
           messages={messages}
           leadName={lead.name}
-          leadPhone={lead.phone}
+          leadPhone={lead.phone ?? ""}
         />
       </div>
     </>

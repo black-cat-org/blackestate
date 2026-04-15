@@ -26,7 +26,7 @@ export async function submitLeadAction(
   try {
     await createLead({
       propertyId,
-      source,
+      source: source ?? undefined,
       ...parsed.data,
     })
     return { success: true }
