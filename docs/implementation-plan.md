@@ -140,24 +140,105 @@
 | 2.1.20 | pgEnum types | 17 enum types creados para validación a nivel de DB. Valores migrados a inglés. | ✅ |
 | 2.1.21 | Soft delete | `deleted_at timestamptz` en todas las tablas de dominio (excepto analytics_events que es append-only) | ✅ |
 | 2.1.22 | `$onUpdate` timestamps | `updatedAt` con `.$onUpdate(() => new Date())` en todas las tablas mutables | ✅ |
-| 2.1.23 | Migrar enums a inglés | Todos los enum values migrados a inglés en: 10 enums DB, 5 schema defaults, 5 tipos TS, 6 constantes, 6 archivos data layer, ~20 componentes. Build OK. ~200+ violaciones corregidas. Migración SQL de DB pendiente (se aplica cuando haya datos reales). | ✅ |
+| 2.1.23 | Migrar enums a inglés | Código + DB migrados. 10 enums renombrados con `ALTER TYPE RENAME VALUE`. Defaults actualizados automáticamente. Código y DB sincronizados. | ✅ |
+| 2.1.24 | Nullability audit | Se ejecuta como sub-paso de CADA migración de data layer (2.2.2-2.2.9). Para cada entidad: (1) listar columnas nullable en DB schema, (2) verificar que el entity type marca esos campos como optional (`?`), (3) verificar que el mapper convierte `null → undefined`, (4) grep en componentes que consumen la entidad para detectar accesos sin optional chaining a campos opcionales. Patrón: Model (`null`) → Mapper (`undefined`) → Entity (`field?`) → Component (`?.`). | ⬜ |
 
-### 2.2 Reemplazar `/lib/data/` — Queries reales
+### 2.2 Clean Architecture Refactor + Data Layer Migration
+
+**Architecture:** Clean Architecture + DDD + Feature-Based Modules. Full spec in `CLAUDE.md`.
+
+#### 2.2.0 — Scaffolding (create feature structure)
 
 | # | Tarea | Detalle | Estado |
 |---|-------|---------|--------|
-| 2.2.1 | Capa de acceso a datos | `withRLS()` en `lib/db/rls.ts` + `getSessionContext()` en `lib/db/session-context.ts`. Reemplaza `withOrg()` — RLS a nivel de DB, no de aplicación. | ✅ (implementado en 2.1.15) |
-| 2.2.2 | Migrar `lib/data/properties.ts` | CRUD real via Drizzle + `withRLS()`. 7 funciones: `getProperties`, `getPropertyById`, `createProperty`, `updateProperty`, `deleteProperty` (soft), `duplicateProperty`, `getPublicPropertyById` (sin auth, redacta ubicación). `propertyToFormData` extraído a `lib/utils/property-mappers.ts`. `"use server"` directive. Build OK. Code review passed. | ✅ |
-| 2.2.3 | Migrar `lib/data/leads.ts` | Reemplazar CRUD mock: `getLeads()`, `getLeadById()`, `createLead()`, `updateLeadStatus()`, queue operations | ⬜ |
-| 2.2.4 | Migrar `lib/data/bot.ts` | Reemplazar mock: `getBotActivities()`, `getBotMessages()`, `getBotConfig()`, `updateBotConfig()` | ⬜ |
-| 2.2.5 | Migrar `lib/data/analytics.ts` | Reemplazar mock: queries agregadas contra `analytics_events`, `leads`, `properties` | ⬜ |
-| 2.2.6 | Migrar `lib/data/dashboard.ts` | Reemplazar mock: stats del dashboard con queries reales | ⬜ |
-| 2.2.7 | Migrar `lib/data/ai-contents.ts` | CRUD real para contenido generado por IA | ⬜ |
-| 2.2.8 | Migrar `lib/data/settings.ts` | CRUD real para configuración del agente/org | ⬜ |
-| 2.2.9 | Migrar `lib/data/hashtags.ts` | CRUD real para la librería de hashtags | ⬜ |
-| 2.2.10 | Actualizar Server Actions | `app/p/[id]/actions.ts` — conectar `submitLeadAction` y `trackVisitAction` a Supabase | ⬜ |
-| 2.2.11 | Crear Server Actions nuevas | Actions para property CRUD, lead CRUD, bot config, etc. | ⬜ |
-| 2.2.12 | Verificar tipos | Asegurar que los tipos en `lib/types/` matchean con el schema de DB | ⬜ |
+| 2.2.0.1 | Create `features/` directory | Root-level directory for all feature modules | ⬜ |
+| 2.2.0.2 | Create `features/shared/` | `domain/value-objects.ts` (shared interfaces: CurrencyAmount, SurfaceArea, PropertyAddress, PropertyMedia). `infrastructure/rls.ts` + `session-context.ts` (move from `lib/db/`). | ⬜ |
+| 2.2.0.3 | Configure path alias | Add `@/features/*` alias in `tsconfig.json` if needed (may already work via `@/*`) | ⬜ |
+
+#### 2.2.1 — Properties feature (template module — do this first, then replicate)
+
+| # | Tarea | Detalle | Estado |
+|---|-------|---------|--------|
+| 2.2.1.1 | `features/properties/domain/property.entity.ts` | Move `Property` interface from `lib/types/property.ts`. Uses `undefined` for optional fields (NEVER `null`). Imports shared value objects. | ⬜ |
+| 2.2.1.2 | `features/properties/domain/property.repository.ts` | `IPropertyRepository` interface: `findAll(ctx)`, `findById(ctx, id)`, `create(ctx, data)`, `update(ctx, id, data)`, `softDelete(ctx, id)`, `duplicate(ctx, id)`, `findPublicById(id)`. Typed with domain entities. | ⬜ |
+| 2.2.1.3 | `features/properties/infrastructure/property.model.ts` | Type alias from Drizzle `$inferSelect`. Documents which columns are nullable. This is the DB shape (uses `null`). | ⬜ |
+| 2.2.1.4 | `features/properties/infrastructure/property.mapper.ts` | `mapRowToEntity(row): Property` and `mapFormDataToInsert(data, ctx): InsertModel`. Null safety audit: verify every nullable column maps to optional field. | ⬜ |
+| 2.2.1.5 | `features/properties/infrastructure/drizzle-property.repository.ts` | Implements `IPropertyRepository`. All queries via `withRLS()`. Uses mapper. Includes `findPublicById()` (direct `db`, no RLS, redacts location). | ⬜ |
+| 2.2.1.6 | `features/properties/application/` use cases | One file per action: `get-properties`, `get-property-by-id`, `create-property`, `update-property`, `delete-property`, `duplicate-property`. Each instantiates repository and delegates. | ⬜ |
+| 2.2.1.7 | `features/properties/presentation/actions.ts` | Server Actions with `"use server"`. Thin: `getSessionContext()` + call use case. Zod validation at boundary for create/update. | ⬜ |
+| 2.2.1.8 | Move property components | Move `components/properties/` → `features/properties/presentation/components/`. Update all imports. | ⬜ |
+| 2.2.1.9 | Update `app/` pages | Update imports in `app/dashboard/properties/**` and `app/p/[id]/` to point to `features/properties/presentation/`. | ⬜ |
+| 2.2.1.10 | Null safety audit — properties | Full audit: list nullable columns in schema → verify entity optional fields → verify mapper conversions → grep components for unsafe access on optional fields. | ⬜ |
+| 2.2.1.11 | Delete old files | Remove `lib/data/properties.ts`, `lib/types/property.ts` (replaced by feature module). Update any remaining imports. | ⬜ |
+| 2.2.1.12 | Build + code review | `npm run build` must pass. Run code reviewer to validate architecture compliance. | ⬜ |
+
+#### 2.2.2 — Leads feature
+
+| # | Tarea | Detalle | Estado |
+|---|-------|---------|--------|
+| 2.2.2.1 | Domain layer | `lead.entity.ts` + `lead.repository.ts`. Includes `Lead`, `LeadFilters`, `QueueStatusId`, `QueueItemStatus` types. | ⬜ |
+| 2.2.2.2 | Infrastructure layer | `lead.model.ts` + `lead.mapper.ts` + `drizzle-lead.repository.ts`. CRUD + queue operations. | ⬜ |
+| 2.2.2.3 | Application layer | Use cases: `get-leads`, `get-lead-by-id`, `create-lead`, `update-lead-status`, `manage-queue`. | ⬜ |
+| 2.2.2.4 | Presentation layer | `actions.ts` + move `components/contacts/` → `features/leads/presentation/components/`. | ⬜ |
+| 2.2.2.5 | Null safety audit — leads | Full audit for lead entity. | ⬜ |
+| 2.2.2.6 | Build + code review | | ⬜ |
+
+#### 2.2.3 — Appointments feature
+
+| # | Tarea | Detalle | Estado |
+|---|-------|---------|--------|
+| 2.2.3.1 | Domain + Infrastructure + Application | Entity, repository, mapper, model, use cases. | ⬜ |
+| 2.2.3.2 | Presentation | Actions + move `components/appointments/`. | ⬜ |
+| 2.2.3.3 | Null safety audit + build | | ⬜ |
+
+#### 2.2.4 — Bot feature
+
+| # | Tarea | Detalle | Estado |
+|---|-------|---------|--------|
+| 2.2.4.1 | Domain + Infrastructure + Application | Entities: BotConversation, BotMessage, BotConfig, SentProperty, Appointment (bot-scoped). | ⬜ |
+| 2.2.4.2 | Presentation | Actions + move `components/bot/`. | ⬜ |
+| 2.2.4.3 | Null safety audit + build | | ⬜ |
+
+#### 2.2.5 — Analytics feature
+
+| # | Tarea | Detalle | Estado |
+|---|-------|---------|--------|
+| 2.2.5.1 | Domain + Infrastructure + Application | Aggregation queries. Read-only (no create/update/delete). Cross-entity queries (properties + leads + appointments). | ⬜ |
+| 2.2.5.2 | Presentation | Actions + move `components/analytics/`. | ⬜ |
+| 2.2.5.3 | Null safety audit + build | | ⬜ |
+
+#### 2.2.6 — Dashboard feature
+
+| # | Tarea | Detalle | Estado |
+|---|-------|---------|--------|
+| 2.2.6.1 | Domain + Infrastructure + Application | Dashboard stats. Cross-entity aggregation. Depends on properties, leads, appointments repositories. | ⬜ |
+| 2.2.6.2 | Presentation | Actions + dashboard components. | ⬜ |
+| 2.2.6.3 | Build | | ⬜ |
+
+#### 2.2.7 — AI Contents feature
+
+| # | Tarea | Detalle | Estado |
+|---|-------|---------|--------|
+| 2.2.7.1 | Domain + Infrastructure + Application | CRUD for AI-generated content. | ⬜ |
+| 2.2.7.2 | Presentation | Actions + move `components/ai/`. | ⬜ |
+| 2.2.7.3 | Null safety audit + build | | ⬜ |
+
+#### 2.2.8 — Settings feature
+
+| # | Tarea | Detalle | Estado |
+|---|-------|---------|--------|
+| 2.2.8.1 | Domain + Infrastructure + Application | Agent profile, business settings, notification prefs, bot config, plan info. | ⬜ |
+| 2.2.8.2 | Presentation | Actions + move `components/settings/`. | ⬜ |
+| 2.2.8.3 | Null safety audit + build | | ⬜ |
+
+#### 2.2.9 — Cleanup
+
+| # | Tarea | Detalle | Estado |
+|---|-------|---------|--------|
+| 2.2.9.1 | Delete `lib/data/` | All mock data files replaced by feature modules. | ⬜ |
+| 2.2.9.2 | Delete `lib/types/` | Entity types moved to `features/*/domain/`. Shared types to `features/shared/domain/`. | ⬜ |
+| 2.2.9.3 | Update `CLAUDE.md` | Reflect final project structure post-refactor. | ⬜ |
+| 2.2.9.4 | Full build + lint | Final verification. | ⬜ |
 
 ### 2.4 Transferencia de propiedades (enterprise)
 
