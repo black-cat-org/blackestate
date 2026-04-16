@@ -1,13 +1,16 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef } from "react"
+import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
+import { Loader2 } from "lucide-react"
 import { updateAgentProfileAction } from "@/features/settings/presentation/actions"
+import { uploadAvatarAction } from "@/features/properties/presentation/storage-actions"
 import { toast } from "sonner"
 import type { AgentProfile } from "@/features/settings/domain/settings.entity"
 
@@ -18,9 +21,30 @@ interface ProfileSectionProps {
 export function ProfileSection({ data: initialData }: ProfileSectionProps) {
   const [data, setData] = useState<AgentProfile>(initialData)
   const [saving, setSaving] = useState(false)
+  const [uploadingAvatar, setUploadingAvatar] = useState(false)
+  const avatarInputRef = useRef<HTMLInputElement>(null)
 
   function update<K extends keyof AgentProfile>(field: K, value: AgentProfile[K]) {
     setData((prev) => ({ ...prev, [field]: value }))
+  }
+
+  async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setUploadingAvatar(true)
+    try {
+      const formData = new FormData()
+      formData.set("file", file)
+      const url = await uploadAvatarAction(formData)
+      update("avatar", url)
+      toast.success("Foto actualizada")
+    } catch {
+      toast.error("Error al subir la foto")
+    } finally {
+      setUploadingAvatar(false)
+      if (avatarInputRef.current) avatarInputRef.current.value = ""
+    }
   }
 
   async function handleSave() {
@@ -52,14 +76,46 @@ export function ProfileSection({ data: initialData }: ProfileSectionProps) {
       {/* Avatar */}
       <Card>
         <CardContent className="flex items-center gap-4 p-4!">
-          <div className="flex size-16 items-center justify-center rounded-full bg-muted text-lg font-semibold">
-            {initials}
-          </div>
+          {data.avatar ? (
+            <div className="relative size-16 rounded-full overflow-hidden">
+              <Image
+                src={data.avatar}
+                alt={data.name}
+                fill
+                className="object-cover"
+              />
+            </div>
+          ) : (
+            <div className="flex size-16 items-center justify-center rounded-full bg-muted text-lg font-semibold">
+              {initials}
+            </div>
+          )}
           <div>
             <p className="text-sm font-medium">{data.name}</p>
             <p className="text-xs text-muted-foreground">{data.email}</p>
-            <Button variant="outline" size="sm" className="mt-2" disabled>
-              Cambiar foto
+            <input
+              ref={avatarInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              onChange={handleAvatarChange}
+              className="sr-only"
+              id="avatar-upload"
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              className="mt-2"
+              disabled={uploadingAvatar}
+              onClick={() => avatarInputRef.current?.click()}
+            >
+              {uploadingAvatar ? (
+                <>
+                  <Loader2 className="size-3 animate-spin" />
+                  Subiendo...
+                </>
+              ) : (
+                "Cambiar foto"
+              )}
             </Button>
           </div>
         </CardContent>

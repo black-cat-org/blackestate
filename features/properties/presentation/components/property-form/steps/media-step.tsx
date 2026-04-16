@@ -139,7 +139,6 @@ export function MediaStep({
     },
     maxSize: 10 * 1024 * 1024,
     multiple: true,
-    useFsAccessApi: false,
   })
 
   const pendingPreviews = useMemo(

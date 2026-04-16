@@ -270,7 +270,7 @@ Flujo completo para que owner/admin transfiera propiedades (+ cascade) entre age
 | 2.3.5 | Storage Server Actions | `features/properties/presentation/storage-actions.ts` — `uploadPropertyMediaAction`, `deletePropertyMediaAction`, `uploadAvatarAction`. | ✅ |
 | 2.3.6 | Image optimization | `next.config.ts` — added Supabase Storage hostname to `remotePatterns` for `next/image`. | ✅ |
 | 2.3.7 | Integrate with property form | `media-step.tsx` rewritten with `react-dropzone` (drag & drop, previews, delete). Files accumulated in memory during wizard, uploaded to Storage on submit. `property-form-wizard.tsx` handles upload flow: create property → upload files → update with URLs. Disabled state during submit. | ✅ |
-| 2.3.8 | Integrate with profile/settings | Connect avatar upload in profile section to `uploadAvatarAction`. | ⬜ |
+| 2.3.8 | Integrate with profile/settings | Avatar upload connected in `profile-section.tsx`. Uses `uploadAvatarAction`, hidden file input, `next/image` preview, loading state. | ✅ |
 
 ---
 
