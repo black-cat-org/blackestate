@@ -2,6 +2,30 @@
 
 > **Depends on:** 00-master.md
 > **Unlocks:** 03, 10
+> **Status:** ✅ Completed — 2026-04-16
+> **Branch:** `feat/auth-migration-phase-02`
+
+## Resumen ejecución
+
+- Email provider: enabled, Secure password change ON, Password requirements "Letters and digits", Min length 8, OTP length 8.
+- Google OAuth: enabled con credentials existentes. Callback `https://jaozybchjfengqlckiul.supabase.co/auth/v1/callback` agregada a Google Cloud Console (la URI Better Auth legacy se mantiene hasta sub-plan 12).
+- URL Configuration: Site URL `http://localhost:3000`, 4 redirect URLs whitelisted.
+- 4 templates email editados a español neutro "tú" (NO voseo): Confirm signup, Invite user, Reset Password, Change Email.
+- SMTP: default Supabase (4 emails/hora limit). Migración a Resend diferida a sub-plan 06.
+- JWT config: sin cambios (default 3600s).
+- Env vars agregadas a `.env.local`: `NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`.
+- `.env.template` + `CLAUDE.md` actualizados con tabla completa de env vars.
+- Memoria actualizada: `auth_decision.md` refleja migración en curso; `feedback_spanish_neutral_bolivia.md` nueva para español neutro.
+- DB purgada antes del smoke test: 0 rows en todas las tablas Better Auth legacy + `auth.users` (clean-slate).
+
+**Smoke test:** ✅ Invite user via Dashboard → `auth.users` row creada (id `1fc792fe-e218-4988-9130-b019290f297a`), email llega en español correcto, provider `email` registrado.
+
+## Tareas diferidas detectadas
+
+- **Gmail pre-fetch consume OTP tokens** → flow de confirm-via-click muestra `otp_expired`. No bloquea creación de user. Resolución: sub-plan 10 migra templates a `{{ .TokenHash }}` + route `/auth/confirm` con `supabase.auth.verifyOtp()`.
+- **SMTP custom Resend** → sub-plan 06 (cuando arranque volumen real de invitations).
+- **Borrar Better Auth callback URI legacy** en Google Cloud Console → sub-plan 12.
+- **Re-purge DB si se usa el app** durante sub-plans 03-09 → el código Better Auth runtime sigue escribiendo a `user`/`session` al hacer sign-in. Antes del cutover final en sub-plan 12, verificar count = 0.
 
 ## Goal
 
@@ -49,36 +73,36 @@ Dashboard → Authentication → Emails → Settings:
 
 ### 3. Email templates
 
-Dashboard → Authentication → Emails → Templates. Editar cada template a español. Templates a ajustar:
+Dashboard → Authentication → Emails → Templates. Editar cada template a español neutro con imperativo "tú" (NO voseo argentino — ver `feedback_spanish_neutral_bolivia.md`).
 
 **Confirm signup:**
 ```
-Subject: Confirmá tu cuenta en Black Estate
+Subject: Confirma tu cuenta en Black Estate
 
 Hola,
 
-Gracias por registrarte en Black Estate. Hacé click en el siguiente enlace para confirmar tu cuenta:
+Gracias por registrarte en Black Estate. Haz click en el siguiente enlace para confirmar tu cuenta:
 
 {{ .ConfirmationURL }}
 
-Si no creaste esta cuenta, ignorá este email.
+Si no creaste esta cuenta, ignora este email.
 
 — Equipo Black Estate
 ```
 
 **Invite user:**
 ```
-Subject: Te invitaron a unirte a {{ .SiteURL }}
+Subject: Te invitaron a unirte a Black Estate
 
 Hola,
 
-Fuiste invitado a unirte a una organización en Black Estate.
+Te invitaron a unirte a una organización en Black Estate.
 
-Hacé click acá para aceptar la invitación:
+Haz click aquí para aceptar la invitación:
 
 {{ .ConfirmationURL }}
 
-Si no esperabas esta invitación, ignorá este email.
+Si no esperabas esta invitación, ignora este email.
 
 — Equipo Black Estate
 ```
@@ -87,35 +111,37 @@ Si no esperabas esta invitación, ignorá este email.
 
 **Change email address:**
 ```
-Subject: Confirmá tu nuevo email en Black Estate
+Subject: Confirma tu nuevo email en Black Estate
 
 Hola,
 
-Pedimos confirmar el cambio de tu email. Hacé click acá:
+Pedimos confirmar el cambio de tu email. Haz click aquí:
 
 {{ .ConfirmationURL }}
 
-Si no pediste este cambio, contactá soporte inmediatamente.
+Si no pediste este cambio, contacta soporte inmediatamente.
 
 — Equipo Black Estate
 ```
 
 **Reset password:**
 ```
-Subject: Restablecé tu contraseña en Black Estate
+Subject: Restablece tu contraseña en Black Estate
 
 Hola,
 
-Recibimos un pedido para restablecer tu contraseña. Hacé click acá para elegir una nueva:
+Recibimos un pedido para restablecer tu contraseña. Haz click aquí para elegir una nueva:
 
 {{ .ConfirmationURL }}
 
-Si no pediste esto, ignorá el email (tu contraseña sigue igual).
+Si no pediste esto, ignora el email (tu contraseña sigue igual).
 
 — Equipo Black Estate
 ```
 
 **Reauthentication:** — dejar default si no se usa.
+
+> ⚠️ **Known issue — Gmail pre-fetch consume OTP tokens.** Los templates usan `{{ .ConfirmationURL }}` (legacy pattern). Gmail y otros clients hacen pre-fetch del link para escanear malware → consumen el token one-time-use antes que el usuario haga click. Resultado: usuario ve `#error=access_denied&error_code=otp_expired` tras hacer click. **Sub-plan 10** migra a pattern `{{ .TokenHash }}` + route `/auth/confirm` con `supabase.auth.verifyOtp()`. Mientras tanto (sub-plans 03-09), el flow crea users correctamente aunque el confirm-via-click esté degradado.
 
 ### 4. URL configuration
 
@@ -165,6 +191,9 @@ Agregar:
 NEXT_PUBLIC_SUPABASE_URL=https://<project-ref>.supabase.co
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
 
+# App base URL — usada en OAuth redirectTo y invitation links
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+
 # Supabase — Admin (server-only)
 SUPABASE_SERVICE_ROLE_KEY=sb_secret_...  # ya existe, mantener
 ```
@@ -185,6 +214,7 @@ Actualizar para reflejar los nuevos env vars. Ejemplo:
 
 ```bash
 # ─── Supabase ────────────────────────────────────
+NEXT_PUBLIC_APP_URL=
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
@@ -296,6 +326,7 @@ DELETE FROM auth.users WHERE email LIKE 'test%@%';
 ## Notas
 
 - Este sub-plan NO toca código del app. Toda la config es dashboard + env.
-- Las dos Better Auth y Supabase Auth CONVIVEN durante la transición (Fases 03-11). Usuarios nuevos irán a Better Auth hasta Fase 10; solo después se switcheo el flow al dashboard.
+- **DB purgada 2026-04-16:** todas las tablas Better Auth legacy (`user`, `account`, `session`, etc.) + `auth.users` quedaron en 0 rows. NO hay coexistence de data — es clean-slate. Sub-plans 11/12 se simplifican (nada que migrar, solo drop tables en 12). El código del app (`lib/auth.ts` + UI + rutas) sigue usando Better Auth runtime hasta sub-plans 09-10; si durante esas fases se hace sign-in vía UI actual, las tablas Better Auth se re-pueblan automáticamente y hay que re-purgar antes del cutover final en sub-plan 12.
+- **SMTP deferral:** la config SMTP se dejó en default Supabase (limit 4 emails/hora). Migración a Resend custom SMTP se ejecuta en sub-plan 06 cuando arranque el volumen real de invitations.
 - Los callbacks de Google OAuth van a dos lugares distintos (Better Auth `/api/auth/callback/google` vs Supabase `/auth/v1/callback`). Ambas autorizadas en Google Console.
 - **Advertencia:** no habilitar "Auto confirm users" en Supabase (queremos email verification). Para dev, usar SQL para confirmar manualmente o disable email verification temporalmente y re-habilitarla pre-prod.

@@ -512,11 +512,7 @@ Ref: docs/plans/2026-04-16-supabase-auth-migration/06-invitations.md"
 
 ## Notas
 
-- `NEXT_PUBLIC_APP_URL` es nuevo env var. Agregar a `.env.local`:
-  ```
-  NEXT_PUBLIC_APP_URL=http://localhost:3000
-  ```
-  y en prod usar el dominio real.
+- `NEXT_PUBLIC_APP_URL` ya debería existir en `.env.local` (agregada en sub-plan 02). Si falta, agregar ahora: `NEXT_PUBLIC_APP_URL=http://localhost:3000` (dev) o dominio prod.
 - `getSupabaseAdmin()` es el cliente service_role (server-only). Se usa acá porque `auth.admin.inviteUserByEmail` requiere privilegios admin.
 - `supabase.auth.admin.inviteUserByEmail` crea al usuario en `auth.users` si no existe, con `email_confirmed_at = null` hasta que accept link.
 - El trigger `handle_new_user` de Fase 05 corre al crear el user, le crea su org default. Después el accept-invite lo agrega COMO MEMBER de la org de la invitación. User termina siendo miembro de 2 orgs: la suya default + la invitada.

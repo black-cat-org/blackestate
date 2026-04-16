@@ -12,7 +12,7 @@
 |---|---|---|
 | 00 | Master plan | ✅ |
 | 01 | Schema multitenancy (organization, member, invitation, user_active_org, role_permissions + UUID migration de platform_admins) | ✅ 2026-04-16 |
-| 02 | Supabase Auth dashboard config | ⬜ |
+| 02 | Supabase Auth dashboard config (providers, templates ES neutro, URL whitelist, env vars) | ✅ 2026-04-16 |
 | 03 | Custom access token hook | ⬜ |
 | 04 | RBAC + authorize() function | ⬜ |
 | 05 | Org creation lifecycle (trigger) | ⬜ |

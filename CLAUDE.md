@@ -371,10 +371,36 @@ docs/                       # Project documentation
 - `tsconfig.json` — Strict mode enabled, target ES2017, bundler module resolution
 - `components.json` — shadcn/ui config (new-york style, RSC enabled)
 
+## Environment Variables
+
+Listado de env vars actuales en `.env.local` (ver `.env.template`). Algunas son legacy y se borran en sub-plans futuros de la migración Supabase Auth.
+
+| Variable | Uso | Exposición | Estado |
+|---|---|---|---|
+| `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` | Maps embed | Browser | Activa |
+| `NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID` | Maps styled map | Browser | Activa |
+| `NEXT_PUBLIC_APP_URL` | Base URL para OAuth redirect + invitation links | Browser | **Nueva (sub-plan 02)** |
+| `NEXT_PUBLIC_SUPABASE_URL` | Cliente `@supabase/ssr` (browser + SSR) | Browser | **Nueva (sub-plan 02)** |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Cliente frontend Supabase (RLS-safe) | Browser | **Nueva (sub-plan 02)** |
+| `SUPABASE_URL` | Admin client (Storage, admin ops) | Server-only | Activa |
+| `SUPABASE_SERVICE_ROLE_KEY` | Admin client (secret, bypasea RLS) | Server-only | Activa |
+| `DATABASE_URL` | Drizzle pooled connection (app runtime) | Server-only | Activa |
+| `DIRECT_URL` | Drizzle direct connection (migrations) | Server-only | Activa |
+| `BETTER_AUTH_SECRET` | Better Auth session signing | Server-only | **DEPRECATED — borrar en sub-plan 12** |
+| `BETTER_AUTH_URL` | Better Auth base URL | Server-only | **DEPRECATED — borrar en sub-plan 12** |
+| `GOOGLE_CLIENT_ID` | OAuth Google (Better Auth + Supabase Auth durante transición) | Server-only | Activa |
+| `GOOGLE_CLIENT_SECRET` | OAuth Google secret | Server-only | Activa |
+| `BONEYARD_SESSION_TOKEN` | Dev tool — skeletons gen | Server-only | Dev only |
+
+**Reglas:**
+- `NEXT_PUBLIC_*` siempre se expone al browser — nunca meter secrets ahí.
+- `SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_URL` tienen mismo valor — redundancia intencional (el browser no accede a env vars sin prefix público).
+- Rotación de keys: `sb_secret_...` se rota desde Dashboard → Settings → API Keys sin downtime (múltiples keys activas a la vez).
+
 ## Key Decisions
 
 - **Full stack:** `docs/tech-stack.md`
 - **Implementation plan:** `docs/implementation-plan.md`
 - **Roles and permissions:** `docs/roles-and-permissions.md`
-- **Product language:** Spanish (es-AR for date/currency formatting)
+- **Product language:** Spanish neutro con imperativo "tú" (haz, copia, ve — no voseo argentino). Formato fechas/moneda `es-BO` (Bolivia; dd/mm/yyyy). Evitar modismos regionales — el producto apunta a LATAM wide.
 - **Code language:** Strict English — variables, enums, routes, files, schemas, ALL in English. Spanish ONLY for user-facing content (labels, messages). Mapping via `LABELS`/`MESSAGES` constants.
