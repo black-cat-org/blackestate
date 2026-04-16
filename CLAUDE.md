@@ -259,6 +259,7 @@ export async function createPropertyAction(formData: PropertyFormData): Promise<
 | `app/` pages → Domain | Yes | Page imports entity types for props |
 | `app/` pages → Infrastructure | No | Never |
 | `app/` pages → Application | No | Server Actions mediate |
+| Any layer → `lib/*` | Yes | Shared utilities (`lib/supabase/*`, `lib/db/*`, `lib/utils/*`, `lib/constants/*`) are cross-cutting. Callable from Application, Presentation, or `app/`. Feature-specific `features/*/infrastructure/` still cannot be imported from Presentation |
 
 ## Database Layer
 

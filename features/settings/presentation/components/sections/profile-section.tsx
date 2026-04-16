@@ -29,20 +29,27 @@ export function ProfileSection({ data: initialData }: ProfileSectionProps) {
     setData((prev) => ({ ...prev, [field]: value }))
   }
 
-  const uploadAvatar = useCallback(async (file: File) => {
-    setUploadingAvatar(true)
-    try {
-      const formData = new FormData()
-      formData.set("file", file)
-      const url = await uploadAvatarAction(formData)
-      setData((prev) => ({ ...prev, avatar: url }))
-      toast.success("Foto actualizada")
-    } catch {
-      toast.error("Error al subir la foto")
-    } finally {
-      setUploadingAvatar(false)
-    }
-  }, [])
+  const uploadAvatar = useCallback(
+    async (file: File) => {
+      setUploadingAvatar(true)
+      try {
+        const formData = new FormData()
+        formData.set("file", file)
+        if (data.avatar) {
+          formData.set("previousAvatarUrl", data.avatar)
+        }
+        const url = await uploadAvatarAction(formData)
+        setData((prev) => ({ ...prev, avatar: url }))
+        toast.success("Foto actualizada")
+      } catch (error) {
+        console.error("[avatar] upload failed", error)
+        toast.error("Error al subir la foto")
+      } finally {
+        setUploadingAvatar(false)
+      }
+    },
+    [data.avatar],
+  )
 
   const onDrop = useCallback(
     (acceptedFiles: File[], fileRejections: FileRejection[]) => {
@@ -189,17 +196,8 @@ export function ProfileSection({ data: initialData }: ProfileSectionProps) {
                 placeholder="+591 ..."
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="contact-email">Email de contacto</Label>
-              <Input
-                id="contact-email"
-                type="email"
-                value={data.email}
-                onChange={(e) => update("email", e.target.value)}
-              />
-            </div>
           </div>
-          <p className="text-xs text-muted-foreground">Se usan para que tus clientes te contacten desde las landing pages y brochures</p>
+          <p className="text-xs text-muted-foreground">Se usa para que tus clientes te contacten desde las landing pages y brochures. El email de arriba se usa para el mismo fin.</p>
         </div>
 
         <Separator />

@@ -31,26 +31,33 @@ features/
 | `notifications/` | Delivery orchestration | Prefs + canales, rate limits, routing | Knock integration pendiente |
 | `settings/` | Org prefs misc | Timezone, currency, brand colors, hashtags default | Estable, chico |
 
-## Bug conocido bloqueante (resolver primero)
+## Bug conocido bloqueante — RESUELTO ✅ (2026-04-16)
 
-**Storage uploads fallan con 400 en todos los buckets.**
+**Storage uploads fallaban con 400 en todos los buckets.**
 
-Evidencia (2026-04-16):
-- 0 objetos en `avatars`, `property-media`, `brochures` — ningún upload ha funcionado nunca
-- Storage logs muestran `POST 400` en `/object/avatars/{orgId}/{userId}/*.jpg`
-- Bucket config OK: avatars 2MB, jpeg/png/webp allowed; RLS no forzado (service_role bypasa)
+Causa raíz **doble** (ambas capas arregladas):
 
-Causas probables:
+1. **MIME derivation roto.** `lib/supabase/storage.ts` pasaba `contentType: file.type` a `supabase.storage.upload()`. Dos problemas encadenados:
+   - `File.type` no confiable cruzando Server Action boundary — suele llegar vacío.
+   - `@supabase/storage-js` **ignora** la opción `contentType` cuando el body es `File`/`Blob` — lee directamente del `.type` del Blob (v2.103+, verificado en `node_modules/@supabase/storage-js/dist/index.mjs:559-563`).
+   - Consecuencia: part multipart sin Content-Type → Supabase Storage default a `application/octet-stream` → bucket rechaza `allowed_mime_types` → `400 "mime type application/octet-stream is not supported"`.
+   - **Fix aplicado:** re-envolver siempre en `new Blob([await file.arrayBuffer()], { type })` con MIME derivado de la extensión usando `BUCKET_CONFIG`.
 
-1. **`file.type` vacío en Server Action** — `lib/supabase/storage.ts:28` pasa `contentType: file.type`. Al cruzar el boundary Server Action, `file.type` suele llegar vacío → bucket rechaza MIME → 400.
-   - **Fix:** derivar content-type desde la extensión en `uploadFile()`. Mapa `{jpg: "image/jpeg", png: "image/png", webp: "image/webp", avif: "image/avif", pdf: "application/pdf"}`. Fallback a `file.type` si existe.
+2. **`SUPABASE_SERVICE_ROLE_KEY` contenía publishable key.** El valor en `.env.local` arrancaba con `sb_publishable_...` (key de frontend, reemplaza a `anon`). No bypasa RLS → fallaba con `new row violates row-level security policy` tras arreglar (1).
+   - **Fix aplicado:** `assertSecretKey()` en `lib/supabase/server.ts` valida al crear el cliente — rechaza `sb_publishable_...` y JWTs con `role` distinto de `service_role` con mensaje accionable.
+   - **Acción usuario requerida:** reemplazar valor en `.env.local` por el **secret key** (`sb_secret_...` o JWT legacy con `role=service_role`) desde Supabase dashboard → Settings → API. Reiniciar dev server después.
 
-2. **`SUPABASE_SERVICE_ROLE_KEY` missing/wrong** en `.env.local`. Client cae a anon → RLS bloquea → 400.
-   - **Verificación:** confirmar que `.env.local` tiene `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` correctos desde dashboard Supabase.
-
-3. Otros — menos probable. Si tras (1) y (2) sigue, inspeccionar response body real via dev server logs.
-
-**Prioridad:** resolver antes de migrar avatar a persistencia real. Sin upload funcionando no se puede testear el flow end-to-end del nuevo módulo `profile/`.
+Side improvements aplicadas (no solo parches):
+- `lib/supabase/config.ts` — single source of truth para bucket config (extensions, MIME, size, cache-control).
+- `cacheControl` en uploads (30 días imágenes, 1 día PDFs).
+- `extractStoragePath(bucket, url)` util compartida — elimina regex duplicada en `delete-property-media.use-case.ts`.
+- Avatar orphan cleanup: upload avatar borra el anterior (best-effort, no rollback si falla).
+- `import "server-only"` en `lib/supabase/server.ts` + `storage.ts` — fail loud si se bundlea al cliente.
+- Env var validation explícita con error descriptivo.
+- Type guards `instanceof File` en Server Actions.
+- Error logs con contexto (path incluido en warn de orphan delete).
+- Removido input duplicado "Email de contacto" en `profile-section.tsx` (bindeaba al mismo `data.email`).
+- `CLAUDE.md` — agregada fila en Import Rules clarificando que `lib/*` es utilidad compartida callable desde cualquier capa.
 
 ## Tareas
 
@@ -58,7 +65,8 @@ Causas probables:
 
 - Crear 5 módulos con estructura Clean Arch (domain / application / infrastructure / presentation)
 - `app/dashboard/settings/page.tsx` sigue siendo host de tabs pero importa de múltiples módulos
-- Mover el avatar upload a `features/profile/presentation/storage-actions.ts` (sale de `properties/`)
+- Mover el avatar upload a `features/profile/presentation/storage-actions.ts` (sale de `properties/`). Crear `update-avatar.use-case.ts` en application layer — mueve la authorization (check de ownership del avatar previo) desde el Server Action al use case, consistente con `delete-property-media.use-case.ts`.
+- **`AgentProfile` entity:** convertir campos a opcionales (`field?: string`) para `bio`, `website`, `whatsapp`, `instagram`, `facebook`, `avatar`, `title` — nuevos users no tendrán estos campos en DB y el mapper devolverá `undefined`. Type-check actual compila porque `settings.service.ts` es mock con valores por defecto; rompe al conectar DB real.
 
 ### 2) Schema DB (Drizzle)
 

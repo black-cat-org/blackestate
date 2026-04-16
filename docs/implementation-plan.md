@@ -3,8 +3,8 @@
 > Plan de ejecución granular para llevar Black Estate de frontend con datos mock a producto funcional con backend real.
 >
 > **Creado:** 2026-04-13
-> **Última actualización:** 2026-04-15
-> **Estado:** Capa 1 completada. Capa 2: RLS done, Clean Architecture done (8 feature modules), Storage done (buckets + upload), E2E testing done (Playwright). Auth org-creation fix deployed. Avatar drag & drop UI done. Siguiente: split modular profile/billing/integrations/notifications/settings + persistencia real (ver `docs/plans/2026-04-15-profile-settings-modular-split.md`), then Capa 3.
+> **Última actualización:** 2026-04-16
+> **Estado:** Capa 1 completada. Capa 2: RLS done, Clean Architecture done (8 feature modules), Storage done (buckets + upload), E2E testing done (Playwright). Storage 400 upload bug fixed (MIME derivation from extension + Blob re-wrap + env-key guard). Auth org-creation fix deployed. Avatar drag & drop UI done. Siguiente: split modular profile/billing/integrations/notifications/settings + persistencia real (ver `docs/plans/2026-04-15-profile-settings-modular-split.md`), then Capa 3.
 
 ---
 
@@ -271,6 +271,7 @@ Flujo completo para que owner/admin transfiera propiedades (+ cascade) entre age
 | 2.3.6 | Image optimization | `next.config.ts` — added Supabase Storage hostname to `remotePatterns` for `next/image`. | ✅ |
 | 2.3.7 | Integrate with property form | `media-step.tsx` rewritten with `react-dropzone` (drag & drop, previews, delete). Files accumulated in memory during wizard, uploaded to Storage on submit. `property-form-wizard.tsx` handles upload flow: create property → upload files → update with URLs. Disabled state during submit. | ✅ |
 | 2.3.8 | Integrate with profile/settings | Avatar drag & drop in `profile-section.tsx` via `react-dropzone` (single file, 2MB, JPG/PNG/WEBP). Card-entera dropzone con click-to-pick + drop. Loading overlay, rejection toasts tipados (`file-too-large` / `file-invalid-type`). Sube a bucket `avatars` via `uploadAvatarAction`. ⚠️ Persistencia de URL diferida — actualmente solo guarda en `settings.service.ts` (memoria). Persistencia real en `user.image` + tabla `agent_profile` queda para split modular próximo. | ✅ (UI), ⏭️ (persistencia) |
+| 2.3.9 | Fix Storage 400 upload bug | Two root causes stacked: (1) `supabase-js` ignores `contentType` option when body is File/Blob — reads from the Blob's own `.type`; `File.type` is unreliable across the Server Action boundary. Fix: always re-wrap body in a `new Blob([await file.arrayBuffer()], { type })` with extension-derived MIME. (2) `SUPABASE_SERVICE_ROLE_KEY` in `.env.local` was the publishable key (`sb_publishable_...`) instead of the secret key — publishable doesn't bypass RLS. Fix: `assertSecretKey()` defensive guard rejects publishable keys and wrong-role JWTs with actionable error. Side improvements: `BUCKET_CONFIG` single source of truth, avatar orphan cleanup on replace, `cacheControl` headers, `extractStoragePath` shared util replacing duplicated regex, `import "server-only"` guards, env var validation on boot. | ✅ (code), ⬜ (user must replace key in `.env.local` with `sb_secret_...` from Supabase dashboard → Settings → API) |
 
 ### 2.5 Split modular: profile / billing / integrations / notifications / settings
 
