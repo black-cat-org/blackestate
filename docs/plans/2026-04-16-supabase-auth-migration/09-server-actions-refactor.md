@@ -339,19 +339,29 @@ Los que llaman storage requieren actualización (cliente explícito, ver Fase 08
 
 ## Pasos
 
-- [ ] **1.** Reescribir `lib/supabase/server.ts` con `getSupabaseServerClient` + `getSupabaseAdmin`.
-- [ ] **2.** Crear `lib/supabase/client.ts`.
-- [ ] **3.** Crear `lib/supabase/proxy.ts`.
-- [ ] **4.** Reescribir `proxy.ts` raíz.
-- [ ] **5.** Reescribir `features/shared/infrastructure/session-context.ts`.
-- [ ] **6.** Actualizar `features/shared/infrastructure/rls.ts` con claim names nuevos.
-- [ ] **7.** Eliminar `lib/db/rls.ts` y `lib/db/session-context.ts`.
-- [ ] **8.** `rg "from \"@/lib/db/rls\"` → reemplazar por `@/features/shared/infrastructure/rls`. Grep + fix todos.
-- [ ] **9.** `rg "from \"@/lib/db/session-context\""` → reemplazar. Grep + fix.
-- [ ] **10.** Drizzle queries en Fase 06 (invitation-actions, organization-actions) → agregar `withRLS(ctx, async (tx) => ...)` donde corresponda.
+- [x] **1.** Reescribir `lib/supabase/server.ts` con `getSupabaseServerClient` + `getSupabaseAdmin`. ✅ (tarea #62)
+- [x] **2.** Crear `lib/supabase/client.ts`. ✅ (tarea #62)
+- [x] **3.** Crear helper Supabase para middleware. ✅ (tarea #62 — archivo nombrado `lib/supabase/middleware.ts` para distinguirlo del `proxy.ts` raíz y seguir convención oficial Supabase; export `updateSupabaseSession(request)`). Shared env helper extraído a `lib/supabase/env.ts` (DRY).
+- [ ] **4.** Reescribir `proxy.ts` raíz. ← tarea #63
+- [ ] **5.** Reescribir `features/shared/infrastructure/session-context.ts`. ← tarea #63
+- [ ] **6.** Actualizar `features/shared/infrastructure/rls.ts` con claim names nuevos. ← tarea #64
+- [ ] **7.** Eliminar `lib/db/rls.ts` y `lib/db/session-context.ts`. ← tarea #68
+- [ ] **8.** `rg "from \"@/lib/db/rls\"` → reemplazar por `@/features/shared/infrastructure/rls`. Grep + fix todos. ← tarea #68
+- [ ] **9.** `rg "from \"@/lib/db/session-context\""` → reemplazar. Grep + fix. ← tarea #68
+- [ ] **10.** Drizzle queries en Fase 06 (invitation-actions, organization-actions) → agregar `withRLS(ctx, async (tx) => ...)` donde corresponda. ← tareas #66, #67
 - [ ] **11.** Build check.
 - [ ] **12.** Test manual: sign-in → dashboard renders → properties page lista. Cada Server Action corre sin errores.
 - [ ] **13.** Commit.
+
+### Tarea #62 — notas de implementación
+
+- Code review robusto aplicado pre-merge. Reviewer flagged cookie options parity + JSDoc accuracy + DRY `requireEnv`. Resoluciones:
+  - `NextRequest.cookies.set` es 2-arg only (TS enforcement). Mantenemos `(name, value)` ahí. `response.cookies.set` sí recibe `options`. Esto matchea Supabase reference canónico.
+  - JSDoc de `updateSupabaseSession` suavizado — describe el contrato que aplicará al wirearse en tarea #63. Evita aserciones falsas sobre estado actual.
+  - `requireEnv` extraído a `lib/supabase/env.ts` — tipo `SupabaseEnvVar` centralizado. Tres copias → una fuente de verdad.
+  - `CookieOptions` re-export quitado de `client.ts` (dead export).
+- `@supabase/ssr@0.8.x` instalado como peer de `@supabase/supabase-js@2.103.2` (ya presente).
+- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` + `NEXT_PUBLIC_SUPABASE_URL` requeridas en `.env.local` (confirmado por usuario).
 
 ## Checklist
 

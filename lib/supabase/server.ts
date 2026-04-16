@@ -1,21 +1,14 @@
 import "server-only"
+import { createServerClient } from "@supabase/ssr"
 import { createClient, type SupabaseClient } from "@supabase/supabase-js"
+import { cookies } from "next/headers"
+import { requireSupabaseEnv } from "./env"
 
+type ServerClient = SupabaseClient
 type AdminClient = SupabaseClient
 
 const globalForSupabase = globalThis as typeof globalThis & {
   supabaseAdmin?: AdminClient
-}
-
-function requireEnv(name: "SUPABASE_URL" | "SUPABASE_SERVICE_ROLE_KEY"): string {
-  const value = process.env[name]
-  if (!value) {
-    throw new Error(
-      `[supabase] Missing environment variable ${name}. ` +
-        `Set it in .env.local (local) or the deployment environment.`,
-    )
-  }
-  return value
 }
 
 /**
@@ -49,8 +42,6 @@ function assertSecretKey(key: string): void {
       )
     }
     try {
-      // `base64url` as a Buffer encoding is available on Node 14.18+ / 15.13+;
-      // Next.js 16 requires Node 18.18+, so this is safe for every target.
       const payload = JSON.parse(
         Buffer.from(parts[1], "base64url").toString("utf8"),
       ) as { role?: string }
@@ -85,8 +76,8 @@ function assertSecretKey(key: string): void {
  */
 export function getSupabaseAdmin(): AdminClient {
   if (!globalForSupabase.supabaseAdmin) {
-    const url = requireEnv("SUPABASE_URL")
-    const key = requireEnv("SUPABASE_SERVICE_ROLE_KEY")
+    const url = requireSupabaseEnv("SUPABASE_URL")
+    const key = requireSupabaseEnv("SUPABASE_SERVICE_ROLE_KEY")
     assertSecretKey(key)
     globalForSupabase.supabaseAdmin = createClient(url, key, {
       auth: {
@@ -96,4 +87,45 @@ export function getSupabaseAdmin(): AdminClient {
     })
   }
   return globalForSupabase.supabaseAdmin
+}
+
+/**
+ * Server-side Supabase client authenticated as the current user via cookies.
+ *
+ * Use this in Server Components, Server Actions, and Route Handlers to run
+ * queries with the caller's JWT. RLS policies will enforce org isolation.
+ *
+ * Not a singleton: a new instance is created per request because the cookie
+ * jar differs between callers. Caching it on `globalThis` would leak one
+ * user's session to another.
+ *
+ * The `setAll` handler is wrapped in try/catch because Server Components
+ * cannot mutate cookies (they are read-only there). Cookie refresh happens
+ * in the proxy (`proxy.ts`), so the thrown error is benign and expected
+ * whenever this client is used from a Server Component.
+ */
+export async function getSupabaseServerClient(): Promise<ServerClient> {
+  const cookieStore = await cookies()
+
+  return createServerClient(
+    requireSupabaseEnv("NEXT_PUBLIC_SUPABASE_URL"),
+    requireSupabaseEnv("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"),
+    {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll()
+        },
+        setAll(cookiesToSet) {
+          try {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options),
+            )
+          } catch {
+            // Server Components cannot set cookies. Safe to ignore because
+            // the proxy (`proxy.ts`) refreshes the session on every request.
+          }
+        },
+      },
+    },
+  )
 }
