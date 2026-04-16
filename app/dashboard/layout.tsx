@@ -1,10 +1,8 @@
 import { redirect } from "next/navigation"
-import { eq } from "drizzle-orm"
 import { AppSidebar } from "@/components/app-sidebar"
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 import { getAuthState } from "@/features/shared/infrastructure/session-context"
-import { withRLS } from "@/features/shared/infrastructure/rls"
-import { organization } from "@/lib/db/schema"
+import { getUserOrganizationsAction } from "@/features/shared/presentation/organization-actions"
 
 type UserMetadata = { full_name?: string; avatar_url?: string }
 
@@ -35,19 +33,9 @@ export default async function DashboardLayout({
 
   const { ctx, claims } = authState
 
-  const orgRows = await withRLS(ctx, (tx) =>
-    tx
-      .select({ id: organization.id, name: organization.name, slug: organization.slug })
-      .from(organization)
-      .where(eq(organization.id, ctx.orgId))
-      .limit(1),
-  )
+  const organizations = await getUserOrganizationsAction()
 
-  const activeOrg = orgRows[0]
-  if (!activeOrg) {
-    // JWT references an org that no longer exists, or RLS denied the read
-    // (user was removed from the org). Signal a clean re-auth rather than
-    // crash downstream consumers.
+  if (organizations.length === 0) {
     redirect("/sign-in")
   }
 
@@ -61,7 +49,10 @@ export default async function DashboardLayout({
 
   return (
     <SidebarProvider>
-      <AppSidebar user={user} activeOrg={activeOrg} />
+      <AppSidebar
+        user={user}
+        orgSwitcher={{ activeOrgId: ctx.orgId, organizations }}
+      />
       <SidebarInset>{children}</SidebarInset>
     </SidebarProvider>
   )

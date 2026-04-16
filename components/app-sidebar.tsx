@@ -18,7 +18,7 @@ import {
 import { NavMain } from "@/components/nav-main"
 import { NavSecondary } from "@/components/nav-secondary"
 import { NavUser, type NavUserData } from "@/components/nav-user"
-import { OrgSwitcher, type ActiveOrg } from "@/components/org-switcher"
+import { OrgSwitcher, type OrgSwitcherProps } from "@/components/org-switcher"
 import {
   Sidebar,
   SidebarContent,
@@ -55,14 +55,14 @@ const data = {
 
 interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
   user: NavUserData
-  activeOrg: ActiveOrg
+  orgSwitcher: OrgSwitcherProps
 }
 
-export function AppSidebar({ user, activeOrg, ...props }: AppSidebarProps) {
+export function AppSidebar({ user, orgSwitcher, ...props }: AppSidebarProps) {
   return (
     <Sidebar variant="inset" {...props}>
       <SidebarHeader>
-        <OrgSwitcher activeOrg={activeOrg} />
+        <OrgSwitcher {...orgSwitcher} />
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={data.navMain} />
