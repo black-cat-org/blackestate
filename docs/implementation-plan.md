@@ -4,7 +4,7 @@
 >
 > **Creado:** 2026-04-13
 > **Última actualización:** 2026-04-14
-> **Estado:** Capa 1 completada, Capa 2.1 (schema) completada, enums migrados a inglés. Siguiente: RLS policies, luego reemplazar mocks con queries reales.
+> **Estado:** Capa 1 completada. Capa 2: RLS done, Clean Architecture done (8 feature modules), Storage done (buckets + upload), E2E testing done (Playwright). Auth org-creation fix deployed. Siguiente: media-step UI integration, avatar upload, then Capa 3.
 
 ---
 
@@ -41,8 +41,8 @@
 | 1.1.13 | Crear páginas de auth (UI) | `app/(auth)/sign-in/page.tsx` y `sign-up/page.tsx` con shadcn (formularios custom) | ✅ |
 | 1.1.14 | Crear componente UserButton | Componente con avatar, nombre, dropdown menu (perfil, settings, logout) | ✅ |
 | 1.1.15 | Crear componente OrgSwitcher | Componente para cambiar entre organizaciones | ✅ |
-| 1.1.16 | Hook: auto-crear org en sign-up | After hook en sign-up que crea una org personal con rol `owner` | ✅ |
-| 1.1.17 | Test end-to-end de auth flow | Sign-up → org creada → session activa → dashboard accesible → sign-out funciona | ✅ (16/16 tests passed) |
+| 1.1.16 | Hook: auto-crear org en sign-up | `hooks.after` in auth.ts: creates org via `auth.api.createOrganization` after sign-up/OAuth callback. Updates session DB row with `activeOrganizationId`. `session.create.before` hook sets org for sign-in. 3-layer defense: hook → databaseHook → ensureOrganization fallback. | ✅ (refactored) |
+| 1.1.17 | Test end-to-end de auth flow | Playwright E2E: sign-up → org created → dashboard loads (0 errors), sign-out → sign-in → dashboard loads, org isolation verified (RLS), session.activeOrganizationId verified in DB for all users. | ✅ |
 | 1.1.18 | Geolocalización en sessions | Enriquecer sessions con país, ciudad y dispositivo usando headers de Vercel (`x-vercel-ip-country`, etc.) | ⏭️ Diferido a producción |
 | 1.1.19 | Migrar IDs de auth a UUID | Migrar IDs base62 → UUID, configurar `generateId: () => crypto.randomUUID()` en Better Auth | ✅ |
 
@@ -263,12 +263,14 @@ Flujo completo para que owner/admin transfiera propiedades (+ cascade) entre age
 
 | # | Tarea | Detalle | Estado |
 |---|-------|---------|--------|
-| 2.3.1 | Crear buckets | `property-media` (fotos, videos, planos), `avatars`, `brochures` | ⬜ |
-| 2.3.2 | Configurar RLS en Storage | Policies para que cada org solo acceda a sus archivos | ⬜ |
-| 2.3.3 | Crear helper de upload | `lib/supabase/storage.ts` con funciones `uploadPropertyMedia()`, `uploadAvatar()`, `deleteMedia()` | ⬜ |
-| 2.3.4 | Integrar con property form | Conectar el `media-step.tsx` del wizard con upload real a Storage | ⬜ |
-| 2.3.5 | Integrar con perfil/settings | Upload de avatar y logo de agencia | ⬜ |
-| 2.3.6 | Image optimization | Configurar `next.config.ts` con el dominio de Supabase Storage para `next/image` | ⬜ |
+| 2.3.1 | Create buckets | `property-media` (public, 10MB, images), `avatars` (public, 2MB, images), `brochures` (private, 20MB, PDF). Created via SQL. | ✅ |
+| 2.3.2 | Storage RLS policies | 10 policies: public SELECT for property-media/avatars, org-scoped INSERT/UPDATE/DELETE via folder structure `{org_id}/...`. Brochures fully private. | ✅ |
+| 2.3.3 | Supabase JS client | `lib/supabase/server.ts` — admin client with `service_role` key. Server-side only. | ✅ |
+| 2.3.4 | Storage helper functions | `lib/supabase/storage.ts` — `uploadFile`, `uploadFiles`, `deleteFile`, `deleteFiles`, `getSignedUrl`. Path format: `{orgId}/{entityId}/{uuid}.{ext}`. | ✅ |
+| 2.3.5 | Storage Server Actions | `features/properties/presentation/storage-actions.ts` — `uploadPropertyMediaAction`, `deletePropertyMediaAction`, `uploadAvatarAction`. | ✅ |
+| 2.3.6 | Image optimization | `next.config.ts` — added Supabase Storage hostname to `remotePatterns` for `next/image`. | ✅ |
+| 2.3.7 | Integrate with property form | `media-step.tsx` rewritten with `react-dropzone` (drag & drop, previews, delete). Files accumulated in memory during wizard, uploaded to Storage on submit. `property-form-wizard.tsx` handles upload flow: create property → upload files → update with URLs. Disabled state during submit. | ✅ |
+| 2.3.8 | Integrate with profile/settings | Connect avatar upload in profile section to `uploadAvatarAction`. | ⬜ |
 
 ---
 
@@ -399,3 +401,17 @@ Flujo completo para que owner/admin transfiera propiedades (+ cascade) entre age
 - **Drizzle Kit:** NUNCA usar `drizzle-kit push`. Solo `db:generate` + `db:migrate`. Hook de protección configurado.
 - **Soft delete:** `deleted_at` nullable en toda tabla de dominio. Las queries deben filtrar `WHERE deleted_at IS NULL`.
 - **Pool compartido:** `lib/db/pool.ts` con guard `globalThis` — usado por Better Auth y Drizzle.
+
+---
+
+## Improvement Opportunities
+
+Ideas validated but deferred. Implement when the relevant feature is stable and the MVP is functional.
+
+| # | Idea | Context | Implement when |
+|---|---|---|---|
+| IMP-1 | Auto-save draft wizard | Each wizard step persists to DB as draft. User can resume from any step. Fotos se suben con propertyId real. No se pierde progreso. | After property CRUD is battle-tested with real users |
+| IMP-2 | i18n (internationalization) | Extract all user-facing strings to translation files (`es.json`, `en.json`). Use `next-intl` or `react-i18next`. Currently all Spanish is hardcoded. | When expanding to non-Spanish markets |
+| IMP-3 | `MarketingSection` in settings | Component exists (`features/settings/presentation/components/sections/marketing-section.tsx`) but is not connected to settings layout. | When building marketing settings feature |
+| IMP-4 | Hardcoded email in brochure PDF | `features/ai-contents/presentation/components/ai-brochure-generator.tsx:176` uses `gonzalo@blackestate.com`. Should use AgentProfile email. | When implementing real brochure generation (Capa 3.2) |
+| IMP-5 | Amenity labels duplicated inline | `ai-brochure-generator.tsx:141-162` has inline amenity label map. Should import from `lib/constants/property.ts`. | When implementing real brochure generation (Capa 3.2) |

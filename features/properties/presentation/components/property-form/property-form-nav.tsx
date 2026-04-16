@@ -14,6 +14,7 @@ interface PropertyFormNavProps {
   onPublish?: () => void
   isLastStep: boolean
   saveLabel?: string
+  submitting?: "paused" | "active" | false
 }
 
 export function PropertyFormNav({
@@ -25,6 +26,7 @@ export function PropertyFormNav({
   onPublish,
   isLastStep,
   saveLabel = "Guardar como borrador",
+  submitting = false,
 }: PropertyFormNavProps) {
   return (
     <div className="space-y-6">
@@ -76,12 +78,12 @@ export function PropertyFormNav({
         </Button>
         {isLastStep ? (
           <div className="flex gap-2">
-            <Button type="button" variant="outline" onClick={onSave}>
-              {saveLabel}
+            <Button type="button" variant="outline" onClick={onSave} disabled={!!submitting}>
+              {submitting === "paused" ? "Guardando..." : saveLabel}
             </Button>
             {onPublish && (
-              <Button type="button" onClick={onPublish}>
-                Publicar
+              <Button type="button" onClick={onPublish} disabled={!!submitting}>
+                {submitting === "active" ? "Publicando..." : "Publicar"}
               </Button>
             )}
           </div>

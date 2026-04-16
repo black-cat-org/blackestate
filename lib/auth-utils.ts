@@ -7,6 +7,18 @@ export async function getSession() {
   });
 }
 
+/**
+ * Safety net: ensures the user has an active organization.
+ * Called from the dashboard layout BEFORE any page renders.
+ *
+ * Primary org creation happens in hooks.after (lib/auth.ts).
+ * This function handles edge cases: race conditions, hook failures,
+ * or users who somehow have no org.
+ *
+ * Note: setActiveOrganization() updates the DB row but cannot write
+ * the browser cookie from a Server Component (Next.js blocks cookies().set).
+ * The DB update is still effective because getSession() reads by token from DB.
+ */
 export async function ensureOrganization() {
   const session = await getSession();
   if (!session) return null;

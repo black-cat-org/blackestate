@@ -1,5 +1,5 @@
 import { headers } from "next/headers"
-import { eq } from "drizzle-orm"
+import { eq, sql } from "drizzle-orm"
 import { auth } from "@/lib/auth"
 import { db } from "@/lib/db"
 import { platformAdmins } from "@/lib/db/schema"
@@ -21,29 +21,35 @@ export async function getSessionContext(): Promise<SessionContext> {
   }
 
   let orgId = session.session.activeOrganizationId
+  let role: "owner" | "admin" | "agent" | undefined
 
-  if (!orgId) {
-    const orgs = await auth.api.listOrganizations({ headers: h })
-    if (orgs && orgs.length > 0) {
-      await auth.api.setActiveOrganization({
-        headers: h,
-        body: { organizationId: orgs[0].id },
-      })
-      orgId = orgs[0].id
+  // Try to get active member from the session cookie
+  if (orgId) {
+    const activeMember = await auth.api.getActiveMember({ headers: h })
+    if (activeMember) {
+      role = activeMember.role as "owner" | "admin" | "agent"
     }
   }
 
-  if (!orgId) {
+  // Fallback: if session cookie doesn't have activeOrganizationId yet
+  // (first request after login/signup), read directly from member table.
+  // The dashboard layout calls ensureOrganization() first, so the org
+  // always exists in DB by the time this runs.
+  if (!orgId || !role) {
+    const memberRows = await db.execute(
+      sql`SELECT "organizationId", "role" FROM "member" WHERE "userId" = ${session.user.id} LIMIT 1`
+    )
+    const row = (memberRows.rows as Array<{ organizationId: string; role: string }>)[0]
+
+    if (row) {
+      orgId = row.organizationId
+      role = row.role as "owner" | "admin" | "agent"
+    }
+  }
+
+  if (!orgId || !role) {
     throw new Error("No active organization")
   }
-
-  const activeMember = await auth.api.getActiveMember({ headers: h })
-
-  if (!activeMember) {
-    throw new Error("Not a member of the active organization")
-  }
-
-  const role = activeMember.role as "owner" | "admin" | "agent"
 
   const superAdminRow = await db
     .select({ userId: platformAdmins.userId })

@@ -310,6 +310,22 @@ npx drizzle-kit check      # Verify config (safe, read-only)
 - **Billing:** Paddle (MoR) + Payoneer (payout to Bolivia)
 - **Full reference:** `docs/roles-and-permissions.md`
 
+### Org Creation Flow (3-layer defense)
+
+1. **`hooks.after` in `lib/auth.ts`** (primary) — After sign-up or OAuth callback, creates org via `auth.api.createOrganization` with `userId`. Updates session DB row with `activeOrganizationId`. Wrapped in try/catch — sign-up never fails if org creation fails.
+2. **`databaseHooks.session.create.before`** — For sign-in of existing users. Queries `member` table to set `activeOrganizationId` when session is created.
+3. **`ensureOrganization()` in dashboard layout + `getSessionContext()` fallback** — Safety net. Queries member table directly if session cookie doesn't have org. Creates org if none exists.
+
+### Storage
+
+- **Supabase Storage** via `@supabase/supabase-js` with `service_role` key (server-side only)
+- **Client:** `lib/supabase/server.ts` — singleton with `globalThis` guard
+- **Helpers:** `lib/supabase/storage.ts` — `uploadFile`, `uploadFiles`, `deleteFile`, `deleteFiles`, `getSignedUrl`
+- **Buckets:** `property-media` (public, 10MB images), `avatars` (public, 2MB images), `brochures` (private, 20MB PDF)
+- **Path format:** `{orgId}/{entityId}/{uuid}.{ext}` — org isolation via folder structure
+- **RLS:** 10 policies on `storage.objects` — public SELECT for property-media/avatars, org-scoped writes
+- **Image optimization:** `next.config.ts` dynamically adds Supabase hostname from `SUPABASE_URL` env var
+
 ## Project Structure
 
 ```
