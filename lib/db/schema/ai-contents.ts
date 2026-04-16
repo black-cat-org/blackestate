@@ -1,11 +1,11 @@
-import { pgTable, text, timestamp, index } from "drizzle-orm/pg-core";
+import { pgTable, text, uuid, timestamp, index } from "drizzle-orm/pg-core";
 import { properties } from "./properties";
 import { aiContentTypeEnum, aiPlatformEnum } from "./enums";
 
 export const aiContents = pgTable("ai_contents", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
-  organizationId: text("organization_id").notNull(),
-  createdByUserId: text("created_by_user_id").notNull(),
+  organizationId: uuid("organization_id").notNull(),
+  createdByUserId: uuid("created_by_user_id").notNull(),
   propertyId: text("property_id").notNull().references(() => properties.id),
 
   type: aiContentTypeEnum("type").notNull(),

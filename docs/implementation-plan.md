@@ -16,8 +16,8 @@
 | 03 | Custom access token hook (claims active_org_id, org_role, is_super_admin, user_name + orphan defense) | ✅ 2026-04-16 |
 | 04 | RBAC + authorize() function (seed 57 rows + SECURITY DEFINER function con silent-false defense) | ✅ 2026-04-16 |
 | 05 | Org creation lifecycle (Block A: trigger on_auth_user_created + partial index). Block B (Server Actions) movido a sub-plan 09 por dependencia de getSupabaseServerClient | ✅ Block A 2026-04-16 |
-| 06 | Invitations flow | ⬜ |
-| 07 | RLS policies rewrite | ⬜ |
+| 06 | Invitations flow — **ABSORBIDO en sub-plans 09 (Server Actions) + 10 (UI)**. Sub-plan 06 es 100% application layer; sin DB artifacts propios (tabla `invitation` ya existe desde 01, policies en 07). No se ejecuta como fase separada | ⏭️ Absorbido en 09+10 |
+| 07 | RLS policies rewrite — 56 policies (5 multitenancy + 12 domain + storage × 3 buckets) + migration text→uuid de 20 columnas domain + 19 FKs nuevas + 2 helper functions (is_org_member, is_org_admin) + 3 partial indexes | ✅ 2026-04-16 |
 | 08 | Storage simplification | ⬜ |
 | 09 | Server Actions + getSessionContext refactor | ⬜ |
 | 10 | UI components migration | ⬜ |
@@ -267,7 +267,7 @@
 | 2.2.K2 | Hardcoded email `gonzalo@blackestate.com` in brochure PDF footer — should use AgentProfile email | `features/ai-contents/presentation/components/ai-brochure-generator.tsx:176` | When implementing real brochure generation (Capa 3.2) |
 | 2.2.K3 | Amenity labels duplicated inline instead of importing from `lib/constants/property.ts` | `features/ai-contents/presentation/components/ai-brochure-generator.tsx:141-162` | When implementing real brochure generation (Capa 3.2) |
 
-### 2.4 Transferencia de propiedades (enterprise)
+### 2.4 Transferencia de propiedades
 
 Flujo completo para que owner/admin transfiera propiedades (+ cascade) entre agentes de la misma org. Incluye preview, confirmación, audit trail, e inbox para el agente receptor.
 
