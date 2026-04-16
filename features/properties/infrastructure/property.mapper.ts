@@ -9,6 +9,7 @@ import type { PropertyRow, PropertyInsert } from "./property.model"
 export function mapRowToEntity(row: PropertyRow): Property {
   return {
     id: row.id,
+    createdByUserId: row.createdByUserId,
     title: row.title,
     description: row.description,
     shortDescription: row.shortDescription ?? undefined,

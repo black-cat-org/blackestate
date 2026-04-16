@@ -404,6 +404,18 @@ Adicionales de smoke test (bugs encontrados en runtime, no detectados por review
 - `@supabase/ssr@0.8.x` instalado como peer de `@supabase/supabase-js@2.103.2` (ya presente).
 - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` + `NEXT_PUBLIC_SUPABASE_URL` requeridas en `.env.local` (confirmado por usuario).
 
+### Tarea #65 — notas de implementación
+
+**Scope**: refactor storage helpers para aceptar `SupabaseClient` como primer param. Callers pasan cliente autenticado (RLS-enforced) o admin (Inngest).
+
+**Archivos tocados**: `lib/supabase/storage.ts` (5 helpers refactored), `lib/supabase/storage-utils.ts` (NEW — `extractStoragePath` sin `server-only`), `features/properties/application/upload-property-media.use-case.ts`, `features/properties/application/delete-property-media.use-case.ts`, `features/properties/presentation/storage-actions.ts`, `features/properties/domain/property.entity.ts`, `features/properties/infrastructure/property.mapper.ts`.
+
+**Code review (feature-dev:code-reviewer)**: 1 Critical + 1 Important.
+1. **Critical**: agent podía subir media a propiedad de otro agente en su org — fix: guard `ctx.role === "agent" && property.createdByUserId !== ctx.userId`. Requirió agregar `createdByUserId` a Property entity + mapper.
+2. **Important**: `server-only` en storage.ts envenenaba `extractStoragePath` (pure function) — fix: separado a `storage-utils.ts`. Re-export desde `storage.ts` para callers existentes.
+
+**Smoke test**: sign-in test user → dashboard → properties → zero errors. Test user limpiado post-test.
+
 ## Checklist
 
 - [x] `getSupabaseServerClient` + `getSupabaseAdmin` separados
@@ -414,6 +426,8 @@ Adicionales de smoke test (bugs encontrados en runtime, no detectados por review
 - [x] Duplicados eliminados
 - [x] Todas las imports actualizadas
 - [x] Build + lint pass
+- [x] Storage helpers aceptan `client` param
+- [x] Agent ownership check en upload media use case
 
 ## Rollback
 

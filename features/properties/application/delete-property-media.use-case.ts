@@ -1,8 +1,10 @@
+import type { SupabaseClient } from "@supabase/supabase-js"
 import type { SessionContext } from "@/features/shared/domain/session-context"
 import { deleteFile, extractStoragePath } from "@/lib/supabase/storage"
 
 export async function deletePropertyMediaUseCase(
   ctx: SessionContext,
+  client: SupabaseClient,
   photoUrl: string,
 ): Promise<void> {
   const path = extractStoragePath("property-media", photoUrl)
@@ -15,5 +17,5 @@ export async function deletePropertyMediaUseCase(
     throw new Error("Forbidden")
   }
 
-  await deleteFile("property-media", path)
+  await deleteFile(client, "property-media", path)
 }
