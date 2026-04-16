@@ -15,7 +15,7 @@
 | 02 | Supabase Auth dashboard config (providers, templates ES neutro, URL whitelist, env vars) | ✅ 2026-04-16 |
 | 03 | Custom access token hook (claims active_org_id, org_role, is_super_admin, user_name + orphan defense) | ✅ 2026-04-16 |
 | 04 | RBAC + authorize() function (seed 57 rows + SECURITY DEFINER function con silent-false defense) | ✅ 2026-04-16 |
-| 05 | Org creation lifecycle (trigger) | ⬜ |
+| 05 | Org creation lifecycle (Block A: trigger on_auth_user_created + partial index). Block B (Server Actions) movido a sub-plan 09 por dependencia de getSupabaseServerClient | ✅ Block A 2026-04-16 |
 | 06 | Invitations flow | ⬜ |
 | 07 | RLS policies rewrite | ⬜ |
 | 08 | Storage simplification | ⬜ |

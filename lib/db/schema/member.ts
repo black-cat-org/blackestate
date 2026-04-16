@@ -18,6 +18,14 @@ import { organization } from "./organization";
  *
  * UNIQUE(userId, organizationId): a user can only have one active role per org.
  * Soft delete (`deletedAt`) preserves historical membership for audit.
+ *
+ * Hot-path partial index `member_active_user_org_idx ON (user_id,
+ * organization_id) WHERE deleted_at IS NULL` is maintained via manual SQL in
+ * `drizzle/sql/005_org_creation_trigger.sql`. Drizzle Kit cannot express
+ * partial indexes, so it lives outside the schema. The previous full
+ * `member_deleted_at_idx` was intentionally dropped there — do NOT re-add
+ * it here, or `drizzle-kit generate` will regenerate it and undo the
+ * optimization.
  */
 export const member = pgTable(
   "member",
@@ -44,7 +52,6 @@ export const member = pgTable(
       table.organizationId,
     ),
     userIdx: index("member_user_id_idx").on(table.userId),
-    deletedAtIdx: index("member_deleted_at_idx").on(table.deletedAt),
   }),
 );
 

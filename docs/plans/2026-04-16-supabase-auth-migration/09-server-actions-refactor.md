@@ -1,6 +1,6 @@
 # Sub-plan 09 — Server Actions + Session Context Refactor
 
-> **Depends on:** 01, 02, 03, 05, 07
+> **Depends on:** 01, 02, 03, 05 (Block A), 07
 > **Unlocks:** 10
 
 ## Goal
@@ -13,6 +13,21 @@ Reescribir la infrastructure de auth en el proyecto:
 4. `features/shared/infrastructure/session-context.ts` — reescrito para leer de Supabase Auth (via `supabase.auth.getClaims()`).
 5. Eliminar `withRLS()` — ya no necesario. Drizzle queries siguen directo, RLS se aplica por cookies auth.
 6. Actualizar call sites: todas las Server Actions llaman `getSessionContext()` como antes (API compatible).
+7. **Block B absorbido de sub-plan 05** (ver abajo) — Server Actions de organization lifecycle.
+
+## Block B absorbido desde sub-plan 05
+
+Sub-plan 05 quedó reducido a Block A (DB trigger + indexes) por dependencia: los Server Actions de organization lifecycle necesitan `getSupabaseServerClient()` que esta fase crea. Implementación acá landea ambos simultáneamente.
+
+Archivo a crear en esta fase: `features/shared/presentation/organization-actions.ts` con 3 Server Actions:
+
+- **`switchActiveOrgAction(newOrgId: string)`** — valida que el user es member del newOrgId vía Drizzle query con `withRLS` (o cliente Supabase, según decisión final de esta fase); upsert en `public.user_active_org`; fuerza `supabase.auth.refreshSession()` para que el próximo JWT refleje el cambio; `revalidatePath("/dashboard")`.
+
+- **`createOrganizationAction({ name, slug })`** — valida slug format + uniqueness; transaction Drizzle: insert `organization` + insert `member(owner)` + upsert `user_active_org`; `supabase.auth.refreshSession()`.
+
+- **`updateOrganizationAction(orgId, patch: { name?, logoUrl? })`** — valida que `ctx.orgId === orgId` (solo active org) + `ctx.role IN ('owner','admin')`; UPDATE en `organization`; `revalidatePath("/dashboard/settings")`.
+
+El diseño detallado de estos Server Actions está en **`05-org-creation-lifecycle.md` Block B section** (reference). Esta fase implementa ese diseño con las dependencies ya presentes.
 
 ## Archivos
 

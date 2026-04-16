@@ -2,6 +2,50 @@
 
 > **Depends on:** 01, 03
 > **Unlocks:** 07, 09, 10
+> **Status:** ✅ Block A Completed — 2026-04-16 (Block B moved to sub-plan 09)
+> **Branch:** `feat/auth-migration-phase-05`
+
+## Scope split (importante)
+
+Este sub-plan se dividió en dos bloques durante ejecución:
+
+**Block A — DB layer (esta fase, completada):**
+- Trigger `on_auth_user_created` sobre `auth.users`
+- Function `public.handle_new_user()` que crea `organization` + `member(owner)` + `user_active_org`
+- Partial index `member_active_user_org_idx` + drop del `member_deleted_at_idx` redundante (tarea deferida del review de sub-plan 01)
+
+**Block B — Server Actions TypeScript (movido a sub-plan 09):**
+- `switchActiveOrgAction(newOrgId)`
+- `createOrganizationAction({ name, slug })`
+- `updateOrganizationAction(id, patch)`
+
+**Motivo del split:** Block B depende de `getSupabaseServerClient()` (no existe hasta sub-plan 09) y de la versión Supabase-Auth-aware de `getSessionContext()` (también sub-plan 09). Implementarlo acá resultaría en build roto o stubs sin valor. Sub-plan 09 landea ambos simultáneamente para mantener `npm run build` verde en cada merge.
+
+Las secciones de este documento que describen los Server Actions se conservan como **referencia de diseño** para cuando sub-plan 09 los implemente.
+
+## Resumen ejecución Block A
+
+- `public.handle_new_user()` creada con `SECURITY DEFINER` + `set search_path = ''`
+- Display name coalesce: `full_name → name → email → 'User'` (alineado con JWT hook de sub-plan 03)
+- Slug: `email_local_part` cleaned + timestamp hex suffix + md5 fallback sobre collision via nested `EXCEPTION WHEN unique_violation`
+- `EXCEPTION WHEN OTHERS` defensivo: sign-up nunca falla por org creation; `RAISE WARNING` logueado para ops
+- Trigger `on_auth_user_created AFTER INSERT ON auth.users FOR EACH ROW`
+- Grants: EXECUTE a `supabase_auth_admin`; INSERT belt-and-suspenders a las 3 tablas target (defense contra ownership drift futuro)
+- Revokes: `authenticated/anon/public` no pueden ejecutar la function directamente
+
+**Post-review fixes aplicados (1 blocker + 1 major + 3 minor):**
+- **Blocker:** documentar SECURITY DEFINER ownership assumption + agregar grants INSERT defensivos
+- **Major:** race-safe slug via nested `EXCEPTION WHEN unique_violation` (antes era `EXISTS + INSERT` con TOCTOU window)
+- **Minor:** removido `deletedAtIdx` de `lib/db/schema/member.ts` (evita drift con `drizzle-kit generate`)
+- **Minor:** null email guard en slug + name derivation (futuro-proof para phone/anon auth)
+- **Minor:** alineado fallback de name con JWT hook (full email, no solo local part)
+
+**Tests post-fix (3/3 PASSED):**
+- Test 1 — email sin metadata → name = email, slug = local-part + timestamp
+- Test 2 — `full_name` metadata → org.name = "Jane Doe"
+- Test 3 — `name` metadata (Google OAuth pattern) → org.name = "John Smith"
+- Para cada test, verificación: `member(role=owner)`, `user_active_org` consistente, `org(plan=free, max_seats=1)`.
+- Cleanup completo (CASCADE al borrar user elimina las 3 rows derivadas).
 
 ## Goal
 
