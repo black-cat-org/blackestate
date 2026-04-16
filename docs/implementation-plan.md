@@ -3,8 +3,8 @@
 > Plan de ejecución granular para llevar Black Estate de frontend con datos mock a producto funcional con backend real.
 >
 > **Creado:** 2026-04-13
-> **Última actualización:** 2026-04-14
-> **Estado:** Capa 1 completada. Capa 2: RLS done, Clean Architecture done (8 feature modules), Storage done (buckets + upload), E2E testing done (Playwright). Auth org-creation fix deployed. Siguiente: media-step UI integration, avatar upload, then Capa 3.
+> **Última actualización:** 2026-04-15
+> **Estado:** Capa 1 completada. Capa 2: RLS done, Clean Architecture done (8 feature modules), Storage done (buckets + upload), E2E testing done (Playwright). Auth org-creation fix deployed. Avatar drag & drop UI done. Siguiente: split modular profile/billing/integrations/notifications/settings + persistencia real (ver `docs/plans/2026-04-15-profile-settings-modular-split.md`), then Capa 3.
 
 ---
 
@@ -270,7 +270,26 @@ Flujo completo para que owner/admin transfiera propiedades (+ cascade) entre age
 | 2.3.5 | Storage Server Actions | `features/properties/presentation/storage-actions.ts` — `uploadPropertyMediaAction`, `deletePropertyMediaAction`, `uploadAvatarAction`. | ✅ |
 | 2.3.6 | Image optimization | `next.config.ts` — added Supabase Storage hostname to `remotePatterns` for `next/image`. | ✅ |
 | 2.3.7 | Integrate with property form | `media-step.tsx` rewritten with `react-dropzone` (drag & drop, previews, delete). Files accumulated in memory during wizard, uploaded to Storage on submit. `property-form-wizard.tsx` handles upload flow: create property → upload files → update with URLs. Disabled state during submit. | ✅ |
-| 2.3.8 | Integrate with profile/settings | Avatar upload connected in `profile-section.tsx`. Uses `uploadAvatarAction`, hidden file input, `next/image` preview, loading state. | ✅ |
+| 2.3.8 | Integrate with profile/settings | Avatar drag & drop in `profile-section.tsx` via `react-dropzone` (single file, 2MB, JPG/PNG/WEBP). Card-entera dropzone con click-to-pick + drop. Loading overlay, rejection toasts tipados (`file-too-large` / `file-invalid-type`). Sube a bucket `avatars` via `uploadAvatarAction`. ⚠️ Persistencia de URL diferida — actualmente solo guarda en `settings.service.ts` (memoria). Persistencia real en `user.image` + tabla `agent_profile` queda para split modular próximo. | ✅ (UI), ⏭️ (persistencia) |
+
+### 2.5 Split modular: profile / billing / integrations / notifications / settings
+
+Split del módulo `features/settings/` actual (grab-bag herencia del MVP mock) en 5 módulos por bounded context DDD. Incluye persistencia real (eliminar mocks in-memory), schema DB nuevo, RLS, Clean Architecture, y migración de UI existente.
+
+**Plan completo:** `docs/plans/2026-04-15-profile-settings-modular-split.md`
+
+| # | Tarea | Detalle | Estado |
+|---|-------|---------|--------|
+| 2.5.1 | Schema DB | Tablas `agent_profile`, `subscription`, `invoice`, `integration`, `notification_pref`, `org_settings`. Generar migración con `drizzle-kit generate`. | ⬜ |
+| 2.5.2 | RLS policies | FORCE RLS en todas las tablas nuevas. Policies por tenancy (user vs org) + role gate en `integration` (tokens sensibles). | ⬜ |
+| 2.5.3 | Módulo `profile/` | Clean Arch completo + persistencia avatar via `auth.api.updateUser` + tabla `agent_profile` para bio/socials. | ⬜ |
+| 2.5.4 | Módulo `settings/` (residual) | Clean Arch para org preferences (timezone, currency, brand, hashtags). | ⬜ |
+| 2.5.5 | Módulo `notifications/` | Clean Arch para user notification prefs. Knock integration landea aquí en Capa 4. | ⬜ |
+| 2.5.6 | Módulo `billing/` | Clean Arch read-only (plan, seats, invoices). Paddle integration en Capa 3. | ⬜ |
+| 2.5.7 | Módulo `integrations/` | Clean Arch + schema para tokens cifrados. OAuth flows en Capa 3. | ⬜ |
+| 2.5.8 | Migrar UI existente | Mover `profile-section`, `business-section`, `notifications-section`, `integrations-section`, `marketing-section` a sus respectivos módulos. | ⬜ |
+| 2.5.9 | Cleanup mock | Borrar `features/settings/infrastructure/settings.service.ts` + defaults no usados en `lib/constants/settings.ts`. | ⬜ |
+| 2.5.10 | Tests E2E | Playwright: persistencia profile + avatar, RLS cross-user/cross-org, role gates en integrations. | ⬜ |
 
 ---
 

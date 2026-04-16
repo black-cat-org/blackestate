@@ -1,7 +1,8 @@
 "use client"
 
-import { useState, useRef } from "react"
+import { useState, useCallback } from "react"
 import Image from "next/image"
+import { useDropzone, type FileRejection } from "react-dropzone"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -9,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { Loader2 } from "lucide-react"
+import { cn } from "@/lib/utils"
 import { updateAgentProfileAction } from "@/features/settings/presentation/actions"
 import { uploadAvatarAction } from "@/features/properties/presentation/storage-actions"
 import { toast } from "sonner"
@@ -22,30 +24,57 @@ export function ProfileSection({ data: initialData }: ProfileSectionProps) {
   const [data, setData] = useState<AgentProfile>(initialData)
   const [saving, setSaving] = useState(false)
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
-  const avatarInputRef = useRef<HTMLInputElement>(null)
 
   function update<K extends keyof AgentProfile>(field: K, value: AgentProfile[K]) {
     setData((prev) => ({ ...prev, [field]: value }))
   }
 
-  async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file) return
-
+  const uploadAvatar = useCallback(async (file: File) => {
     setUploadingAvatar(true)
     try {
       const formData = new FormData()
       formData.set("file", file)
       const url = await uploadAvatarAction(formData)
-      update("avatar", url)
+      setData((prev) => ({ ...prev, avatar: url }))
       toast.success("Foto actualizada")
     } catch {
       toast.error("Error al subir la foto")
     } finally {
       setUploadingAvatar(false)
-      if (avatarInputRef.current) avatarInputRef.current.value = ""
     }
-  }
+  }, [])
+
+  const onDrop = useCallback(
+    (acceptedFiles: File[], fileRejections: FileRejection[]) => {
+      if (fileRejections.length > 0) {
+        const error = fileRejections[0].errors[0]
+        if (error.code === "file-too-large") {
+          toast.error("La imagen debe pesar menos de 2MB")
+        } else if (error.code === "file-invalid-type") {
+          toast.error("Formato no soportado. Usá JPG, PNG o WEBP")
+        } else {
+          toast.error("Archivo inválido")
+        }
+        return
+      }
+      const file = acceptedFiles[0]
+      if (file) uploadAvatar(file)
+    },
+    [uploadAvatar],
+  )
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept: {
+      "image/jpeg": [".jpg", ".jpeg"],
+      "image/png": [".png"],
+      "image/webp": [".webp"],
+    },
+    maxSize: 2 * 1024 * 1024,
+    multiple: false,
+    maxFiles: 1,
+    disabled: uploadingAvatar,
+  })
 
   async function handleSave() {
     setSaving(true)
@@ -74,49 +103,47 @@ export function ProfileSection({ data: initialData }: ProfileSectionProps) {
       </div>
 
       {/* Avatar */}
-      <Card>
+      <Card
+        {...getRootProps()}
+        className={cn(
+          "cursor-pointer transition-colors",
+          isDragActive && "border-primary bg-primary/5",
+          uploadingAvatar && "cursor-wait opacity-70",
+        )}
+      >
+        <input {...getInputProps()} />
         <CardContent className="flex items-center gap-4 p-4!">
-          {data.avatar ? (
-            <div className="relative size-16 rounded-full overflow-hidden">
-              <Image
-                src={data.avatar}
-                alt={data.name}
-                fill
-                className="object-cover"
-              />
-            </div>
-          ) : (
-            <div className="flex size-16 items-center justify-center rounded-full bg-muted text-lg font-semibold">
-              {initials}
-            </div>
-          )}
-          <div>
-            <p className="text-sm font-medium">{data.name}</p>
-            <p className="text-xs text-muted-foreground">{data.email}</p>
-            <input
-              ref={avatarInputRef}
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              onChange={handleAvatarChange}
-              className="sr-only"
-              id="avatar-upload"
-            />
-            <Button
-              variant="outline"
-              size="sm"
-              className="mt-2"
-              disabled={uploadingAvatar}
-              onClick={() => avatarInputRef.current?.click()}
-            >
-              {uploadingAvatar ? (
-                <>
-                  <Loader2 className="size-3 animate-spin" />
-                  Subiendo...
-                </>
-              ) : (
-                "Cambiar foto"
-              )}
-            </Button>
+          <div className="relative size-16 shrink-0">
+            {data.avatar ? (
+              <div className="size-16 rounded-full overflow-hidden relative">
+                <Image
+                  src={data.avatar}
+                  alt={data.name}
+                  fill
+                  className="object-cover"
+                />
+              </div>
+            ) : (
+              <div className="flex size-16 items-center justify-center rounded-full bg-muted text-lg font-semibold">
+                {initials}
+              </div>
+            )}
+            {uploadingAvatar && (
+              <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/50">
+                <Loader2 className="size-5 animate-spin text-white" />
+              </div>
+            )}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium truncate">{data.name}</p>
+            <p className="text-xs text-muted-foreground truncate">{data.email}</p>
+            <p className="text-xs text-muted-foreground mt-2">
+              {isDragActive
+                ? "Soltá la foto aquí"
+                : uploadingAvatar
+                  ? "Subiendo..."
+                  : "Arrastra una foto o hacé click para cambiarla"}
+            </p>
           </div>
         </CardContent>
       </Card>
