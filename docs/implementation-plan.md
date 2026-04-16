@@ -14,7 +14,7 @@
 | 01 | Schema multitenancy (organization, member, invitation, user_active_org, role_permissions + UUID migration de platform_admins) | ✅ 2026-04-16 |
 | 02 | Supabase Auth dashboard config (providers, templates ES neutro, URL whitelist, env vars) | ✅ 2026-04-16 |
 | 03 | Custom access token hook (claims active_org_id, org_role, is_super_admin, user_name + orphan defense) | ✅ 2026-04-16 |
-| 04 | RBAC + authorize() function | ⬜ |
+| 04 | RBAC + authorize() function (seed 57 rows + SECURITY DEFINER function con silent-false defense) | ✅ 2026-04-16 |
 | 05 | Org creation lifecycle (trigger) | ⬜ |
 | 06 | Invitations flow | ⬜ |
 | 07 | RLS policies rewrite | ⬜ |
