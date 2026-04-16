@@ -17,8 +17,8 @@ import {
 
 import { NavMain } from "@/components/nav-main"
 import { NavSecondary } from "@/components/nav-secondary"
-import { NavUser } from "@/components/nav-user"
-import { OrgSwitcher } from "@/components/org-switcher"
+import { NavUser, type NavUserData } from "@/components/nav-user"
+import { OrgSwitcher, type ActiveOrg } from "@/components/org-switcher"
 import {
   Sidebar,
   SidebarContent,
@@ -28,41 +28,13 @@ import {
 
 const data = {
   navMain: [
-    {
-      title: "Dashboard",
-      url: "/dashboard",
-      icon: LayoutDashboard,
-    },
-    {
-      title: "Propiedades",
-      url: "/dashboard/properties",
-      icon: Building2,
-    },
-    {
-      title: "Leads",
-      url: "/dashboard/leads",
-      icon: Users,
-    },
-    {
-      title: "Conversaciones",
-      url: "/dashboard/conversations",
-      icon: MessageSquare,
-    },
-    {
-      title: "Citas",
-      url: "/dashboard/appointments",
-      icon: Calendar,
-    },
-    {
-      title: "Mi Bot",
-      url: "/dashboard/bot",
-      icon: Bot,
-    },
-    {
-      title: "Analíticas",
-      url: "/dashboard/analytics",
-      icon: BarChart3,
-    },
+    { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
+    { title: "Propiedades", url: "/dashboard/properties", icon: Building2 },
+    { title: "Leads", url: "/dashboard/leads", icon: Users },
+    { title: "Conversaciones", url: "/dashboard/conversations", icon: MessageSquare },
+    { title: "Citas", url: "/dashboard/appointments", icon: Calendar },
+    { title: "Mi Bot", url: "/dashboard/bot", icon: Bot },
+    { title: "Analíticas", url: "/dashboard/analytics", icon: BarChart3 },
     {
       title: "Marketing",
       url: "/dashboard/marketing/brochures",
@@ -73,11 +45,7 @@ const data = {
         { title: "Publicaciones", url: "/dashboard/marketing/publications" },
       ],
     },
-    {
-      title: "Configuración",
-      url: "/dashboard/settings",
-      icon: Settings2,
-    },
+    { title: "Configuración", url: "/dashboard/settings", icon: Settings2 },
   ],
   navSecondary: [
     { title: "Soporte", url: "#", icon: LifeBuoy },
@@ -85,18 +53,23 @@ const data = {
   ],
 }
 
-export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
+  user: NavUserData
+  activeOrg: ActiveOrg
+}
+
+export function AppSidebar({ user, activeOrg, ...props }: AppSidebarProps) {
   return (
     <Sidebar variant="inset" {...props}>
       <SidebarHeader>
-        <OrgSwitcher />
+        <OrgSwitcher activeOrg={activeOrg} />
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={data.navMain} />
         <NavSecondary items={data.navSecondary} className="mt-auto" />
       </SidebarContent>
       <SidebarFooter>
-        <NavUser />
+        <NavUser user={user} />
       </SidebarFooter>
     </Sidebar>
   )

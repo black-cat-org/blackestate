@@ -120,9 +120,15 @@ export async function getSupabaseServerClient(): Promise<ServerClient> {
             cookiesToSet.forEach(({ name, value, options }) =>
               cookieStore.set(name, value, options),
             )
-          } catch {
-            // Server Components cannot set cookies. Safe to ignore because
-            // the proxy (`proxy.ts`) refreshes the session on every request.
+          } catch (error) {
+            // Server Components cannot set cookies — the proxy refreshes the
+            // session on every request, so losing writes here is safe. In
+            // Route Handlers and Server Actions cookies ARE writable, so a
+            // thrown error is unexpected: surface it in dev to avoid masking
+            // a real bug (e.g. a dropped OAuth callback session).
+            if (process.env.NODE_ENV !== "production") {
+              console.warn("[supabase] cookie setAll failed", error)
+            }
           }
         },
       },

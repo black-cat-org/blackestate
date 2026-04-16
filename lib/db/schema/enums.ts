@@ -88,8 +88,8 @@ export const invitationStatusEnum = pgEnum("invitation_status", [
 ]);
 
 // Fine-grained permissions bound to roles via public.role_permissions.
-// Values mirror the Better Auth permissions in lib/auth-permissions.ts so the
-// migration preserves identical authorization semantics.
+// Source of truth: this enum + `drizzle/sql/004_authorize_function.sql` seed.
+// Consumed by the SQL `authorize(permission)` function called from RLS policies.
 export const appPermissionEnum = pgEnum("app_permission", [
   "property.create",
   "property.read_own",

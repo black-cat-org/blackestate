@@ -342,16 +342,57 @@ Los que llaman storage requieren actualización (cliente explícito, ver Fase 08
 - [x] **1.** Reescribir `lib/supabase/server.ts` con `getSupabaseServerClient` + `getSupabaseAdmin`. ✅ (tarea #62)
 - [x] **2.** Crear `lib/supabase/client.ts`. ✅ (tarea #62)
 - [x] **3.** Crear helper Supabase para middleware. ✅ (tarea #62 — archivo nombrado `lib/supabase/middleware.ts` para distinguirlo del `proxy.ts` raíz y seguir convención oficial Supabase; export `updateSupabaseSession(request)`). Shared env helper extraído a `lib/supabase/env.ts` (DRY).
-- [ ] **4.** Reescribir `proxy.ts` raíz. ← tarea #63
-- [ ] **5.** Reescribir `features/shared/infrastructure/session-context.ts`. ← tarea #63
-- [ ] **6.** Actualizar `features/shared/infrastructure/rls.ts` con claim names nuevos. ← tarea #64
-- [ ] **7.** Eliminar `lib/db/rls.ts` y `lib/db/session-context.ts`. ← tarea #68
-- [ ] **8.** `rg "from \"@/lib/db/rls\"` → reemplazar por `@/features/shared/infrastructure/rls`. Grep + fix todos. ← tarea #68
-- [ ] **9.** `rg "from \"@/lib/db/session-context\""` → reemplazar. Grep + fix. ← tarea #68
+- [x] **4.** Reescribir `proxy.ts` raíz. ✅ (tarea #63 — usa `updateSupabaseSession`, preserva cookies en redirect, redirect unauth → `/sign-in?next=X`, authed → `/dashboard`)
+- [x] **5.** Reescribir `features/shared/infrastructure/session-context.ts`. ✅ (tarea #63 — único `getClaims()` via `getAuthState()` que devuelve `{ctx, claims}`, defensas malformed JWT)
+- [x] **6.** Actualizar `features/shared/infrastructure/rls.ts` con claim names nuevos. ✅ (tarea #63 absorbió #64 — `active_org_id`, `org_role`, `sub`, `is_super_admin`; `set_config()` en vez de `SET LOCAL $1` porque Postgres no parametriza SET)
+- [x] **7.** Eliminar `lib/db/rls.ts` y `lib/db/session-context.ts`. ✅ (tarea #63)
+- [x] **8.** Reemplazar imports de `@/lib/db/rls` por `@/features/shared/infrastructure/rls`. ✅ (ya estaba, verificado con grep — zero matches)
+- [x] **9.** Reemplazar imports de `@/lib/db/session-context`. ✅ (ya estaba, verificado)
 - [ ] **10.** Drizzle queries en Fase 06 (invitation-actions, organization-actions) → agregar `withRLS(ctx, async (tx) => ...)` donde corresponda. ← tareas #66, #67
-- [ ] **11.** Build check.
-- [ ] **12.** Test manual: sign-in → dashboard renders → properties page lista. Cada Server Action corre sin errores.
-- [ ] **13.** Commit.
+- [x] **11.** Build check. ✅ 22 rutas, lint limpio (warnings preexistentes unrelated)
+- [x] **12.** Test manual. ✅ Playwright smoke test end-to-end: sign-in email/pwd → `/dashboard` renders con sidebar + org + user, `/dashboard/properties` lista (RLS filtered) → sign-out → `/sign-in`, auth-route al estar authed → `/dashboard`, open-redirect `//evil.com` rechazado. Zero console errors post-fixes.
+- [x] **13.** Commit. ✅ (task #62 commit `8742830`, task #63 commit pendiente en esta sesión)
+
+### Tarea #63 — notas de implementación (big-bang)
+
+**Scope final**: absorbió #64 (claim names) + partes de sub-plans 10 (auth UI) y 12 (delete Better Auth dep) para dejar la app 100% Supabase en un único commit atómico. La razón: scope mini dejaba el sistema sin path de autenticación funcional entre commits.
+
+**Archivos creados/rewritten**:
+- `proxy.ts` — usa `updateSupabaseSession`, preserva cookies refreshed al redirect.
+- `lib/supabase/middleware.ts` — devuelve `{ response, claims }` (cambio de contrato vs tarea #62 para que proxy pueda decidir redirects). `setAll` ahora forwardea `headers` (parity canónica Supabase). Sin `server-only` (Edge Runtime).
+- `lib/supabase/env.ts` — `requireSupabaseEnv` con **accesos literales a `process.env`** por var. Dynamic `process.env[name]` no inlinea en browser bundle (Turbopack/Webpack), causaba runtime crash en client components.
+- `lib/supabase/server.ts` — `setAll` catch ahora logea warn en dev (observability para Route Handlers que sí pueden escribir cookies).
+- `features/shared/infrastructure/rls.ts` — usa `set_config(name, value, is_local)` en vez de `SET LOCAL $1` (SET no parametriza). `includeDeleted` GUC eliminado (dead code, policies ya filtran `deleted_at IS NULL`).
+- `features/shared/infrastructure/session-context.ts` — nuevo `getAuthState()` (single `getClaims()` + devuelve ctx + claims). `getSessionContext()` delega a él.
+- `app/(auth)/sign-in/page.tsx` — `signInWithPassword`, open-redirect defense (`safeNext` rechaza `//evil.com`), suspense wrapper por `useSearchParams`, `/forgot-password` link removido.
+- `app/(auth)/sign-up/page.tsx` — `signUp` con `emailRedirectTo=/auth/callback`, UI "Revisa tu correo" post-submit.
+- `app/auth/callback/route.ts` — PKCE `exchangeCodeForSession`, `x-forwarded-host` respetado, `next` param validado.
+- `app/(auth)/auth-code-error/page.tsx` — movido dentro del grupo (auth) para layout consistente. URL final `/auth-code-error`.
+- `components/auth/social-buttons.tsx` — `signInWithOAuth` provider Google.
+- `app/dashboard/layout.tsx` — single `getAuthState()`, `withRLS` para query de active org (critical: tabla tiene FORCE RLS, `db` directo retorna 0 rows).
+- `components/app-sidebar.tsx` + `components/nav-user.tsx` + `components/org-switcher.tsx` — props-driven desde server (sin client-side session hook); `nav-user` signout via browser client.
+
+**Archivos eliminados**:
+- `lib/auth.ts`, `lib/auth-client.ts`, `lib/auth-permissions.ts`, `lib/auth-utils.ts`
+- `lib/db/rls.ts`, `lib/db/session-context.ts` (duplicados legacy)
+- `app/api/auth/[...all]/route.ts` (Better Auth handler)
+
+**Deps**: `better-auth@1.6.2` desinstalado. `BETTER_AUTH_SECRET` + `BETTER_AUTH_URL` ya no se leen — usuario puede limpiar de `.env.local`.
+
+**Code review (feature-dev:code-reviewer)**: 3 Critical + 3 Important encontrados y resueltos:
+1. **FALSE POSITIVE**: `proxy.ts` naming. Reviewer no sabía que Next.js 16 acepta `proxy.ts` además de `middleware.ts`. Build confirma: `ƒ Proxy (Middleware)`.
+2. **Critical #2 fixed**: `organization` query directo con `db` → wrapped en `withRLS` (FORCE RLS aplica hasta al role `postgres`).
+3. **Critical #3 fixed**: open-redirect `//evil.com` → `safeNext` rechaza `startsWith("//")` y `startsWith("/\\")`.
+4. **Important #4 fixed**: double `getClaims()` en layout → `getAuthState()` single call.
+5. **Important #5 fixed**: `includeDeleted` GUC dead → removido de `rls.ts`.
+6. **Important #6 fixed**: `server-only` en `middleware.ts` semánticamente off para Edge → removido.
+
+Adicionales de smoke test (bugs encontrados en runtime, no detectados por reviewer):
+- `process.env[name]` dynamic no inlinea en browser → switch literal en `requireSupabaseEnv`.
+- `SET LOCAL $1` no es parametrizable por Postgres → `set_config(name, value, true)`.
+- `INSERT INTO auth.users` via raw SQL deja `confirmation_token`/similares NULL → auth server 500. No es bug del código pero documentado en este plan para el future testing workflow.
+
+**Orphan user descubierto**: `gonzalopinell@gmail.com` en `auth.users` sin org ni member. Posiblemente creado antes del trigger `handle_new_user()` (pre sub-plan 05). Decisión pendiente de usuario: deletear + re-signup, o backfill via SQL simulando el trigger.
 
 ### Tarea #62 — notas de implementación
 
@@ -365,14 +406,14 @@ Los que llaman storage requieren actualización (cliente explícito, ver Fase 08
 
 ## Checklist
 
-- [ ] `getSupabaseServerClient` + `getSupabaseAdmin` separados
-- [ ] Proxy refresca cookies via `getClaims()`
-- [ ] `/dashboard` redirect si no auth
-- [ ] `getSessionContext` lee del JWT Supabase
-- [ ] `withRLS` usa claims `active_org_id`
-- [ ] Duplicados eliminados
-- [ ] Todas las imports actualizadas
-- [ ] Build + lint pass
+- [x] `getSupabaseServerClient` + `getSupabaseAdmin` separados
+- [x] Proxy refresca cookies via `getClaims()`
+- [x] `/dashboard` redirect si no auth
+- [x] `getSessionContext` lee del JWT Supabase
+- [x] `withRLS` usa claims `active_org_id`
+- [x] Duplicados eliminados
+- [x] Todas las imports actualizadas
+- [x] Build + lint pass
 
 ## Rollback
 

@@ -1,26 +1,35 @@
-import "server-only"
 import { createServerClient } from "@supabase/ssr"
 import { NextResponse, type NextRequest } from "next/server"
 import { requireSupabaseEnv } from "./env"
 
+export interface SupabaseSessionResult {
+  response: NextResponse
+  /** Decoded JWT claims for the authenticated user, or `null` if unauthenticated. */
+  claims: Record<string, unknown> | null
+}
+
 /**
- * Supabase session refresh intended to be called from the Next.js proxy.
+ * Supabase session refresh for the Next.js proxy (Edge Runtime).
  *
- * When wired into `proxy.ts` (see sub-plan 09 task #63), it reads the
- * existing session cookie, refreshes the JWT if expired, and writes the
- * new cookies back to both the request (so the downstream server picks
- * it up) and the response (so the browser picks it up).
+ * Reads the session cookie, refreshes the JWT if expired (writing new
+ * cookies to both the forwarded request and the outgoing response), and
+ * returns the decoded claims for downstream routing decisions (e.g. redirects
+ * for protected pages).
  *
  * The call to `supabase.auth.getClaims()` is what triggers the refresh. It
  * MUST run immediately after `createServerClient` — any intervening logic
  * risks using a stale session and causes hard-to-debug logouts.
  *
- * IMPORTANT: Returns the exact `response` object created inside. Callers
- * must not create a new `NextResponse` — if they need to modify headers,
- * they should mutate the returned object and copy cookies over with
- * `newResponse.cookies.setAll(response.cookies.getAll())`.
+ * IMPORTANT: Callers must use the returned `response` object as-is. If they
+ * create their own response (e.g. `NextResponse.redirect`), they MUST copy
+ * cookies from this `response` onto it — otherwise the refresh is lost and
+ * the browser and server go out of sync.
+ *
+ * Edge-safe: this module intentionally avoids `server-only` so it can be
+ * imported from the proxy. Only `@supabase/ssr` and `next/server` are used,
+ * both of which run in the Edge Runtime.
  */
-export async function updateSupabaseSession(request: NextRequest): Promise<NextResponse> {
+export async function updateSupabaseSession(request: NextRequest): Promise<SupabaseSessionResult> {
   let response = NextResponse.next({ request })
 
   const supabase = createServerClient(
@@ -31,18 +40,23 @@ export async function updateSupabaseSession(request: NextRequest): Promise<NextR
         getAll() {
           return request.cookies.getAll()
         },
-        setAll(cookiesToSet) {
+        setAll(cookiesToSet, headers) {
           cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
           response = NextResponse.next({ request })
           cookiesToSet.forEach(({ name, value, options }) =>
             response.cookies.set(name, value, options),
           )
+          if (headers) {
+            for (const [key, value] of Object.entries(headers)) {
+              response.headers.set(key, value)
+            }
+          }
         },
       },
     },
   )
 
-  await supabase.auth.getClaims()
+  const { data } = await supabase.auth.getClaims()
 
-  return response
+  return { response, claims: (data?.claims as Record<string, unknown>) ?? null }
 }
