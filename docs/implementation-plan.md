@@ -4,7 +4,27 @@
 >
 > **Creado:** 2026-04-13
 > **Última actualización:** 2026-04-16
-> **Estado:** Capa 1 completada. Capa 2: RLS done, Clean Architecture done (8 feature modules), Storage done (buckets + upload), E2E testing done (Playwright). Storage 400 upload bug fixed (MIME derivation from extension + Blob re-wrap + env-key guard). Auth org-creation fix deployed. Avatar drag & drop UI done. Siguiente: split modular profile/billing/integrations/notifications/settings + persistencia real (ver `docs/plans/2026-04-15-profile-settings-modular-split.md`), then Capa 3.
+> **Estado:** Capa 1 + Capa 2 mayor completadas. **Migración Better Auth → Supabase Auth EN CURSO.** Sub-plan 01 (schema multitenancy) ✅ done. Resto de fases (02-14) ver `docs/plans/2026-04-16-supabase-auth-migration/`. Plan `2026-04-15-profile-settings-modular-split.md` queda diferido hasta completar la migración auth (algunas decisiones cambian con el nuevo stack).
+
+## Migración Better Auth → Supabase Auth (en curso)
+
+| Sub-plan | Tema | Estado |
+|---|---|---|
+| 00 | Master plan | ✅ |
+| 01 | Schema multitenancy (organization, member, invitation, user_active_org, role_permissions + UUID migration de platform_admins) | ✅ 2026-04-16 |
+| 02 | Supabase Auth dashboard config | ⬜ |
+| 03 | Custom access token hook | ⬜ |
+| 04 | RBAC + authorize() function | ⬜ |
+| 05 | Org creation lifecycle (trigger) | ⬜ |
+| 06 | Invitations flow | ⬜ |
+| 07 | RLS policies rewrite | ⬜ |
+| 08 | Storage simplification | ⬜ |
+| 09 | Server Actions + getSessionContext refactor | ⬜ |
+| 10 | UI components migration | ⬜ |
+| 11 | Data migration (purge o migrate) | ⬜ |
+| 12 | Cleanup deps + docs | ⬜ |
+| 13 | Mobile skeleton | ⏭️ |
+| 14 | Testing checklist manual | ⬜ |
 
 ---
 

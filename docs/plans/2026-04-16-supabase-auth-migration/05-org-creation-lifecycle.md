@@ -291,6 +291,20 @@ DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 DROP FUNCTION IF EXISTS public.handle_new_user();
 ```
 
+## Tarea adicional — partial index para hot path
+
+Code review de sub-plan 01 detectó que `member_deleted_at_idx` (full index) no sirve para queries `WHERE deleted_at IS NULL`. El JWT hook (sub-plan 03) y este trigger leen `member` por user/org en cada refresh. Agregar partial index optimizado:
+
+```sql
+-- Agregar al final de drizzle/sql/005_org_creation_trigger.sql
+CREATE INDEX IF NOT EXISTS member_active_user_org_idx
+  ON public.member (user_id, organization_id)
+  WHERE deleted_at IS NULL;
+
+-- Optional cleanup: drop el full index ahora redundante
+DROP INDEX IF EXISTS member_deleted_at_idx;
+```
+
 ## Notas
 
 - El trigger corre `security definer` → tiene privilegios para insertar en las 3 tablas sin pasar por RLS (porque RLS aún no está enabled en estas tablas hasta sub-plan 07, y después del enable el trigger usa security definer bypass).

@@ -15,6 +15,13 @@
       "when": 1776210772968,
       "tag": "0001_flashy_marvel_boy",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1776349117259,
+      "tag": "0002_auth_migration_schema",
+      "breakpoints": true
     }
   ]
 }

@@ -327,6 +327,72 @@ main().catch((e) => {
 })
 ```
 
+## Re-wiring de FKs de tablas dominio (crítico)
+
+10 tablas dominio (`properties`, `leads`, `appointments`, `ai_contents`, `lead_property_queue`, `bot_config`, `bot_conversations`, `bot_messages`, `analytics_events`, `agent_profiles`) tienen FK `organization_id → organization(id)`.
+
+Tras Fase 01 rename, esas FKs automáticamente pasaron a apuntar a `organization_legacy_better_auth` (Postgres las traquea por OID, no por nombre). La nueva `public.organization` está vacía.
+
+Fase 11 debe incluir SQL para:
+
+### Paso 8: Re-wire FKs de dominio a nueva `organization`
+
+```sql
+-- drizzle/sql/011_rewire_fks.sql
+-- Ejecutar DESPUÉS de que la migration haya copiado todas las rows de
+-- organization_legacy_better_auth → organization.
+
+BEGIN;
+
+-- Por cada tabla dominio: drop old FK, add new FK apuntando a public.organization.
+-- Nombres actuales (del output de investigación Fase 01):
+ALTER TABLE public.properties DROP CONSTRAINT properties_org_id_fkey;
+ALTER TABLE public.properties ADD CONSTRAINT properties_org_id_fkey
+  FOREIGN KEY (organization_id) REFERENCES public.organization(id);
+
+ALTER TABLE public.leads DROP CONSTRAINT leads_org_id_fkey;
+ALTER TABLE public.leads ADD CONSTRAINT leads_org_id_fkey
+  FOREIGN KEY (organization_id) REFERENCES public.organization(id);
+
+ALTER TABLE public.appointments DROP CONSTRAINT appointments_org_id_fkey;
+ALTER TABLE public.appointments ADD CONSTRAINT appointments_org_id_fkey
+  FOREIGN KEY (organization_id) REFERENCES public.organization(id);
+
+ALTER TABLE public.ai_contents DROP CONSTRAINT ai_contents_org_id_fkey;
+ALTER TABLE public.ai_contents ADD CONSTRAINT ai_contents_org_id_fkey
+  FOREIGN KEY (organization_id) REFERENCES public.organization(id);
+
+ALTER TABLE public.lead_property_queue DROP CONSTRAINT lpq_org_id_fkey;
+ALTER TABLE public.lead_property_queue ADD CONSTRAINT lpq_org_id_fkey
+  FOREIGN KEY (organization_id) REFERENCES public.organization(id);
+
+ALTER TABLE public.bot_config DROP CONSTRAINT bot_config_org_id_fkey;
+ALTER TABLE public.bot_config ADD CONSTRAINT bot_config_org_id_fkey
+  FOREIGN KEY (organization_id) REFERENCES public.organization(id);
+
+ALTER TABLE public.bot_conversations DROP CONSTRAINT bot_conv_org_id_fkey;
+ALTER TABLE public.bot_conversations ADD CONSTRAINT bot_conv_org_id_fkey
+  FOREIGN KEY (organization_id) REFERENCES public.organization(id);
+
+ALTER TABLE public.bot_messages DROP CONSTRAINT bot_msg_org_id_fkey;
+ALTER TABLE public.bot_messages ADD CONSTRAINT bot_msg_org_id_fkey
+  FOREIGN KEY (organization_id) REFERENCES public.organization(id);
+
+ALTER TABLE public.analytics_events DROP CONSTRAINT analytics_org_id_fkey;
+ALTER TABLE public.analytics_events ADD CONSTRAINT analytics_org_id_fkey
+  FOREIGN KEY (organization_id) REFERENCES public.organization(id);
+
+ALTER TABLE public.agent_profiles DROP CONSTRAINT agent_profiles_org_id_fkey;
+ALTER TABLE public.agent_profiles ADD CONSTRAINT agent_profiles_org_id_fkey
+  FOREIGN KEY (organization_id) REFERENCES public.organization(id);
+
+COMMIT;
+```
+
+**Pre-requisitos:**
+- Las rows de `organization_legacy_better_auth` deben haberse copiado a `public.organization` preservando UUIDs.
+- Después de este rewire, `DROP TABLE organization_legacy_better_auth CASCADE` funciona limpio (Fase 12).
+
 ## Alternativa — opción PURGE
 
 Si la decisión es borrar todo:

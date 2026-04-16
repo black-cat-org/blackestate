@@ -69,3 +69,49 @@ export const aiContentTypeEnum = pgEnum("ai_content_type", [
 export const aiPlatformEnum = pgEnum("ai_platform", [
   "facebook", "instagram", "tiktok", "whatsapp",
 ]);
+
+// ─── Multitenancy (Supabase Auth migration) ───────────────────────────────
+
+// Role assigned to a user within an organization.
+export const memberRoleEnum = pgEnum("member_role", [
+  "owner", "admin", "agent",
+]);
+
+// Commercial plan of an organization — drives seat limit and feature flags.
+export const organizationPlanEnum = pgEnum("organization_plan", [
+  "free", "pro", "enterprise",
+]);
+
+// Lifecycle of an invitation sent to join an organization.
+export const invitationStatusEnum = pgEnum("invitation_status", [
+  "pending", "accepted", "rejected", "expired", "cancelled",
+]);
+
+// Fine-grained permissions bound to roles via public.role_permissions.
+// Values mirror the Better Auth permissions in lib/auth-permissions.ts so the
+// migration preserves identical authorization semantics.
+export const appPermissionEnum = pgEnum("app_permission", [
+  "property.create",
+  "property.read_own",
+  "property.read_all",
+  "property.edit_own",
+  "property.edit_all",
+  "property.delete_own",
+  "property.delete_all",
+  "property.assign",
+  "lead.create",
+  "lead.read_own",
+  "lead.read_all",
+  "lead.edit_own",
+  "lead.edit_all",
+  "lead.delete_own",
+  "lead.delete_all",
+  "lead.assign",
+  "analytics.read_own",
+  "analytics.read_all",
+  "bot.read",
+  "bot.configure",
+  "settings.read",
+  "settings.manage",
+  "billing.manage",
+]);
