@@ -31,6 +31,27 @@ features/
 | `notifications/` | Delivery orchestration | Prefs + canales, rate limits, routing | Knock integration pendiente |
 | `settings/` | Org prefs misc | Timezone, currency, brand colors, hashtags default | Estable, chico |
 
+## Bug conocido bloqueante (resolver primero)
+
+**Storage uploads fallan con 400 en todos los buckets.**
+
+Evidencia (2026-04-16):
+- 0 objetos en `avatars`, `property-media`, `brochures` — ningún upload ha funcionado nunca
+- Storage logs muestran `POST 400` en `/object/avatars/{orgId}/{userId}/*.jpg`
+- Bucket config OK: avatars 2MB, jpeg/png/webp allowed; RLS no forzado (service_role bypasa)
+
+Causas probables:
+
+1. **`file.type` vacío en Server Action** — `lib/supabase/storage.ts:28` pasa `contentType: file.type`. Al cruzar el boundary Server Action, `file.type` suele llegar vacío → bucket rechaza MIME → 400.
+   - **Fix:** derivar content-type desde la extensión en `uploadFile()`. Mapa `{jpg: "image/jpeg", png: "image/png", webp: "image/webp", avif: "image/avif", pdf: "application/pdf"}`. Fallback a `file.type` si existe.
+
+2. **`SUPABASE_SERVICE_ROLE_KEY` missing/wrong** en `.env.local`. Client cae a anon → RLS bloquea → 400.
+   - **Verificación:** confirmar que `.env.local` tiene `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` correctos desde dashboard Supabase.
+
+3. Otros — menos probable. Si tras (1) y (2) sigue, inspeccionar response body real via dev server logs.
+
+**Prioridad:** resolver antes de migrar avatar a persistencia real. Sin upload funcionando no se puede testear el flow end-to-end del nuevo módulo `profile/`.
+
 ## Tareas
 
 ### 1) Split modular
