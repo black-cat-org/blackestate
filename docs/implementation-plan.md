@@ -21,6 +21,7 @@
 | 08 | Storage simplification | ✅ Code done (absorbido en 09 task #65). Tests manuales → 14 |
 | 09 | Server Actions + getSessionContext refactor | ✅ tasks 62-67 committed |
 | 10 | UI components migration | ✅ tasks 68-70: password reset flow, /auth/confirm (Gmail fix), Team section in Settings. member table denormalized (email/name/avatar) |
+| 11 | Data migration (purge) | ✅ Tablas legacy vacías → DROP 7 tablas (user, session, account, verification, *_legacy_better_auth). Test user limpiado. DB: 17 tablas dominio, 1 auth user real |
 | 11 | Data migration (purge o migrate) | ⬜ |
 | 12 | Cleanup deps + docs | ⬜ |
 | 13 | Mobile skeleton | ⏭️ |
