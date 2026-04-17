@@ -20,7 +20,7 @@
 | 07 | RLS policies rewrite — 56 policies (5 multitenancy + 12 domain + storage × 3 buckets) + migration text→uuid de 20 columnas domain + 19 FKs nuevas + 2 helper functions (is_org_member, is_org_admin) + 3 partial indexes | ✅ 2026-04-16 |
 | 08 | Storage simplification | ✅ Code done (absorbido en 09 task #65). Tests manuales → 14 |
 | 09 | Server Actions + getSessionContext refactor | ✅ tasks 62-67 committed |
-| 10 | UI components migration | ⬜ |
+| 10 | UI components migration | ✅ tasks 68-70: password reset flow, /auth/confirm (Gmail fix), Team section in Settings. member table denormalized (email/name/avatar) |
 | 11 | Data migration (purge o migrate) | ⬜ |
 | 12 | Cleanup deps + docs | ⬜ |
 | 13 | Mobile skeleton | ⏭️ |
