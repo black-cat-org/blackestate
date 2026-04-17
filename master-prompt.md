@@ -63,13 +63,29 @@ Cada tarea debe tener una rama según el plan y un commit atómico.
 
 ---
 
-### REGLAS DE SEGURIDAD
+### REGLAS DE SEGURIDAD Y ARQUITECTURA (INVIOLABLES)
 
+**Base de datos:**
 - NUNCA `drizzle-kit push` — destruye tablas de Supabase Auth.
 - NUNCA ejecutar SQL destructivo sin verificar qué hace.
-- EVERY user query a través de `withRLS()`. `db` directo solo para operaciones auth-system cross-org.
 - Env vars: `requireSupabaseEnv()` con accesos LITERALES (no `process.env[name]`).
 - `set_config()` en vez de `SET LOCAL $1` (Postgres no parametriza SET).
+
+**Multitenancy — ZERO TOLERANCE:**
+- EVERY user query a través de `withRLS()`. `db` directo solo para operaciones auth-system cross-org.
+- NUNCA usar Supabase Admin API (`getUserById`, `listUsers`, etc.) para obtener datos que deben vivir en tablas propias del dominio. Si una tabla necesita datos de `auth.users` (email, name, avatar), DENORMALIZAR: agregar las columnas y poblarlas al crear el registro. El dato vive donde se consulta.
+- NUNCA descargar datos de todas las organizaciones para filtrar en memoria. Cada query debe estar scoped a la org del JWT — vía RLS + filtro explícito `organization_id = ctx.orgId`.
+- Supabase Admin API es SOLO para: operaciones administrativas (inviteUserByEmail, deleteUser), Inngest background jobs cross-org, seed scripts. NUNCA para queries de dominio.
+
+**Clean Architecture — SIN EXCEPCIONES:**
+- Domain NUNCA importa de Infrastructure ni Presentation.
+- Application NUNCA importa de Infrastructure — recibe repositorios via parámetro (inyección desde Presentation).
+- Repositories encapsulan Drizzle + RLS. NUNCA hacen calls a APIs externas. Si necesitan datos externos, esos datos deben vivir en la DB.
+- Si al code reviewer se le pasa un issue, la responsabilidad es mía de detectarlo antes de implementar. El reviewer es un checkpoint, no un sustituto de buen diseño.
+
+**Calidad — NO EXISTE "ACCEPTABLE":**
+- Si el reviewer detecta un issue (incluyendo MINOR), se resuelve. No se difiere, no se marca "MVP acceptable", no se documenta como "improvement futuro". Se arregla.
+- Antes de implementar, pensar: ¿esto respeta multitenancy? ¿esto respeta Clean Architecture? ¿esto es la solución correcta o un workaround? Si hay duda, preguntar — no implementar.
 
 ---
 
