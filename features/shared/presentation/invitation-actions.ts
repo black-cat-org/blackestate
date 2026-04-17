@@ -41,7 +41,7 @@ export async function sendInvitationAction(input: SendInvitationDTO): Promise<Pe
     },
   })
 
-  if (error) {
+  if (error && error.code !== "email_exists") {
     await repo.deleteByToken(token)
     throw new Error(`Failed to send invitation email: ${error.message}`)
   }

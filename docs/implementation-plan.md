@@ -22,10 +22,9 @@
 | 09 | Server Actions + getSessionContext refactor | ✅ tasks 62-67 committed |
 | 10 | UI components migration | ✅ tasks 68-70: password reset flow, /auth/confirm (Gmail fix), Team section in Settings. member table denormalized (email/name/avatar) |
 | 11 | Data migration (purge) | ✅ Tablas legacy vacías → DROP 7 tablas (user, session, account, verification, *_legacy_better_auth). Test user limpiado. DB: 17 tablas dominio, 1 auth user real |
-| 11 | Data migration (purge o migrate) | ⬜ |
-| 12 | Cleanup deps + docs | ⬜ |
+| 12 | Cleanup deps + docs | ✅ CLAUDE.md actualizado, profile-settings-split obsoleto, better-auth removido de code + deps + settings |
+| 14 | Testing checklist | ✅ 7/10 secciones pasan (A,B,C,D,H,L,M). 3 bloqueadas por IMP-8 (E,F,G — invitaciones). No son bugs de auth migration |
 | 13 | Mobile skeleton | ⏭️ |
-| 14 | Testing checklist manual | ⬜ |
 
 ---
 
@@ -458,3 +457,5 @@ Ideas validated but deferred. Implement when the relevant feature is stable and 
 | IMP-5 | Amenity labels duplicated inline | `ai-brochure-generator.tsx:141-162` has inline amenity label map. Should import from `lib/constants/property.ts`. | When implementing real brochure generation (Capa 3.2) |
 | IMP-6 | Org slug editor | Users should be able to edit their org slug from settings. Currently auto-generated from name with collision hash. | When building org settings UI |
 | IMP-7 | **Auditoría RLS bypass exhaustiva** | Revisar TODOS los repositories y queries que usan `db` directo en vez de `withRLS`. ABSOLUTAMENTE TODO debe pasar por `withRLS` — si hay bypass, debe estar extensamente justificado. Incluye: invitation repo, organization repo, y cualquier otro módulo. Zero tolerance. | **Inmediato post-merge de auth migration** |
+| IMP-8 | **Reescribir flow de invitaciones a org** | El flow actual usa `inviteUserByEmail` de Supabase que CREA usuarios nuevos — incorrecto. La invitación a una org es para usuarios que YA existen en Black Estate. **Flow correcto:** (1) Owner ingresa email → validar que existe en `auth.users` → si no existe: error "Usuario no registrado". (2) Si existe: crear invitation record en DB (sin `inviteUserByEmail`). (3) Notificación in-app: badge en sidebar + sección "Invitaciones pendientes" en dashboard del invitado. (4) Invitado acepta → se une a la org como member con el rol asignado. **Futuro (Capa 4.3 Resend):** además del in-app, enviar email con link directo de aceptación. **Archivos a tocar:** `invitation-actions.ts` (eliminar `inviteUserByEmail`), `send-invitation.use-case.ts` (agregar validación user exists), `accept-invitation.use-case.ts` (simplificar — user ya existe), nueva UI de "invitaciones recibidas" en dashboard del invitado, badge notificación en sidebar. | **Inmediato post-merge de auth migration** |
+| IMP-9 | Link de referidos | Invitar gente NUEVA a la app (no a la org). Link único por org/user. Diferente de IMP-8 (que es invitar usuarios existentes a una org). Implementar con sistema de referrals cuando haya volumen. | Capa 5 — Marketing |

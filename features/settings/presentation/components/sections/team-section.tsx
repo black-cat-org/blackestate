@@ -159,21 +159,20 @@ function InviteForm({
   }
 
   return (
-    <form onSubmit={handleInvite} className="flex items-end gap-3">
-      <div className="flex-1 space-y-1.5">
-        <Label htmlFor="invite-email">Invitar miembro</Label>
-        <Input
-          id="invite-email"
-          type="email"
-          placeholder="email@ejemplo.com"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-          disabled={isPending}
-        />
-      </div>
-      <div className="w-36 space-y-1.5">
-        <Label htmlFor="invite-role">Rol</Label>
+    <form onSubmit={handleInvite}>
+      <Label htmlFor="invite-email">Invitar miembro</Label>
+      <div className="mt-1.5 flex items-center gap-3">
+      <Input
+        id="invite-email"
+        type="email"
+        placeholder="email@ejemplo.com"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        required
+        disabled={isPending}
+        className="flex-1"
+      />
+      <div className="w-36">
         <Select value={role} onValueChange={(v) => setRole(v as InvitableRole)}>
           <SelectTrigger id="invite-role" disabled={isPending}>
             <SelectValue />
@@ -188,6 +187,7 @@ function InviteForm({
         {isPending ? <Loader2 className="animate-spin" /> : <UserPlus className="size-4" />}
         <span className="ml-1.5 hidden sm:inline">Invitar</span>
       </Button>
+      </div>
     </form>
   )
 }
@@ -253,9 +253,9 @@ function MemberRow({
         <AvatarFallback className="text-xs">{initials}</AvatarFallback>
       </Avatar>
       <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
+        <div className="flex items-baseline gap-2">
           <span className="truncate text-sm font-medium">{member.name ?? member.email}</span>
-          <Badge variant={ROLE_VARIANTS[member.role]} className="shrink-0 text-[10px] px-1.5 py-0">
+          <Badge variant={ROLE_VARIANTS[member.role]} className="shrink-0 text-[10px] px-1.5 py-0 leading-normal">
             {ROLE_LABELS[member.role]}
           </Badge>
         </div>
