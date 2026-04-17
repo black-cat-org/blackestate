@@ -255,7 +255,7 @@ function MemberRow({
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <span className="truncate text-sm font-medium">{member.name ?? member.email}</span>
-          <Badge variant={ROLE_VARIANTS[member.role]} className="shrink-0 text-xs">
+          <Badge variant={ROLE_VARIANTS[member.role]} className="shrink-0 text-[10px] px-1.5 py-0">
             {ROLE_LABELS[member.role]}
           </Badge>
         </div>
@@ -329,7 +329,7 @@ function InvitationRow({
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <span className="truncate text-sm">{invitation.email}</span>
-          <Badge variant="outline" className="shrink-0 text-xs">
+          <Badge variant="outline" className="shrink-0 text-[10px] px-1.5 py-0">
             {ROLE_LABELS[invitation.role]}
           </Badge>
           {isExpired && (
