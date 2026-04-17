@@ -1,7 +1,9 @@
 import { eq, and, sql, isNull, gt } from "drizzle-orm"
 import { db } from "@/lib/db"
 import { invitation, member, organization, userActiveOrg } from "@/lib/db/schema"
+import { withRLS } from "./rls"
 import { mapInvitationRowToEntity } from "./invitation.mapper"
+import type { SessionContext } from "@/features/shared/domain/session-context"
 import type { Invitation, PendingInvitation, InvitableRole } from "@/features/shared/domain/invitation.entity"
 import type { IInvitationRepository } from "@/features/shared/domain/invitation.repository"
 
@@ -68,7 +70,7 @@ export class DrizzleInvitationRepository implements IInvitationRepository {
     return rows.length > 0
   }
 
-  async create(data: {
+  async create(ctx: SessionContext, data: {
     organizationId: string
     email: string
     role: InvitableRole
@@ -76,18 +78,21 @@ export class DrizzleInvitationRepository implements IInvitationRepository {
     invitedByUserId: string
     expiresAt: Date
   }): Promise<Invitation> {
-    const [row] = await db
-      .insert(invitation)
-      .values({
-        organizationId: data.organizationId,
-        email: data.email.toLowerCase(),
-        role: data.role,
-        status: "pending",
-        token: data.token,
-        invitedByUserId: data.invitedByUserId,
-        expiresAt: data.expiresAt,
-      })
-      .returning()
+    const rows = await withRLS(ctx, (tx) =>
+      tx
+        .insert(invitation)
+        .values({
+          organizationId: data.organizationId,
+          email: data.email.toLowerCase(),
+          role: data.role,
+          status: "pending",
+          token: data.token,
+          invitedByUserId: data.invitedByUserId,
+          expiresAt: data.expiresAt,
+        })
+        .returning(),
+    )
+    const [row] = rows
     return mapInvitationRowToEntity(row)
   }
 

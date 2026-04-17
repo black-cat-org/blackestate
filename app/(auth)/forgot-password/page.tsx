@@ -18,14 +18,14 @@ import { toast } from "sonner"
 import { Loader2, ArrowLeft, Mail } from "lucide-react"
 
 const RESET_ERRORS: Record<string, string> = {
-  over_email_send_rate_limit: "Por seguridad, espera unos segundos antes de intentar de nuevo",
+  over_email_send_rate_limit: "Por seguridad, intenta más tarde",
   user_not_found: "No encontramos una cuenta con ese email",
 }
 
 function mapResetError(error: { message: string; code?: string }): string {
   if (error.code && error.code in RESET_ERRORS) return RESET_ERRORS[error.code]
   if (error.message.toLowerCase().includes("rate") || error.message.toLowerCase().includes("security")) {
-    return "Por seguridad, espera unos segundos antes de intentar de nuevo"
+    return "Por seguridad, intenta más tarde"
   }
   return "No se pudo enviar el email de recuperación. Intenta de nuevo"
 }

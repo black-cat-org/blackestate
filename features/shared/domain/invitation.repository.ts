@@ -1,10 +1,11 @@
 import type { Invitation, PendingInvitation, InvitableRole } from "./invitation.entity"
+import type { SessionContext } from "./session-context"
 
 export interface IInvitationRepository {
   findByToken(token: string): Promise<Invitation | undefined>
   findPendingByOrgId(orgId: string): Promise<PendingInvitation[]>
   hasPendingForEmail(orgId: string, email: string): Promise<boolean>
-  create(data: {
+  create(ctx: SessionContext, data: {
     organizationId: string
     email: string
     role: InvitableRole

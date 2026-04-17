@@ -37,7 +37,7 @@ export async function sendInvitationUseCase(
   const token = crypto.randomUUID()
   const expiresAt = new Date(Date.now() + INVITE_EXPIRY_DAYS * 24 * 60 * 60 * 1000)
 
-  const inv = await repo.create({
+  const inv = await repo.create(ctx, {
     organizationId: ctx.orgId,
     email: data.email,
     role: data.role,
