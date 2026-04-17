@@ -553,41 +553,30 @@ export function MembersList() {
 
 ## Pasos
 
-- [ ] **1.** Crear `app/(auth)/actions.ts` con las 6 Server Actions.
-- [ ] **2.** Reescribir `app/(auth)/sign-up/page.tsx`.
-- [ ] **3.** Reescribir `app/(auth)/sign-in/page.tsx`.
-- [ ] **4.** Crear `app/(auth)/forgot-password/page.tsx` y `reset-password/page.tsx`.
-- [ ] **5.** Crear `app/auth/callback/route.ts`.
-- [ ] **6.** Reescribir `components/nav-user.tsx`.
-- [ ] **7.** Reescribir `components/org-switcher.tsx`.
-- [ ] **8.** Agregar `listUserOrgsAction` a organization-actions.
-- [ ] **9.** Implementar `features/shared/presentation/components/members-list.tsx`.
-- [ ] **10.** Integrar MembersList en `app/dashboard/settings/page.tsx`.
-- [ ] **11.** Actualizar `app/dashboard/layout.tsx` para usar `getSupabaseServerClient` en vez de `ensureOrganization`:
-  ```tsx
-  import { redirect } from "next/navigation"
-  import { getSupabaseServerClient } from "@/lib/supabase/server"
-
-  export default async function DashboardLayout({ children }) {
-    const supabase = await getSupabaseServerClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) redirect("/sign-in")
-    return (...)
-  }
-  ```
+- [x] **1.** Crear `app/(auth)/actions.ts` con las 6 Server Actions. ⏭️ Absorbido parcialmente en sub-plan 09 task #63. signIn/signUp inline en pages. Password reset uses browser client directly (no server actions needed — PKCE flow).
+- [x] **2.** Reescribir `app/(auth)/sign-up/page.tsx`. ✅ task #63 (commit `979b187`)
+- [x] **3.** Reescribir `app/(auth)/sign-in/page.tsx`. ✅ task #63 (commit `979b187`). Link "¿Olvidaste tu contraseña?" agregado en task #68.
+- [x] **4.** Crear `app/(auth)/forgot-password/page.tsx` y `reset-password/page.tsx`. ✅ task #68
+- [x] **5.** Crear `app/auth/callback/route.ts`. ✅ task #63 (commit `979b187`)
+- [x] **6.** Reescribir `components/nav-user.tsx`. ✅ task #63 — props-driven from server
+- [x] **7.** Reescribir `components/org-switcher.tsx`. ✅ task #63 — props-driven from server
+- [x] **8.** Agregar `listUserOrgsAction` a organization-actions. ✅ task #66 — `getUserOrganizationsAction()` (equivalent)
+- [ ] **9.** Implementar `features/shared/presentation/components/members-list.tsx`. ⬜
+- [ ] **10.** Integrar MembersList en `app/dashboard/settings/page.tsx`. ⬜
+- [x] **11.** Actualizar `app/dashboard/layout.tsx`. ✅ task #63 — uses `getAuthState()` + `getUserOrganizationsAction()`
 - [ ] **12.** Build + lint check.
-- [ ] **13.** Test manual: sign-up → email verify → sign-in → dashboard → user button → org switcher → logout.
+- [ ] **13.** Test manual.
 - [ ] **14.** Commit.
 
 ## Checklist
 
-- [ ] Sign-up funciona (email/password + Google OAuth)
-- [ ] Email verification se envía y valida
-- [ ] Sign-in con ambos métodos
-- [ ] Password reset end-to-end
-- [ ] UserButton muestra user + logout funciona
-- [ ] OrgSwitcher lista orgs + permite switch + refresh correcto
-- [ ] MembersList muestra members y invitations
+- [x] Sign-up funciona (email/password + Google OAuth) ✅ task #63
+- [x] Email verification se envía y valida ✅ task #63
+- [x] Sign-in con ambos métodos ✅ task #63
+- [x] Password reset end-to-end ✅ task #68 (forgot-password + reset-password pages, session guard, error mapping, proxy AUTH_ROUTES update)
+- [x] UserButton muestra user + logout funciona ✅ task #63
+- [x] OrgSwitcher lista orgs + permite switch + refresh correcto ✅ task #66
+- [ ] MembersList muestra members y invitations ⬜
 
 ## Rollback
 

@@ -18,8 +18,8 @@
 | 05 | Org creation lifecycle (Block A: trigger on_auth_user_created + partial index). Block B (Server Actions) movido a sub-plan 09 por dependencia de getSupabaseServerClient | ✅ Block A 2026-04-16 |
 | 06 | Invitations flow — **ABSORBIDO en sub-plans 09 (Server Actions) + 10 (UI)**. Sub-plan 06 es 100% application layer; sin DB artifacts propios (tabla `invitation` ya existe desde 01, policies en 07). No se ejecuta como fase separada | ⏭️ Absorbido en 09+10 |
 | 07 | RLS policies rewrite — 56 policies (5 multitenancy + 12 domain + storage × 3 buckets) + migration text→uuid de 20 columnas domain + 19 FKs nuevas + 2 helper functions (is_org_member, is_org_admin) + 3 partial indexes | ✅ 2026-04-16 |
-| 08 | Storage simplification | ⬜ |
-| 09 | Server Actions + getSessionContext refactor | ⬜ |
+| 08 | Storage simplification | ✅ Code done (absorbido en 09 task #65). Tests manuales → 14 |
+| 09 | Server Actions + getSessionContext refactor | ✅ tasks 62-67 committed |
 | 10 | UI components migration | ⬜ |
 | 11 | Data migration (purge o migrate) | ⬜ |
 | 12 | Cleanup deps + docs | ⬜ |

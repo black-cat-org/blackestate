@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server"
 import { updateSupabaseSession } from "@/lib/supabase/middleware"
 
 const PROTECTED_PREFIXES = ["/dashboard"] as const
-const AUTH_ROUTES = ["/sign-in", "/sign-up"] as const
+const AUTH_ROUTES = ["/sign-in", "/sign-up", "/forgot-password"] as const
 
 function startsWithAny(pathname: string, prefixes: readonly string[]): boolean {
   return prefixes.some((p) => pathname === p || pathname.startsWith(`${p}/`))

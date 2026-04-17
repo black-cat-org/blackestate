@@ -229,27 +229,23 @@ Similar para `delete-property-media.use-case.ts`.
 
 ## Pasos
 
-- [ ] **1.** Modificar `lib/supabase/storage.ts` para aceptar `client: SupabaseClient` como primer param.
-- [ ] **2.** Actualizar call sites en Server Actions:
-  - `features/properties/presentation/storage-actions.ts`
-  - Cualquier otro consumer de `uploadFile`/`deleteFile`.
-- [ ] **3.** Actualizar use cases que llaman storage.
-- [ ] **4.** Build check.
-- [ ] **5.** Test manual upload avatar:
-  - Sign-in como user A.
-  - Upload avatar.
-  - Verificar que el upload usa JWT del user (ver header Authorization en network tab).
-  - Verificar objeto creado en `storage.objects` con `owner = user A's id` (no service_role).
-- [ ] **6.** Test RLS negative: user A intenta upload a org B path manipulando FormData → debe fallar con RLS error.
-- [ ] **7.** Commit.
+- [x] **1.** Modificar `lib/supabase/storage.ts` para aceptar `client: SupabaseClient` como primer param. ✅ Absorbido en sub-plan 09 task #65 (commit `419a82d`)
+- [x] **2.** Actualizar call sites en Server Actions. ✅ task #65
+- [x] **3.** Actualizar use cases que llaman storage. ✅ task #65
+- [x] **4.** Build check. ✅ task #65
+- [ ] **5.** Test manual upload avatar (diferido — requiere user con org activa + storage funcional end-to-end). ⏭️ Sub-plan 14
+- [ ] **6.** Test RLS negative: path manipulation. ⏭️ Sub-plan 14
+- [x] **7.** Commit. ✅ `419a82d`
 
 ## Checklist
 
-- [ ] `uploadFile` acepta client parameter
-- [ ] Server Actions pasan client correcto
-- [ ] Use cases adaptados
-- [ ] Avatar upload funciona end-to-end
-- [ ] Path manipulation manual falla (RLS activo)
+- [x] `uploadFile` acepta client parameter ✅ task #65
+- [x] Server Actions pasan client correcto ✅ task #65
+- [x] Use cases adaptados ✅ task #65
+- [ ] Avatar upload funciona end-to-end ⏭️ Sub-plan 14
+- [ ] Path manipulation manual falla (RLS activo) ⏭️ Sub-plan 14
+
+**Estado: ✅ Código completo. Tests manuales diferidos a sub-plan 14.**
 
 ## Rollback
 

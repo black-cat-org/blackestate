@@ -348,7 +348,7 @@ Los que llaman storage requieren actualización (cliente explícito, ver Fase 08
 - [x] **7.** Eliminar `lib/db/rls.ts` y `lib/db/session-context.ts`. ✅ (tarea #63)
 - [x] **8.** Reemplazar imports de `@/lib/db/rls` por `@/features/shared/infrastructure/rls`. ✅ (ya estaba, verificado con grep — zero matches)
 - [x] **9.** Reemplazar imports de `@/lib/db/session-context`. ✅ (ya estaba, verificado)
-- [ ] **10.** Drizzle queries en Fase 06 (invitation-actions, organization-actions) → agregar `withRLS(ctx, async (tx) => ...)` donde corresponda. ← tareas #66, #67
+- [x] **10.** Drizzle queries en Fase 06 (invitation-actions, organization-actions) → agregar `withRLS(ctx, async (tx) => ...)` donde corresponda. ✅ tareas #66 (commit `71a9bda`), #67 (commit `d58260a`)
 - [x] **11.** Build check. ✅ 22 rutas, lint limpio (warnings preexistentes unrelated)
 - [x] **12.** Test manual. ✅ Playwright smoke test end-to-end: sign-in email/pwd → `/dashboard` renders con sidebar + org + user, `/dashboard/properties` lista (RLS filtered) → sign-out → `/sign-in`, auth-route al estar authed → `/dashboard`, open-redirect `//evil.com` rechazado. Zero console errors post-fixes.
 - [x] **13.** Commit. ✅ (task #62 commit `8742830`, task #63 commit pendiente en esta sesión)
