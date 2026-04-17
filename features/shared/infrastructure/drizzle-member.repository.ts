@@ -10,26 +10,54 @@ function orgScope(ctx: SessionContext) {
   return and(eq(member.organizationId, ctx.orgId), isNull(member.deletedAt))
 }
 
-async function enrichWithUserInfo(
-  rows: { id: string; userId: string; role: "owner" | "admin" | "agent"; title: string | null; createdAt: Date }[],
-): Promise<TeamMember[]> {
+type MemberRow = {
+  id: string
+  userId: string
+  role: "owner" | "admin" | "agent"
+  title: string | null
+  createdAt: Date
+}
+
+type UserInfoMap = Map<string, { name?: string; email: string; avatarUrl?: string }>
+
+async function buildUserInfoMap(userIds: string[]): Promise<UserInfoMap> {
+  if (userIds.length === 0) return new Map()
+
   const admin = getSupabaseAdmin()
-  return Promise.all(
-    rows.map(async (row) => {
-      const { data } = await admin.auth.admin.getUserById(row.userId)
-      const user = data?.user
-      return {
-        id: row.id,
-        userId: row.userId,
-        name: (user?.user_metadata?.full_name as string) ?? undefined,
-        email: user?.email ?? "",
-        avatarUrl: (user?.user_metadata?.avatar_url as string) ?? undefined,
-        role: row.role,
-        title: row.title ?? undefined,
-        createdAt: row.createdAt.toISOString(),
-      } satisfies TeamMember
-    }),
-  )
+  const { data, error } = await admin.auth.admin.listUsers({ perPage: 1000 })
+
+  if (error || !data?.users) return new Map()
+
+  const idSet = new Set(userIds)
+  const map: UserInfoMap = new Map()
+
+  for (const user of data.users) {
+    if (idSet.has(user.id)) {
+      map.set(user.id, {
+        name: (user.user_metadata?.full_name as string) ?? undefined,
+        email: user.email ?? "",
+        avatarUrl: (user.user_metadata?.avatar_url as string) ?? undefined,
+      })
+    }
+  }
+
+  return map
+}
+
+function mapRowsToMembers(rows: MemberRow[], userMap: UserInfoMap): TeamMember[] {
+  return rows.map((row) => {
+    const info = userMap.get(row.userId)
+    return {
+      id: row.id,
+      userId: row.userId,
+      name: info?.name,
+      email: info?.email ?? "",
+      avatarUrl: info?.avatarUrl,
+      role: row.role,
+      title: row.title ?? undefined,
+      createdAt: row.createdAt.toISOString(),
+    } satisfies TeamMember
+  })
 }
 
 export class DrizzleMemberRepository implements IMemberRepository {
@@ -51,7 +79,8 @@ export class DrizzleMemberRepository implements IMemberRepository {
         ),
     )
 
-    return enrichWithUserInfo(rows)
+    const userMap = await buildUserInfoMap(rows.map((r) => r.userId))
+    return mapRowsToMembers(rows, userMap)
   }
 
   async findById(ctx: SessionContext, memberId: string): Promise<TeamMember | undefined> {
@@ -70,8 +99,21 @@ export class DrizzleMemberRepository implements IMemberRepository {
     )
 
     if (!rows[0]) return undefined
-    const enriched = await enrichWithUserInfo([rows[0]])
-    return enriched[0]
+
+    const admin = getSupabaseAdmin()
+    const { data } = await admin.auth.admin.getUserById(rows[0].userId)
+    const user = data?.user
+
+    return {
+      id: rows[0].id,
+      userId: rows[0].userId,
+      name: (user?.user_metadata?.full_name as string) ?? undefined,
+      email: user?.email ?? "",
+      avatarUrl: (user?.user_metadata?.avatar_url as string) ?? undefined,
+      role: rows[0].role,
+      title: rows[0].title ?? undefined,
+      createdAt: rows[0].createdAt.toISOString(),
+    }
   }
 
   async updateRole(
