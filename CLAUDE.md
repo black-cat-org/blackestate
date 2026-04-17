@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**Black Estate** — SaaS B2B para el mercado inmobiliario LATAM. Next.js 16, React 19, TypeScript 5, Tailwind CSS 4. App Router architecture. Frontend MVP completo con datos mock (~160 componentes). Backend e infraestructura en construcción.
+**Black Estate** — SaaS B2B para el mercado inmobiliario LATAM. Next.js 16, React 19, TypeScript 5, Tailwind CSS 4. App Router architecture. Frontend MVP completo (~160 componentes). Auth migración Better Auth → Supabase Auth completada (2026-04-17). Backend data layer real con Clean Architecture + RLS.
 
 **Modelo de negocio:** Multi-tenant B2B. Agentes inmobiliarios individuales y agencias con equipos.
 
@@ -283,7 +283,7 @@ export async function createPropertyAction(formData: PropertyFormData): Promise<
 
 ### ⚠️ DANGER: Never use `drizzle-kit push`
 
-The database contains Supabase-managed schemas (`auth.*`, `storage.*`) and legacy renamed tables (`*_legacy_better_auth`) not defined in Drizzle. `drizzle-kit push` would drop anything not in the Drizzle schema, destroying Supabase Auth users and storage metadata.
+The database contains Supabase-managed schemas (`auth.*`, `storage.*`) not defined in Drizzle. `drizzle-kit push` would drop anything not in the Drizzle schema, destroying Supabase Auth users and storage metadata.
 
 - **NEVER use `drizzle-kit push`** — `npm run db:push` exits with an error guard.
 - **NEVER use `DROP SCHEMA CASCADE`** without verifying what it contains.
@@ -324,13 +324,12 @@ npx drizzle-kit check      # Verify config (safe, read-only)
 - **Session context**: `features/shared/infrastructure/session-context.ts` — `getSessionContext()` (ctx only) and `getAuthState()` (`{ ctx, claims }` — use when UI also needs email/name/avatar). Both call `getClaims()` once.
 - **Custom JWT claims** (injected by `custom_access_token` hook in `drizzle/sql/003`): `active_org_id`, `org_role`, `is_super_admin`, `user_name`. RLS policies and `rls.ts` read these.
 - **Env var access**: ALWAYS use `requireSupabaseEnv(literal_name)` from `lib/supabase/env.ts`. The function uses a switch over LITERAL `process.env.NAME` accesses because Turbopack/Webpack only inline env vars on literal property access — dynamic `process.env[name]` returns `undefined` in the browser bundle.
-- **Auth pages**: `/sign-in`, `/sign-up` (grupo `(auth)`), `/auth/callback` (PKCE `exchangeCodeForSession`), `/auth-code-error`. OAuth via `signInWithOAuth({ provider: 'google' })`.
+- **Auth pages**: `/sign-in`, `/sign-up`, `/forgot-password`, `/reset-password` (grupo `(auth)`). `/auth/callback` (PKCE `exchangeCodeForSession`), `/auth/confirm` (token_hash `verifyOtp` — fix Gmail pre-fetch), `/auth-code-error`. OAuth via `signInWithOAuth({ provider: 'google' })`.
 
 ### Storage
 
-- **Supabase Storage** via `@supabase/supabase-js` with `service_role` key (server-side only)
-- **Client:** `lib/supabase/server.ts` — singleton with `globalThis` guard
-- **Helpers:** `lib/supabase/storage.ts` — `uploadFile`, `uploadFiles`, `deleteFile`, `deleteFiles`, `getSignedUrl`
+- **Supabase Storage** via `@supabase/supabase-js` (server-side only). Helpers accept `SupabaseClient` as first param — callers pass authenticated client (RLS-enforced) or admin (Inngest).
+- **Helpers:** `lib/supabase/storage.ts` — `uploadFile(client, ...)`, `uploadFiles`, `deleteFile`, `deleteFiles`, `getSignedUrl`
 - **Buckets:** `property-media` (public, 10MB images), `avatars` (public, 2MB images), `brochures` (private, 20MB PDF)
 - **Path format:** `{orgId}/{entityId}/{uuid}.{ext}` — org isolation via folder structure
 - **RLS:** 10 policies on `storage.objects` — public SELECT for property-media/avatars, org-scoped writes

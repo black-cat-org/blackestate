@@ -1,7 +1,7 @@
 # Plan — Profile + Settings migración a Clean Architecture con split modular
 
 > **Creado:** 2026-04-15
-> **Estado:** Pendiente (próximo chat)
+> **Estado:** ⚠️ OBSOLETO — Superseded por migración Supabase Auth (sub-plans 09-10). Settings ya tiene sección "Equipo" con Clean Architecture. Profile/billing/integrations/notifications split se re-evalúa post-migración.
 > **Prerequisito:** Capa 2 de `implementation-plan.md` completada (RLS, storage, Clean Architecture en properties/leads/appointments/etc.)
 
 ## Contexto
