@@ -14,6 +14,10 @@ export async function sendInvitationUseCase(
     throw new Error("Only owner or admin can send invitations")
   }
 
+  if (ctx.role === "admin" && data.role === "admin") {
+    throw new Error("Only the owner can invite administrators")
+  }
+
   if (callerEmail.toLowerCase() === data.email.toLowerCase()) {
     throw new Error("Cannot invite yourself")
   }

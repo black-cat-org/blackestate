@@ -1,4 +1,4 @@
-import { User, Briefcase, Bell, Plug, Bot, CreditCard } from "lucide-react"
+import { User, Users, Briefcase, Bell, Plug, Bot, CreditCard } from "lucide-react"
 import type {
   SettingsSection,
   AgentProfile,
@@ -11,6 +11,7 @@ import type {
 
 export const SETTINGS_SECTIONS: { key: SettingsSection; label: string; icon: typeof User; description: string }[] = [
   { key: "business", label: "Negocio", icon: Briefcase, description: "Empresa, moneda y comisiones" },
+  { key: "team", label: "Equipo", icon: Users, description: "Miembros, roles e invitaciones" },
   { key: "notifications", label: "Notificaciones", icon: Bell, description: "Canales, eventos y horarios" },
   { key: "integrations", label: "Integraciones", icon: Plug, description: "Conexiones con servicios externos" },
   { key: "bot", label: "Mi Bot", icon: Bot, description: "Configuración del asistente virtual" },

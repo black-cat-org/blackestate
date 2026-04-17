@@ -562,8 +562,8 @@ export function MembersList() {
 - [x] **6.** Reescribir `components/nav-user.tsx`. ✅ task #63 — props-driven from server
 - [x] **7.** Reescribir `components/org-switcher.tsx`. ✅ task #63 — props-driven from server
 - [x] **8.** Agregar `listUserOrgsAction` a organization-actions. ✅ task #66 — `getUserOrganizationsAction()` (equivalent)
-- [ ] **9.** Implementar `features/shared/presentation/components/members-list.tsx`. ⬜
-- [ ] **10.** Integrar MembersList en `app/dashboard/settings/page.tsx`. ⬜
+- [x] **9.** Implementar Team section (members + invitations). ✅ task #70 — Clean Architecture: domain entity + repository interface, 3 use cases, Drizzle repo with admin enrichment, 4 server actions, full TeamSection component with role gates.
+- [x] **10.** Integrar en settings. ✅ task #70 — new "team" SettingsSection, wired in layout + page.
 - [x] **11.** Actualizar `app/dashboard/layout.tsx`. ✅ task #63 — uses `getAuthState()` + `getUserOrganizationsAction()`
 - [ ] **12.** Build + lint check.
 - [ ] **13.** Test manual.
@@ -577,7 +577,7 @@ export function MembersList() {
 - [x] Password reset end-to-end ✅ task #68 (forgot-password + reset-password pages, session guard, error mapping, proxy AUTH_ROUTES update)
 - [x] UserButton muestra user + logout funciona ✅ task #63
 - [x] OrgSwitcher lista orgs + permite switch + refresh correcto ✅ task #66
-- [ ] MembersList muestra members y invitations ⬜
+- [x] MembersList muestra members y invitations ✅ task #70 — TeamSection in settings with full CRUD + role gates
 
 ## Rollback
 

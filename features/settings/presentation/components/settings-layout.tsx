@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { SETTINGS_SECTIONS } from "@/lib/constants/settings"
 import { BusinessSection } from "@/features/settings/presentation/components/sections/business-section"
+import { TeamSection } from "@/features/settings/presentation/components/sections/team-section"
 import { NotificationsSection } from "@/features/settings/presentation/components/sections/notifications-section"
 import { IntegrationsSection } from "@/features/settings/presentation/components/sections/integrations-section"
 import { PlanSection } from "@/features/settings/presentation/components/sections/plan-section"
@@ -16,6 +17,8 @@ import type {
   PlanInfo,
 } from "@/features/settings/domain/settings.entity"
 import type { BotConfig } from "@/features/bot/domain/bot.entity"
+import type { TeamMember, TeamSeatInfo } from "@/features/shared/domain/member.entity"
+import type { PendingInvitation } from "@/features/shared/domain/invitation.entity"
 
 interface SettingsLayoutProps {
   business: BusinessSettings
@@ -23,6 +26,12 @@ interface SettingsLayoutProps {
   integrations: IntegrationSettings
   plan: PlanInfo
   botConfig: BotConfig
+  team: {
+    members: TeamMember[]
+    invitations: PendingInvitation[]
+    seatInfo: TeamSeatInfo
+    userRole: "owner" | "admin" | "agent"
+  }
 }
 
 export function SettingsLayout({
@@ -31,6 +40,7 @@ export function SettingsLayout({
   integrations,
   plan,
   botConfig,
+  team,
 }: SettingsLayoutProps) {
   const [activeSection, setActiveSection] = useState<SettingsSection>("business")
 
@@ -91,6 +101,7 @@ export function SettingsLayout({
       {/* Content */}
       <div className="min-w-0 flex-1">
         {activeSection === "business" && <BusinessSection data={business} />}
+        {activeSection === "team" && <TeamSection data={team} />}
         {activeSection === "notifications" && <NotificationsSection data={notifications} />}
         {activeSection === "integrations" && <IntegrationsSection data={integrations} />}
         {activeSection === "bot" && <BotConfigPanel config={botConfig} />}

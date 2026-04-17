@@ -15,14 +15,21 @@ import {
   getPlanInfoAction,
 } from "@/features/settings/presentation/actions"
 import { getBotConfigAction } from "@/features/bot/presentation/actions"
+import { listMembersAction, getSeatInfoAction } from "@/features/shared/presentation/member-actions"
+import { listInvitationsAction } from "@/features/shared/presentation/invitation-actions"
+import { getSessionContext } from "@/features/shared/infrastructure/session-context"
 
 export default async function SettingsPage() {
-  const [business, notifications, integrations, plan, botConfig] = await Promise.all([
+  const [business, notifications, integrations, plan, botConfig, members, invitations, seatInfo, ctx] = await Promise.all([
     getBusinessSettingsAction(),
     getNotificationPreferencesAction(),
     getIntegrationSettingsAction(),
     getPlanInfoAction(),
     getBotConfigAction(),
+    listMembersAction(),
+    listInvitationsAction(),
+    getSeatInfoAction(),
+    getSessionContext(),
   ])
 
   return (
@@ -47,6 +54,12 @@ export default async function SettingsPage() {
           integrations={integrations}
           plan={plan}
           botConfig={botConfig}
+          team={{
+            members,
+            invitations,
+            seatInfo,
+            userRole: ctx.role,
+          }}
         />
       </div>
     </>

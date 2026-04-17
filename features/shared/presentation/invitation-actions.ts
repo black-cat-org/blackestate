@@ -21,13 +21,13 @@ async function refreshJwt(): Promise<void> {
   }
 }
 
-export async function sendInvitationAction(input: SendInvitationDTO): Promise<void> {
+export async function sendInvitationAction(input: SendInvitationDTO): Promise<PendingInvitation> {
   const ctx = await getSessionContext()
   const supabase = await getSupabaseServerClient()
   const { data: userData } = await supabase.auth.getUser()
   const callerEmail = userData.user?.email ?? ""
 
-  const { token } = await sendInvitationUseCase(ctx, repo, input, callerEmail)
+  const { invitation, token } = await sendInvitationUseCase(ctx, repo, input, callerEmail)
 
   const admin = getSupabaseAdmin()
   const origin = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"
@@ -47,6 +47,12 @@ export async function sendInvitationAction(input: SendInvitationDTO): Promise<vo
   }
 
   revalidatePath("/dashboard/settings")
+  return {
+    id: invitation.id,
+    email: invitation.email,
+    role: invitation.role,
+    expiresAt: invitation.expiresAt,
+  }
 }
 
 /**
