@@ -36,6 +36,9 @@ export const member = pgTable(
       .notNull()
       .references(() => organization.id, { onDelete: "cascade" }),
     role: memberRoleEnum("role").notNull(),
+    email: text("email").notNull(),
+    name: text("name"),
+    avatarUrl: text("avatar_url"),
     title: text("title"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()

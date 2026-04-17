@@ -172,12 +172,18 @@ export class DrizzleInvitationRepository implements IInvitationRepository {
     userId: string
     organizationId: string
     role: InvitableRole
+    email: string
+    name?: string
+    avatarUrl?: string
   }): Promise<void> {
     await db.transaction(async (tx) => {
       await tx.insert(member).values({
         userId: data.userId,
         organizationId: data.organizationId,
         role: data.role,
+        email: data.email,
+        name: data.name ?? null,
+        avatarUrl: data.avatarUrl ?? null,
       })
 
       await tx

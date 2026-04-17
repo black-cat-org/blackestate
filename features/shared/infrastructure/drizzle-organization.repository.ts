@@ -64,7 +64,11 @@ export class DrizzleOrganizationRepository implements IOrganizationRepository {
    * Uses `db` directly — the new org has no RLS context yet (no member
    * exists for it until this transaction creates one).
    */
-  async create(userId: string, data: CreateOrganizationDTO): Promise<Organization> {
+  async create(
+    userId: string,
+    data: CreateOrganizationDTO,
+    ownerInfo: { email: string; name?: string; avatarUrl?: string },
+  ): Promise<Organization> {
     const [row] = await db.transaction(async (tx) => {
       const [newOrg] = await tx
         .insert(organization)
@@ -80,6 +84,9 @@ export class DrizzleOrganizationRepository implements IOrganizationRepository {
         userId,
         organizationId: newOrg.id,
         role: "owner",
+        email: ownerInfo.email,
+        name: ownerInfo.name ?? null,
+        avatarUrl: ownerInfo.avatarUrl ?? null,
       })
 
       await tx

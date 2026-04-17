@@ -1,7 +1,7 @@
 import type { IInvitationRepository } from "@/features/shared/domain/invitation.repository"
 
 export async function acceptInvitationUseCase(
-  caller: { userId: string },
+  caller: { userId: string; name?: string; avatarUrl?: string },
   repo: IInvitationRepository,
   token: string,
   userEmail: string,
@@ -36,6 +36,9 @@ export async function acceptInvitationUseCase(
     userId: caller.userId,
     organizationId: inv.organizationId,
     role: inv.role,
+    email: userEmail,
+    name: caller.name,
+    avatarUrl: caller.avatarUrl,
   })
 
   return { organizationId: inv.organizationId }

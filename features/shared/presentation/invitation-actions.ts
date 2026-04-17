@@ -73,7 +73,11 @@ export async function acceptInvitationAction(
   }
 
   const result = await acceptInvitationUseCase(
-    { userId: user.id },
+    {
+      userId: user.id,
+      name: (user.user_metadata?.full_name as string) ?? undefined,
+      avatarUrl: (user.user_metadata?.avatar_url as string) ?? undefined,
+    },
     repo,
     invToken,
     user.email,

@@ -23,5 +23,8 @@ export interface IInvitationRepository {
     userId: string
     organizationId: string
     role: InvitableRole
+    email: string
+    name?: string
+    avatarUrl?: string
   }): Promise<void>
 }

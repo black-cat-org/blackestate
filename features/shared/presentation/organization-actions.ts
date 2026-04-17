@@ -1,7 +1,7 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
-import { getSessionContext } from "@/features/shared/infrastructure/session-context"
+import { getSessionContext, getAuthState } from "@/features/shared/infrastructure/session-context"
 import { getSupabaseServerClient } from "@/lib/supabase/server"
 import { DrizzleOrganizationRepository } from "@/features/shared/infrastructure/drizzle-organization.repository"
 import { switchActiveOrgUseCase } from "@/features/shared/application/switch-active-org.use-case"
@@ -35,8 +35,13 @@ export async function createOrganizationAction(input: {
   name: string
   slug: string
 }): Promise<Organization> {
-  const ctx = await getSessionContext()
-  const org = await createOrganizationUseCase(ctx, repo, input)
+  const { ctx, claims } = await getAuthState()
+  const ownerInfo = {
+    email: (claims.email as string) ?? "",
+    name: (claims.user_name as string) ?? undefined,
+    avatarUrl: (claims.avatar_url as string) ?? undefined,
+  }
+  const org = await createOrganizationUseCase(ctx, repo, input, ownerInfo)
   await refreshJwt()
   revalidatePath("/dashboard")
   return org

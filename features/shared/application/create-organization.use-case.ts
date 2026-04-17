@@ -8,6 +8,7 @@ export async function createOrganizationUseCase(
   ctx: SessionContext,
   repo: IOrganizationRepository,
   data: CreateOrganizationDTO,
+  ownerInfo: { email: string; name?: string; avatarUrl?: string },
 ): Promise<Organization> {
   if (!data.name.trim()) {
     throw new Error("Organization name is required")
@@ -25,5 +26,5 @@ export async function createOrganizationUseCase(
     throw new Error("Slug is already taken")
   }
 
-  return repo.create(ctx.userId, data)
+  return repo.create(ctx.userId, data, ownerInfo)
 }

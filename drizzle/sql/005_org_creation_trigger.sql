@@ -115,8 +115,15 @@ begin
       returning id into new_org_id;
   end;
 
-  insert into public.member (user_id, organization_id, role)
-  values (new.id, new_org_id, 'owner');
+  insert into public.member (user_id, organization_id, role, email, name, avatar_url)
+  values (
+    new.id,
+    new_org_id,
+    'owner',
+    new.email,
+    new.raw_user_meta_data->>'full_name',
+    new.raw_user_meta_data->>'avatar_url'
+  );
 
   insert into public.user_active_org (user_id, organization_id)
   values (new.id, new_org_id);
