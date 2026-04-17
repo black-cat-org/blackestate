@@ -14,36 +14,36 @@ import { getSupabaseServerClient } from "@/lib/supabase/server"
  * `x-forwarded-host` is respected behind a load balancer (Vercel, Fly, etc.)
  * so the redirect lands on the user-visible host, not the internal one.
  */
+function resolveBaseUrl(request: NextRequest, origin: string): string {
+  const forwardedHost = request.headers.get("x-forwarded-host")
+  const isLocalEnv = process.env.NODE_ENV === "development"
+  if (isLocalEnv || !forwardedHost) return origin
+  return `https://${forwardedHost}`
+}
+
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get("code")
 
   const requestedNext = searchParams.get("next") ?? "/dashboard"
-  // Reject absolute URLs and protocol-relative `//evil.com` bypasses. Only
-  // same-origin relative paths starting with a single `/` are allowed.
   const isSafeNext =
     requestedNext.startsWith("/") &&
     !requestedNext.startsWith("//") &&
     !requestedNext.startsWith("/\\")
   const next = isSafeNext ? requestedNext : "/dashboard"
 
+  const baseUrl = resolveBaseUrl(request, origin)
+
   if (!code) {
-    return NextResponse.redirect(`${origin}/auth-code-error`)
+    return NextResponse.redirect(`${baseUrl}/auth-code-error`)
   }
 
   const supabase = await getSupabaseServerClient()
   const { error } = await supabase.auth.exchangeCodeForSession(code)
 
   if (error) {
-    return NextResponse.redirect(`${origin}/auth-code-error`)
+    return NextResponse.redirect(`${baseUrl}/auth-code-error`)
   }
 
-  const forwardedHost = request.headers.get("x-forwarded-host")
-  const isLocalEnv = process.env.NODE_ENV === "development"
-
-  if (isLocalEnv || !forwardedHost) {
-    return NextResponse.redirect(`${origin}${next}`)
-  }
-
-  return NextResponse.redirect(`https://${forwardedHost}${next}`)
+  return NextResponse.redirect(`${baseUrl}${next}`)
 }

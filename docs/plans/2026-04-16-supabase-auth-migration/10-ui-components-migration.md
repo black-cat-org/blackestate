@@ -557,7 +557,8 @@ export function MembersList() {
 - [x] **2.** Reescribir `app/(auth)/sign-up/page.tsx`. ✅ task #63 (commit `979b187`)
 - [x] **3.** Reescribir `app/(auth)/sign-in/page.tsx`. ✅ task #63 (commit `979b187`). Link "¿Olvidaste tu contraseña?" agregado en task #68.
 - [x] **4.** Crear `app/(auth)/forgot-password/page.tsx` y `reset-password/page.tsx`. ✅ task #68
-- [x] **5.** Crear `app/auth/callback/route.ts`. ✅ task #63 (commit `979b187`)
+- [x] **5.** Crear `app/auth/callback/route.ts`. ✅ task #63 (commit `979b187`). `resolveBaseUrl` fix en task #69.
+- [x] **5b.** Crear `app/auth/confirm/route.ts` — token_hash verifyOtp route (fix Gmail pre-fetch). ✅ task #69. Templates Supabase Dashboard pendientes de actualización manual por usuario.
 - [x] **6.** Reescribir `components/nav-user.tsx`. ✅ task #63 — props-driven from server
 - [x] **7.** Reescribir `components/org-switcher.tsx`. ✅ task #63 — props-driven from server
 - [x] **8.** Agregar `listUserOrgsAction` a organization-actions. ✅ task #66 — `getUserOrganizationsAction()` (equivalent)
