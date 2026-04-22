@@ -1,6 +1,6 @@
 import { eq, and, sql, isNull, gt } from "drizzle-orm"
-import { db } from "@/lib/db"
-import { invitation, member, organization, userActiveOrg } from "@/lib/db/schema"
+import { invitation, member, organization } from "@/lib/db/schema"
+import { getSupabaseServerClient } from "@/lib/supabase/server"
 import { withRLS } from "./rls"
 import { mapInvitationRowToEntity } from "./invitation.mapper"
 import type { SessionContext } from "@/features/shared/domain/session-context"
@@ -9,75 +9,41 @@ import type { IInvitationRepository } from "@/features/shared/domain/invitation.
 
 const INVITABLE_ROLES: readonly string[] = ["admin", "agent"]
 
+/**
+ * Translate a Postgres error raised by `accept_invitation` into a domain
+ * error. The RPC uses distinct `raise exception` tokens so the caller can
+ * surface meaningful messages without parsing the raw text.
+ */
+function translateAcceptError(message: string | undefined): Error {
+  switch (message) {
+    case "invitation_not_found":
+      return new Error("Invitation not found")
+    case "invitation_not_pending":
+      return new Error("Invitation has already been processed")
+    case "invitation_expired":
+      return new Error("Invitation has expired")
+    case "invitation_email_mismatch":
+      return new Error("This invitation belongs to a different email address")
+    case "email_missing":
+    case "not_authenticated":
+      return new Error("Not authenticated")
+    default:
+      return new Error(message ?? "Failed to accept invitation")
+  }
+}
+
 export class DrizzleInvitationRepository implements IInvitationRepository {
-  async findByToken(token: string): Promise<Invitation | undefined> {
-    const rows = await db
-      .select()
-      .from(invitation)
-      .where(eq(invitation.token, token))
-      .limit(1)
-
-    if (!rows[0]) return undefined
-
-    if (!INVITABLE_ROLES.includes(rows[0].role)) {
-      throw new Error(`Unexpected invitation role in DB: ${rows[0].role}`)
-    }
-
-    return mapInvitationRowToEntity(rows[0])
-  }
-
-  async findPendingByOrgId(orgId: string): Promise<PendingInvitation[]> {
-    const rows = await db
-      .select({
-        id: invitation.id,
-        email: invitation.email,
-        role: invitation.role,
-        expiresAt: invitation.expiresAt,
-      })
-      .from(invitation)
-      .where(
-        and(
-          eq(invitation.organizationId, orgId),
-          eq(invitation.status, "pending"),
-          gt(invitation.expiresAt, new Date()),
-        ),
-      )
-      .orderBy(invitation.createdAt)
-
-    return rows
-      .filter((r) => INVITABLE_ROLES.includes(r.role))
-      .map((r) => ({
-        id: r.id,
-        email: r.email,
-        role: r.role as InvitableRole,
-        expiresAt: r.expiresAt.toISOString(),
-      }))
-  }
-
-  async hasPendingForEmail(orgId: string, email: string): Promise<boolean> {
-    const rows = await db
-      .select({ id: invitation.id })
-      .from(invitation)
-      .where(
-        and(
-          eq(invitation.organizationId, orgId),
-          eq(invitation.email, email.toLowerCase()),
-          eq(invitation.status, "pending"),
-          gt(invitation.expiresAt, new Date()),
-        ),
-      )
-      .limit(1)
-    return rows.length > 0
-  }
-
-  async create(ctx: SessionContext, data: {
-    organizationId: string
-    email: string
-    role: InvitableRole
-    token: string
-    invitedByUserId: string
-    expiresAt: Date
-  }): Promise<Invitation> {
+  async create(
+    ctx: SessionContext,
+    data: {
+      organizationId: string
+      email: string
+      role: InvitableRole
+      token: string
+      invitedByUserId: string
+      expiresAt: Date
+    },
+  ): Promise<Invitation> {
     const rows = await withRLS(ctx, (tx) =>
       tx
         .insert(invitation)
@@ -96,113 +62,134 @@ export class DrizzleInvitationRepository implements IInvitationRepository {
     return mapInvitationRowToEntity(row)
   }
 
-  async markAccepted(id: string): Promise<void> {
-    await db
-      .update(invitation)
-      .set({ status: "accepted", acceptedAt: new Date() })
-      .where(eq(invitation.id, id))
+  /**
+   * List pending invitations for the caller's active org. Enforced by the
+   * `invitation_select_admin_or_invitee` policy — the admin branch
+   * (`is_org_admin(organization_id)`) authorises owner/admin reads; the
+   * invitee branch is irrelevant here because the caller is always admin
+   * (the use case guards on `ctx.role`).
+   */
+  async findPendingByOrgId(ctx: SessionContext): Promise<PendingInvitation[]> {
+    const rows = await withRLS(ctx, (tx) =>
+      tx
+        .select({
+          id: invitation.id,
+          email: invitation.email,
+          role: invitation.role,
+          expiresAt: invitation.expiresAt,
+        })
+        .from(invitation)
+        .where(
+          and(
+            eq(invitation.organizationId, ctx.orgId),
+            eq(invitation.status, "pending"),
+            gt(invitation.expiresAt, new Date()),
+          ),
+        )
+        .orderBy(invitation.createdAt),
+    )
+
+    return rows
+      .filter((r) => INVITABLE_ROLES.includes(r.role))
+      .map((r) => ({
+        id: r.id,
+        email: r.email,
+        role: r.role as InvitableRole,
+        expiresAt: r.expiresAt.toISOString(),
+      }))
   }
 
-  async markExpired(id: string): Promise<void> {
-    await db
-      .update(invitation)
-      .set({ status: "expired" })
-      .where(eq(invitation.id, id))
+  async hasPendingForEmail(ctx: SessionContext, email: string): Promise<boolean> {
+    const rows = await withRLS(ctx, (tx) =>
+      tx
+        .select({ id: invitation.id })
+        .from(invitation)
+        .where(
+          and(
+            eq(invitation.organizationId, ctx.orgId),
+            eq(invitation.email, email.toLowerCase()),
+            eq(invitation.status, "pending"),
+            gt(invitation.expiresAt, new Date()),
+          ),
+        )
+        .limit(1),
+    )
+    return rows.length > 0
   }
 
-  async markCancelled(orgId: string, invitationId: string): Promise<void> {
-    const result = await db
-      .update(invitation)
-      .set({ status: "cancelled" })
-      .where(
-        and(
-          eq(invitation.id, invitationId),
-          eq(invitation.organizationId, orgId),
-          eq(invitation.status, "pending"),
-        ),
-      )
-      .returning({ id: invitation.id })
+  /**
+   * Soft-cancel a pending invitation. No DELETE policy exists on the
+   * `invitation` table (by design — no hard deletes in this project), so
+   * cancellation is implemented as `status = 'cancelled'`. The filter on
+   * `status = 'pending'` prevents double-cancel and racing an already-
+   * accepted invitation. Authorised by the admin branch of
+   * `invitation_update_admin_or_invitee`.
+   */
+  async markCancelled(ctx: SessionContext, invitationId: string): Promise<void> {
+    const result = await withRLS(ctx, (tx) =>
+      tx
+        .update(invitation)
+        .set({ status: "cancelled" })
+        .where(
+          and(
+            eq(invitation.id, invitationId),
+            eq(invitation.organizationId, ctx.orgId),
+            eq(invitation.status, "pending"),
+          ),
+        )
+        .returning({ id: invitation.id }),
+    )
 
     if (result.length === 0) {
       throw new Error("Invitation not found or cannot be cancelled")
     }
   }
 
-  async deleteByToken(token: string): Promise<void> {
-    await db.delete(invitation).where(eq(invitation.token, token))
-  }
+  /**
+   * Seat-limit probe for the send-invitation use case. Runs the three
+   * counts inside a single RLS-scoped transaction so the snapshot is
+   * consistent (no partial state between the member count and the
+   * pending-invite count).
+   */
+  async getOrgSeatInfo(ctx: SessionContext): Promise<{ maxSeats: number; currentMembers: number }> {
+    return withRLS(ctx, async (tx) => {
+      const [org] = await tx
+        .select({ maxSeats: organization.maxSeats })
+        .from(organization)
+        .where(eq(organization.id, ctx.orgId))
+        .limit(1)
 
-  async getOrgSeatInfo(orgId: string): Promise<{ maxSeats: number; currentMembers: number }> {
-    const [org] = await db
-      .select({ maxSeats: organization.maxSeats })
-      .from(organization)
-      .where(eq(organization.id, orgId))
-      .limit(1)
+      const [memberCount] = await tx
+        .select({ count: sql<number>`count(*)::int` })
+        .from(member)
+        .where(and(eq(member.organizationId, ctx.orgId), isNull(member.deletedAt)))
 
-    const [memberCount] = await db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(member)
-      .where(and(eq(member.organizationId, orgId), isNull(member.deletedAt)))
+      const [pendingCount] = await tx
+        .select({ count: sql<number>`count(*)::int` })
+        .from(invitation)
+        .where(
+          and(
+            eq(invitation.organizationId, ctx.orgId),
+            eq(invitation.status, "pending"),
+            gt(invitation.expiresAt, new Date()),
+          ),
+        )
 
-    const [pendingCount] = await db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(invitation)
-      .where(
-        and(
-          eq(invitation.organizationId, orgId),
-          eq(invitation.status, "pending"),
-          gt(invitation.expiresAt, new Date()),
-        ),
-      )
-
-    return {
-      maxSeats: org?.maxSeats ?? 1,
-      currentMembers: (memberCount?.count ?? 0) + (pendingCount?.count ?? 0),
-    }
-  }
-
-  async isMemberOfOrg(userId: string, orgId: string): Promise<boolean> {
-    const rows = await db
-      .select({ id: member.id })
-      .from(member)
-      .where(
-        and(eq(member.userId, userId), eq(member.organizationId, orgId), isNull(member.deletedAt)),
-      )
-      .limit(1)
-    return rows.length > 0
-  }
-
-  async acceptAndCreateMember(data: {
-    invitationId: string
-    userId: string
-    organizationId: string
-    role: InvitableRole
-    email: string
-    name?: string
-    avatarUrl?: string
-  }): Promise<void> {
-    await db.transaction(async (tx) => {
-      await tx.insert(member).values({
-        userId: data.userId,
-        organizationId: data.organizationId,
-        role: data.role,
-        email: data.email,
-        name: data.name ?? null,
-        avatarUrl: data.avatarUrl ?? null,
-      })
-
-      await tx
-        .insert(userActiveOrg)
-        .values({ userId: data.userId, organizationId: data.organizationId })
-        .onConflictDoUpdate({
-          target: userActiveOrg.userId,
-          set: { organizationId: data.organizationId, updatedAt: new Date() },
-        })
-
-      await tx
-        .update(invitation)
-        .set({ status: "accepted", acceptedAt: new Date() })
-        .where(eq(invitation.id, data.invitationId))
+      return {
+        maxSeats: org?.maxSeats ?? 1,
+        currentMembers: (memberCount?.count ?? 0) + (pendingCount?.count ?? 0),
+      }
     })
+  }
+
+  async accept(token: string): Promise<{ organizationId: string }> {
+    const supabase = await getSupabaseServerClient()
+    const { data, error } = await supabase.rpc("accept_invitation", { p_token: token })
+
+    if (error) throw translateAcceptError(error.message)
+    if (typeof data !== "string") {
+      throw new Error("accept_invitation RPC returned an unexpected payload")
+    }
+    return { organizationId: data }
   }
 }

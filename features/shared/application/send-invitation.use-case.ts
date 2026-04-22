@@ -22,12 +22,12 @@ export async function sendInvitationUseCase(
     throw new Error("Cannot invite yourself")
   }
 
-  const hasPending = await repo.hasPendingForEmail(ctx.orgId, data.email)
+  const hasPending = await repo.hasPendingForEmail(ctx, data.email)
   if (hasPending) {
     throw new Error("A pending invitation already exists for this email")
   }
 
-  const { maxSeats, currentMembers } = await repo.getOrgSeatInfo(ctx.orgId)
+  const { maxSeats, currentMembers } = await repo.getOrgSeatInfo(ctx)
   if (currentMembers >= maxSeats) {
     throw new Error(
       `Organization seat limit reached (${maxSeats}). Upgrade the plan to invite more members.`,

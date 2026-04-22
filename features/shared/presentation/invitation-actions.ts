@@ -2,8 +2,7 @@
 
 import { revalidatePath } from "next/cache"
 import { getSessionContext } from "@/features/shared/infrastructure/session-context"
-import { getSupabaseServerClient } from "@/lib/supabase/server"
-import { getSupabaseAdmin } from "@/lib/supabase/server"
+import { getSupabaseServerClient, getSupabaseAdmin } from "@/lib/supabase/server"
 import { DrizzleInvitationRepository } from "@/features/shared/infrastructure/drizzle-invitation.repository"
 import { sendInvitationUseCase } from "@/features/shared/application/send-invitation.use-case"
 import { acceptInvitationUseCase } from "@/features/shared/application/accept-invitation.use-case"
@@ -42,7 +41,11 @@ export async function sendInvitationAction(input: SendInvitationDTO): Promise<Pe
   })
 
   if (error && error.code !== "email_exists") {
-    await repo.deleteByToken(token)
+    // Roll back the just-created invitation row by soft-cancelling it via
+    // `markCancelled`. There is no DELETE policy on `invitation` (no hard
+    // deletes by design), and soft cancel goes through withRLS like every
+    // other mutation — no db-direct escape hatch.
+    await repo.markCancelled(ctx, invitation.id)
     throw new Error(`Failed to send invitation email: ${error.message}`)
   }
 
@@ -56,33 +59,16 @@ export async function sendInvitationAction(input: SendInvitationDTO): Promise<Pe
 }
 
 /**
- * Accept an invitation. Uses `supabase.auth.getUser()` directly instead of
- * `getSessionContext()` because the accepting user may be brand-new (invited
- * via `inviteUserByEmail`) and their JWT may not yet contain `active_org_id`
- * — `getSessionContext()` would throw for these users.
+ * Accept an invitation. The `accept_invitation` SECURITY DEFINER RPC reads
+ * `auth.uid()` and `auth.jwt() ->> 'email'` from the caller's JWT, so the
+ * action does not need to materialise a SessionContext here — which is
+ * important because a brand-new invitee (just signed up via `inviteUserByEmail`)
+ * may not yet have an `active_org_id`, and `getSessionContext()` would throw.
  */
 export async function acceptInvitationAction(
   invToken: string,
 ): Promise<{ organizationId: string }> {
-  const supabase = await getSupabaseServerClient()
-  const { data: userData } = await supabase.auth.getUser()
-  const user = userData.user
-
-  if (!user?.id || !user.email) {
-    throw new Error("Not authenticated")
-  }
-
-  const result = await acceptInvitationUseCase(
-    {
-      userId: user.id,
-      name: (user.user_metadata?.full_name as string) ?? undefined,
-      avatarUrl: (user.user_metadata?.avatar_url as string) ?? undefined,
-    },
-    repo,
-    invToken,
-    user.email,
-  )
-
+  const result = await acceptInvitationUseCase(repo, invToken)
   await refreshJwt()
   revalidatePath("/dashboard")
   return result

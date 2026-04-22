@@ -10,5 +10,5 @@ export async function cancelInvitationUseCase(
     throw new Error("Only owner or admin can cancel invitations")
   }
 
-  await repo.markCancelled(ctx.orgId, invitationId)
+  await repo.markCancelled(ctx, invitationId)
 }

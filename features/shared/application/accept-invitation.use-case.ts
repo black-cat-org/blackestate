@@ -1,45 +1,20 @@
 import type { IInvitationRepository } from "@/features/shared/domain/invitation.repository"
 
+/**
+ * Accept an invitation. Thin orchestrator around the `accept_invitation`
+ * SECURITY DEFINER RPC: all validation (token existence, status, expiry,
+ * email match) and mutations (member row, active-org flip, invitation
+ * status) happen atomically inside the function, so the use case only
+ * needs to delegate and surface the translated error.
+ *
+ * Takes no `SessionContext` because the RPC reads `auth.uid()` and the
+ * email claim directly from the caller's JWT — and the accepting user may
+ * not yet have an `active_org_id`, which is exactly what `getSessionContext`
+ * would require.
+ */
 export async function acceptInvitationUseCase(
-  caller: { userId: string; name?: string; avatarUrl?: string },
   repo: IInvitationRepository,
   token: string,
-  userEmail: string,
 ): Promise<{ organizationId: string }> {
-  const inv = await repo.findByToken(token)
-
-  if (!inv) {
-    throw new Error("Invitation not found")
-  }
-
-  if (inv.status !== "pending") {
-    throw new Error("Invitation has already been processed")
-  }
-
-  if (new Date(inv.expiresAt) < new Date()) {
-    await repo.markExpired(inv.id)
-    throw new Error("Invitation has expired")
-  }
-
-  if (inv.email.toLowerCase() !== userEmail.toLowerCase()) {
-    throw new Error("This invitation belongs to a different email address")
-  }
-
-  const alreadyMember = await repo.isMemberOfOrg(caller.userId, inv.organizationId)
-  if (alreadyMember) {
-    await repo.markAccepted(inv.id)
-    return { organizationId: inv.organizationId }
-  }
-
-  await repo.acceptAndCreateMember({
-    invitationId: inv.id,
-    userId: caller.userId,
-    organizationId: inv.organizationId,
-    role: inv.role,
-    email: userEmail,
-    name: caller.name,
-    avatarUrl: caller.avatarUrl,
-  })
-
-  return { organizationId: inv.organizationId }
+  return repo.accept(token)
 }

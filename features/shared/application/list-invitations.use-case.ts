@@ -10,5 +10,5 @@ export async function listInvitationsUseCase(
     return []
   }
 
-  return repo.findPendingByOrgId(ctx.orgId)
+  return repo.findPendingByOrgId(ctx)
 }
