@@ -1,12 +1,9 @@
 import "server-only"
-import { getSupabaseAdmin } from "./server"
+import type { SupabaseClient } from "@supabase/supabase-js"
 import { BUCKET_CONFIG, type Bucket } from "./config"
 
 export type { Bucket }
-
-// Matches URL.pathname (no query string or fragment — URL splits those into
-// `.search` / `.hash`). Captures: 1 = bucket, 2 = object path.
-const PUBLIC_URL_PATTERN = /\/storage\/v1\/object\/public\/([^/]+)\/(.+)$/
+export { extractStoragePath } from "./storage-utils"
 
 /**
  * Derive MIME type from the file extension using the bucket's whitelist.
@@ -57,15 +54,22 @@ function buildObjectPath(orgId: string, entityId: string, ext: string): string {
 /**
  * Upload a single file to Supabase Storage.
  *
- * Returns the public URL for public buckets, or the storage path for private
- * buckets (use `createSignedUrl` to generate a time-bound URL).
+ * Caller passes the Supabase client so that RLS policies on `storage.objects`
+ * are enforced against the current user's JWT. For user-initiated uploads,
+ * pass `await getSupabaseServerClient()`. For backend-initiated uploads
+ * (Inngest jobs, seed scripts, cross-org admin ops), pass `getSupabaseAdmin()`
+ * — the service_role key bypasses RLS but bucket-level constraints
+ * (`file_size_limit`, `allowed_mime_types`) still apply.
  *
- * Path format: `{orgId}/{entityId}/{uuid}.{ext}`. The first segment is the
- * organization id, which matches the Storage RLS policies' `foldername[1]`
- * check — kept consistent even though `service_role` bypasses RLS, so that
- * future non-admin clients can use the same helpers without re-pathing.
+ * Returns the public URL for public buckets, or the storage path for private
+ * buckets (use `getSignedUrl` to generate a time-bound URL).
+ *
+ * Path format: `{orgId}/{entityId}/{uuid}.{ext}`. First segment MUST equal
+ * the uploader's `active_org_id` claim; storage RLS policies reject INSERT
+ * to any other folder.
  */
 export async function uploadFile(
+  client: SupabaseClient,
   bucket: Bucket,
   orgId: string,
   entityId: string,
@@ -74,7 +78,6 @@ export async function uploadFile(
   assertSize(bucket, file)
   const { ext, contentType } = deriveContentType(bucket, file.name)
 
-  const supabase = getSupabaseAdmin()
   const path = buildObjectPath(orgId, entityId, ext)
   // `cacheControl` here is the numeric `max-age` seconds as a string (Supabase
   // builds the full `Cache-Control: max-age=<n>` header server-side). Do not
@@ -89,7 +92,7 @@ export async function uploadFile(
   // the extension-derived MIME.
   const body = new Blob([await file.arrayBuffer()], { type: contentType })
 
-  const { error } = await supabase.storage.from(bucket).upload(path, body, {
+  const { error } = await client.storage.from(bucket).upload(path, body, {
     contentType,
     cacheControl,
     upsert: false,
@@ -103,7 +106,7 @@ export async function uploadFile(
     return path
   }
 
-  return supabase.storage.from(bucket).getPublicUrl(path).data.publicUrl
+  return client.storage.from(bucket).getPublicUrl(path).data.publicUrl
 }
 
 /**
@@ -114,23 +117,27 @@ export async function uploadFile(
  * on partial failure.
  */
 export async function uploadFiles(
+  client: SupabaseClient,
   bucket: Bucket,
   orgId: string,
   entityId: string,
   files: File[],
 ): Promise<string[]> {
   if (files.length === 0) return []
-  return Promise.all(files.map((file) => uploadFile(bucket, orgId, entityId, file)))
+  return Promise.all(files.map((file) => uploadFile(client, bucket, orgId, entityId, file)))
 }
 
 /**
  * Delete a single object by its storage path (not public URL).
  * Use `extractStoragePath` when starting from a public URL.
  */
-export async function deleteFile(bucket: Bucket, path: string): Promise<void> {
+export async function deleteFile(
+  client: SupabaseClient,
+  bucket: Bucket,
+  path: string,
+): Promise<void> {
   if (!path) return
-  const supabase = getSupabaseAdmin()
-  const { error } = await supabase.storage.from(bucket).remove([path])
+  const { error } = await client.storage.from(bucket).remove([path])
   if (error) {
     throw new Error(`[storage] delete from ${bucket} failed: ${error.message}`)
   }
@@ -139,11 +146,14 @@ export async function deleteFile(bucket: Bucket, path: string): Promise<void> {
 /**
  * Delete multiple objects by their storage paths (not public URLs).
  */
-export async function deleteFiles(bucket: Bucket, paths: string[]): Promise<void> {
+export async function deleteFiles(
+  client: SupabaseClient,
+  bucket: Bucket,
+  paths: string[],
+): Promise<void> {
   const cleaned = paths.filter(Boolean)
   if (cleaned.length === 0) return
-  const supabase = getSupabaseAdmin()
-  const { error } = await supabase.storage.from(bucket).remove(cleaned)
+  const { error } = await client.storage.from(bucket).remove(cleaned)
   if (error) {
     throw new Error(`[storage] bulk delete from ${bucket} failed: ${error.message}`)
   }
@@ -154,12 +164,12 @@ export async function deleteFiles(bucket: Bucket, paths: string[]): Promise<void
  * Defaults to 1 hour expiry.
  */
 export async function getSignedUrl(
+  client: SupabaseClient,
   bucket: Bucket,
   path: string,
   expiresIn: number = 3600,
 ): Promise<string> {
-  const supabase = getSupabaseAdmin()
-  const { data, error } = await supabase.storage
+  const { data, error } = await client.storage
     .from(bucket)
     .createSignedUrl(path, expiresIn)
 
@@ -171,27 +181,3 @@ export async function getSignedUrl(
   return data.signedUrl
 }
 
-/**
- * Extract the storage object path from a Supabase public URL.
- *
- * Returns `null` if the URL does not belong to the given bucket or is not a
- * Supabase public object URL — callers decide whether that is an error or a
- * no-op.
- *
- * Example:
- *   https://xxx.supabase.co/storage/v1/object/public/avatars/org-1/u-2/f.jpg
- *   → "org-1/u-2/f.jpg" (when bucket === "avatars")
- */
-export function extractStoragePath(bucket: Bucket, publicUrl: string): string | null {
-  let parsed: URL
-  try {
-    parsed = new URL(publicUrl)
-  } catch {
-    return null
-  }
-  const match = parsed.pathname.match(PUBLIC_URL_PATTERN)
-  if (!match) return null
-  const [, urlBucket, path] = match
-  if (urlBucket !== bucket) return null
-  return path
-}

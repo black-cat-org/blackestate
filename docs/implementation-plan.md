@@ -4,7 +4,27 @@
 >
 > **Creado:** 2026-04-13
 > **Última actualización:** 2026-04-16
-> **Estado:** Capa 1 completada. Capa 2: RLS done, Clean Architecture done (8 feature modules), Storage done (buckets + upload), E2E testing done (Playwright). Storage 400 upload bug fixed (MIME derivation from extension + Blob re-wrap + env-key guard). Auth org-creation fix deployed. Avatar drag & drop UI done. Siguiente: split modular profile/billing/integrations/notifications/settings + persistencia real (ver `docs/plans/2026-04-15-profile-settings-modular-split.md`), then Capa 3.
+> **Estado:** Capa 1 + Capa 2 mayor completadas. **Migración Better Auth → Supabase Auth EN CURSO.** Sub-plan 01 (schema multitenancy) ✅ done. Resto de fases (02-14) ver `docs/plans/2026-04-16-supabase-auth-migration/`. Plan `2026-04-15-profile-settings-modular-split.md` queda diferido hasta completar la migración auth (algunas decisiones cambian con el nuevo stack).
+
+## Migración Better Auth → Supabase Auth (en curso)
+
+| Sub-plan | Tema | Estado |
+|---|---|---|
+| 00 | Master plan | ✅ |
+| 01 | Schema multitenancy (organization, member, invitation, user_active_org, role_permissions + UUID migration de platform_admins) | ✅ 2026-04-16 |
+| 02 | Supabase Auth dashboard config (providers, templates ES neutro, URL whitelist, env vars) | ✅ 2026-04-16 |
+| 03 | Custom access token hook (claims active_org_id, org_role, is_super_admin, user_name + orphan defense) | ✅ 2026-04-16 |
+| 04 | RBAC + authorize() function (seed 57 rows + SECURITY DEFINER function con silent-false defense) | ✅ 2026-04-16 |
+| 05 | Org creation lifecycle (Block A: trigger on_auth_user_created + partial index). Block B (Server Actions) movido a sub-plan 09 por dependencia de getSupabaseServerClient | ✅ Block A 2026-04-16 |
+| 06 | Invitations flow — **ABSORBIDO en sub-plans 09 (Server Actions) + 10 (UI)**. Sub-plan 06 es 100% application layer; sin DB artifacts propios (tabla `invitation` ya existe desde 01, policies en 07). No se ejecuta como fase separada | ⏭️ Absorbido en 09+10 |
+| 07 | RLS policies rewrite — 56 policies (5 multitenancy + 12 domain + storage × 3 buckets) + migration text→uuid de 20 columnas domain + 19 FKs nuevas + 2 helper functions (is_org_member, is_org_admin) + 3 partial indexes | ✅ 2026-04-16 |
+| 08 | Storage simplification | ✅ Code done (absorbido en 09 task #65). Tests manuales → 14 |
+| 09 | Server Actions + getSessionContext refactor | ✅ tasks 62-67 committed |
+| 10 | UI components migration | ✅ tasks 68-70: password reset flow, /auth/confirm (Gmail fix), Team section in Settings. member table denormalized (email/name/avatar) |
+| 11 | Data migration (purge) | ✅ Tablas legacy vacías → DROP 7 tablas (user, session, account, verification, *_legacy_better_auth). Test user limpiado. DB: 17 tablas dominio, 1 auth user real |
+| 12 | Cleanup deps + docs | ✅ CLAUDE.md actualizado, profile-settings-split obsoleto, better-auth removido de code + deps + settings |
+| 14 | Testing checklist | ✅ 7/10 secciones pasan (A,B,C,D,H,L,M). 3 bloqueadas por IMP-8 (E,F,G — invitaciones). No son bugs de auth migration |
+| 13 | Mobile skeleton | ⏭️ |
 
 ---
 
@@ -247,7 +267,7 @@
 | 2.2.K2 | Hardcoded email `gonzalo@blackestate.com` in brochure PDF footer — should use AgentProfile email | `features/ai-contents/presentation/components/ai-brochure-generator.tsx:176` | When implementing real brochure generation (Capa 3.2) |
 | 2.2.K3 | Amenity labels duplicated inline instead of importing from `lib/constants/property.ts` | `features/ai-contents/presentation/components/ai-brochure-generator.tsx:141-162` | When implementing real brochure generation (Capa 3.2) |
 
-### 2.4 Transferencia de propiedades (enterprise)
+### 2.4 Transferencia de propiedades
 
 Flujo completo para que owner/admin transfiera propiedades (+ cascade) entre agentes de la misma org. Incluye preview, confirmación, audit trail, e inbox para el agente receptor.
 
@@ -435,3 +455,7 @@ Ideas validated but deferred. Implement when the relevant feature is stable and 
 | IMP-3 | `MarketingSection` in settings | Component exists (`features/settings/presentation/components/sections/marketing-section.tsx`) but is not connected to settings layout. | When building marketing settings feature |
 | IMP-4 | Hardcoded email in brochure PDF | `features/ai-contents/presentation/components/ai-brochure-generator.tsx:176` uses `gonzalo@blackestate.com`. Should use AgentProfile email. | When implementing real brochure generation (Capa 3.2) |
 | IMP-5 | Amenity labels duplicated inline | `ai-brochure-generator.tsx:141-162` has inline amenity label map. Should import from `lib/constants/property.ts`. | When implementing real brochure generation (Capa 3.2) |
+| IMP-6 | Org slug editor | Users should be able to edit their org slug from settings. Currently auto-generated from name with collision hash. | When building org settings UI |
+| IMP-7 | **Auditoría RLS bypass exhaustiva** ✅ 2026-04-22 | Revisión completa de `db` directo en `features/shared/infrastructure/`. Resultado: 15 bypasses eliminados. Org repo y invitation repo enrutados por `withRLS` para toda query user-side, y dos RPCs `SECURITY DEFINER` (`bootstrap_organization`, `accept_invitation`) para los dos únicos casos que legítimamente cruzan el boundary (first-org antes de que el JWT tenga `active_org_id`; aceptación antes de que el invitado sea miembro). Post-review fixes: restauración de member soft-deleted al aceptar invitación (restore vs `do nothing`), rollback tolerante a error en send, single-CTE snapshot en `getOrgSeatInfo`. Migraciones 007 + 008. Commits: 8bf3f2d, 6270c0c, 83d9797, + fixes. | — |
+| IMP-8 | **Reescribir flow de invitaciones a org** | El flow actual usa `inviteUserByEmail` de Supabase que CREA usuarios nuevos — incorrecto. La invitación a una org es para usuarios que YA existen en Black Estate. **Flow correcto:** (1) Owner ingresa email → validar que existe en `auth.users` → si no existe: error "Usuario no registrado". (2) Si existe: crear invitation record en DB (sin `inviteUserByEmail`). (3) Notificación in-app: badge en sidebar + sección "Invitaciones pendientes" en dashboard del invitado. (4) Invitado acepta → se une a la org como member con el rol asignado. **Futuro (Capa 4.3 Resend):** además del in-app, enviar email con link directo de aceptación. **Archivos a tocar:** `invitation-actions.ts` (eliminar `inviteUserByEmail`), `send-invitation.use-case.ts` (agregar validación user exists), `accept-invitation.use-case.ts` (simplificar — user ya existe), nueva UI de "invitaciones recibidas" en dashboard del invitado, badge notificación en sidebar. | **Inmediato post-merge de auth migration** |
+| IMP-9 | Link de referidos | Invitar gente NUEVA a la app (no a la org). Link único por org/user. Diferente de IMP-8 (que es invitar usuarios existentes a una org). Implementar con sistema de referrals cuando haya volumen. | Capa 5 — Marketing |

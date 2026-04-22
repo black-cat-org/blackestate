@@ -2,6 +2,27 @@
 
 > **Depends on:** 00-master.md
 > **Unlocks:** 03, 04, 05, 07
+> **Status:** ✅ Completed — 2026-04-16
+> **Branch:** `feat/auth-migration-phase-01`
+
+## Resumen ejecución
+
+Aplicado vía MCP `execute_sql` (drizzle-kit migrate colgó por colisión de prefix 0002 en filenames). Decisiones tomadas durante ejecución (con confirmación del user):
+
+1. **UUID nativo en TODAS las tablas nuevas** + `platform_admins.user_id` migrado de `text → uuid`. Razón: stage inicial sin data relevante; mejor consistencia con `auth.users.id` nativo de Supabase. FKs reales a `auth.users` enforced en DB.
+2. **Rename de indexes/constraints legacy** (no solo tablas) para evitar colisión nombres con tablas nuevas. `member_user_id_idx` → `member_legacy_user_id_idx`, etc.
+3. **`drizzle/0002_rls_policies.sql` movido a `drizzle/legacy/`** porque colisionaba con `0002_auth_migration_schema.sql`. Las RLS legacy se reemplazan en sub-plan 07.
+4. **`__drizzle_migrations` populated manualmente** con hashes de migrations 0001 (estaba unregistered) y 0002 (nueva). Drift de Drizzle tracking resuelto.
+5. **`platform_admins_select` policy DROPPED** (dependía de `user_id text`, blocking ALTER COLUMN). Se recrea en sub-plan 07.
+6. **Post-review fixes aplicados:**
+   - `lib/auth-permissions.ts`: agregado `property.assign` a permisos `owner`/`admin` (sincroniza con `appPermissionEnum`).
+   - `drizzle/sql/002_invitation_check_constraint.sql`: CHECK `status != 'pending' OR invited_by_user_id IS NOT NULL` para integridad INSERT.
+   - JSDoc en `invitation.ts` documenta el CHECK.
+
+## Tareas diferidas detectadas
+
+- **Partial index `member_active_user_org_idx`** sobre `(user_id, organization_id) WHERE deleted_at IS NULL` — ejecutado en sub-plan 05 junto al trigger (más eficiente que `member_deleted_at_idx` actual). Ver sección "Tarea adicional" en `05-org-creation-lifecycle.md`.
+- **Recrear `platform_admins_select` policy** — sub-plan 07 ya cubre esto con sintaxis Supabase Auth nativa.
 
 ## Goal
 

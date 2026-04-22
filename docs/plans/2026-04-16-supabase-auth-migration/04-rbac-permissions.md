@@ -2,6 +2,36 @@
 
 > **Depends on:** 01, 03
 > **Unlocks:** 07, 09
+> **Status:** ✅ Completed — 2026-04-16
+> **Branch:** `feat/auth-migration-phase-04`
+
+## Resumen ejecución
+
+- Seed `public.role_permissions`: **57 rows** total (owner=23, admin=22, agent=12), espejo exacto de `lib/auth-permissions.ts` (reviewer verificó diff 23×3 sin discrepancias).
+- Function `public.authorize(public.app_permission)` creada con:
+  - `stable` + `security definer` + `set search_path = ''`
+  - EXISTS (no COUNT), silent-false para roles null/empty/inválidos
+  - Grant EXECUTE solo a `authenticated`; revokes de `anon/public`
+- Idempotente: seed usa `ON CONFLICT (role, permission) DO NOTHING`; `CREATE OR REPLACE FUNCTION` safe a re-run.
+
+**Correcciones sobre el plan original:**
+- Type enum: `public.app_permission` (NO `app_permission_enum`, el plan tenía el nombre mal).
+- Counts: owner=23, admin=22, agent=12 (total 57). El plan original decía 57 en checklist pero description incorrecta "admin=22" con SQL contradictorio — resuelto.
+
+**Post-review fixes aplicados:**
+- Removido `coalesce(has_permission, false)` redundante (EXISTS nunca retorna NULL). Simplificado a `return exists(...)` directo.
+- Comment clarifica trade-off de `::text` cast vs enum cast (silent-false elegido por safety for auth primitive).
+- Comment de agent description ahora refleja correctamente que agent tiene `property.delete_own` pero NO `lead.delete_own`.
+
+**Tests post-fix (16/16 PASS):**
+- 15 test cases de matriz role × permission (owner/admin/agent con 5 perms cada uno).
+- 1 edge case: role inválido `"hackerman"` → false (silent-false defense ✓).
+- Edge cases adicionales cubiertos: JWT sin `org_role`, `org_role = ''` → false.
+
+## Tareas diferidas detectadas
+
+- **RLS en `public.role_permissions`** → sub-plan 07 agrega policy `SELECT TO authenticated USING (true)` (audit transparency). No afecta `authorize()` porque DEFINER bypasea RLS.
+- **Invalidación de claims cuando permissions cambian** → no aplica aquí (seed es static). Si a futuro se agrega UI para modificar role_permissions, considerar cache invalidation.
 
 ## Goal
 

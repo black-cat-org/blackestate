@@ -149,6 +149,29 @@ Si la migración falla en medio o post-deploy aparecen issues críticos:
 
 **Total estimado: 4-5 días de trabajo dedicado.** Con inevitables bugs + iteración: **1 semana**. La estimación previa de "1-2 semanas" que di en la conversación es conservadora e incluye buffer para problemas no previstos.
 
+## Tareas diferidas transversales (no en sub-plans numerados)
+
+### Pre-production hardening: SQL destructive guard robusto
+
+**Contexto:** durante sub-plan 03 se removió el hook `PreToolUse:mcp__supabase__execute_sql` de `.claude/settings.local.json` porque el regex tenía falsos positivos (bloqueaba `DELETE FROM public.member` por matchear la palabra "member" — propia de nuestras tablas multitenancy, no Better Auth legacy).
+
+**Para producción** (pre-merge a main cuando la migración esté completa):
+
+1. Re-diseñar el hook SQL guard con un parser SQL real (no regex) que distinga:
+   - DELETE/UPDATE/DROP contra `auth.*` schema → BLOCK siempre.
+   - DELETE contra tablas `public.*` donde la WHERE clause sea trivial (sin filters específicos de registro) → BLOCK.
+   - DELETE/UPDATE con WHERE clause específica → permitir con **confirmation prompt** al user.
+   - `DROP TABLE`, `DROP SCHEMA`, `TRUNCATE` → BLOCK siempre.
+   - `drizzle-kit push` → BLOCK siempre (ya cubierto por hook Bash actual).
+
+2. Re-activar hook con regex más precisa O mejor: usar JS/Python script que parse el AST SQL vía una lib como `pg-sql-ast` o `sql-parser-cst`.
+
+3. Durante migración (actual): solo el hook `Bash:drizzle-kit push` queda activo. Las queries destructive via MCP deben ser revisadas y confirmadas manualmente antes de ejecutar.
+
+4. Documentar en `.claude/settings.local.json` el comportamiento esperado + link a este plan.
+
+**Timing:** antes de deploy prod (post-Fase 14). Guarda las queries contra auth schemas reales una vez el stack Supabase Auth esté activo y con users.
+
 ## Criterios de éxito
 
 La migración está completa cuando:

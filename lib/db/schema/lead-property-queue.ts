@@ -1,12 +1,12 @@
-import { pgTable, text, integer, timestamp, index } from "drizzle-orm/pg-core";
+import { pgTable, text, uuid, integer, timestamp, index } from "drizzle-orm/pg-core";
 import { leads } from "./leads";
 import { properties } from "./properties";
 import { queueItemStatusEnum } from "./enums";
 
 export const leadPropertyQueue = pgTable("lead_property_queue", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
-  organizationId: text("organization_id").notNull(),
-  createdByUserId: text("created_by_user_id").notNull(),
+  organizationId: uuid("organization_id").notNull(),
+  createdByUserId: uuid("created_by_user_id").notNull(),
   leadId: text("lead_id").notNull().references(() => leads.id),
   propertyId: text("property_id").notNull().references(() => properties.id),
 

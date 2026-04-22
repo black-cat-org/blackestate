@@ -1,9 +1,9 @@
-import { pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, text, uuid, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 
 export const agentProfiles = pgTable("agent_profiles", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
-  userId: text("user_id").notNull(),
-  organizationId: text("organization_id").notNull(),
+  userId: uuid("user_id").notNull(),
+  organizationId: uuid("organization_id").notNull(),
 
   bio: text("bio"),
   whatsapp: text("whatsapp"),

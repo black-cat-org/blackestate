@@ -1,10 +1,10 @@
-import { pgTable, text, timestamp, index } from "drizzle-orm/pg-core";
+import { pgTable, text, uuid, timestamp, index } from "drizzle-orm/pg-core";
 import { leads } from "./leads";
 import { conversationStatusEnum } from "./enums";
 
 export const botConversations = pgTable("bot_conversations", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
-  organizationId: text("organization_id").notNull(),
+  organizationId: uuid("organization_id").notNull(),
   leadId: text("lead_id").notNull().references(() => leads.id),
 
   status: conversationStatusEnum("status").notNull().default("active"),

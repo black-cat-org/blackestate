@@ -1,8 +1,8 @@
-import { pgTable, text, boolean, integer, jsonb, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, uuid, boolean, integer, jsonb, timestamp } from "drizzle-orm/pg-core";
 
 export const botConfig = pgTable("bot_config", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
-  organizationId: text("organization_id").notNull().unique(),
+  organizationId: uuid("organization_id").notNull().unique(),
 
   active: boolean("active").notNull().default(false),
   welcomeMessage: text("welcome_message").notNull().default(""),

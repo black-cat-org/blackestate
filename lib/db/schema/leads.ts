@@ -1,11 +1,11 @@
-import { pgTable, text, boolean, timestamp, index } from "drizzle-orm/pg-core";
+import { pgTable, text, uuid, boolean, timestamp, index } from "drizzle-orm/pg-core";
 import { properties } from "./properties";
 import { leadStatusEnum, leadSourceEnum } from "./enums";
 
 export const leads = pgTable("leads", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
-  organizationId: text("organization_id").notNull(),
-  createdByUserId: text("created_by_user_id").notNull(),
+  organizationId: uuid("organization_id").notNull(),
+  createdByUserId: uuid("created_by_user_id").notNull(),
   propertyId: text("property_id").notNull().references(() => properties.id),
 
   // Contact info

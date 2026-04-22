@@ -2,6 +2,77 @@
 
 > **Depends on:** 01, 03, 04
 > **Unlocks:** 08, 09
+> **Status:** ✅ Completed — 2026-04-16
+> **Branch:** `feat/auth-migration-phase-07`
+
+## Resumen ejecución
+
+- **56 policies** nuevas aplicadas con diseño production-grade:
+  - 5 multitenancy tables (organization, member, invitation, user_active_org, role_permissions)
+  - 12 domain tables (properties, leads, appointments, ai_contents, lpq, bot_config, bot_conversations, bot_messages, analytics_events, agent_profiles, platform_admins, property_transfers)
+  - storage.objects (10 policies para 3 buckets)
+- 42 policies legacy Better Auth dropeadas
+- FORCE RLS en las 5 multitenancy tables (antes solo ENABLE)
+- **Helper functions SECURITY DEFINER** para evitar recursión infinita: `is_org_member(org_id)`, `is_org_admin(org_id)`
+- **Policies supabase_auth_admin** para que el JWT hook pueda leer `public.member`, `public.user_active_org`, `public.platform_admins` cuando FORCE RLS bypasea BYPASSRLS
+- 3 partial indexes para hot-path soft delete
+
+## Scope expandido — type migration absorbido
+
+Originalmente en sub-plan 11, traído adelante porque es prerequisito funcional:
+
+- 20 columnas domain tables migradas `text → uuid`
+- 10 FKs legacy a `organization_legacy_better_auth` dropeadas
+- 19 FKs reales nuevas agregadas:
+  - 11 FKs `organization_id → public.organization(id) CASCADE`
+  - 5 FKs `created_by_user_id → auth.users(id) SET NULL`
+  - 1 FK `agent_profiles.user_id → auth.users(id) CASCADE`
+  - 3 FKs `property_transfers.*_user_id → auth.users(id) SET NULL`
+- 11 Drizzle schemas TS actualizados (`text()` → `uuid()` para las columnas migradas)
+- `drizzle-kit check` passes post-fix
+
+## Post-review fixes aplicados (3 blockers + 4 majors + minors)
+
+**Blockers resueltos:**
+1. **UPDATE policies missing `WITH CHECK`** — prevenir cross-org hijack via UPDATE organization_id. 13 policies fixed.
+2. **`member_update_admin_or_self_title` role escalation** — split en 2 policies: admin path (any field) + self path (title only, role/org locked via WITH CHECK self-lookup).
+3. **`organization_update` missing WITH CHECK** — defense-in-depth pattern consistente.
+
+**Majors:**
+4. `member_select` ahora filtra `deleted_at IS NULL` en outer row (soft-deleted rows no visibles a members regulares).
+5. `invitation_*` policies usan `auth.email()` Supabase helper (no DB roundtrip).
+6. UPDATE policies en soft-delete tables filtran `deleted_at IS NULL` (previene stealth restore).
+7. INSERT policies guardan `deleted_at IS NULL` (previene stealth-deleted inserts).
+
+**Minors:**
+8. `bot_config` INSERT restringido a owner/admin (config afecta whole org).
+9. `analytics_events`, `bot_*` super_admin bypass agregado para consistencia.
+
+**Root cause fixes durante testing:**
+- **Infinite recursion** en member policies (EXISTS en member dentro de member policy) → helpers SECURITY DEFINER rompen cycle.
+- **Hook claims null** → FORCE RLS bypasea BYPASSRLS de `supabase_auth_admin`, necesita policies explícitas para que hook lea tablas.
+
+## Tests post-fixes (6/6 PASSED)
+
+Script Node creando 2 users reales vía admin API, sign-in con auth client, verifica:
+- ✅ User A ve su propio org, NO ve org de user B
+- ✅ User A puede INSERT property en su org
+- ✅ User A NO puede INSERT property en org de B (RLS rejects)
+- ✅ User B NO ve property de user A
+- ✅ User B UPDATE property de A → blocked (title unchanged, audit via service_role)
+
+JWT claims debugged: hook emite `active_org_id`, `org_role: owner`, `is_super_admin: false` correctamente.
+
+## Advisors
+
+Security advisors post-fix:
+- ✅ No listings en public buckets (advisor warning removed al eliminar SELECT policy innecesaria)
+- Remaining INFO: 7 tables Better Auth legacy sin policies (sub-plan 12 las drop)
+- Remaining WARN: `auth_leaked_password_protection` (Pro-plan only, skipped)
+
+## Sub-plan 06 absorbido
+
+El sub-plan 06 (invitations flow) es 100% application-layer (Server Actions TS + UI). Sin DB artifacts propios — la tabla `invitation` ya existe desde sub-plan 01, y sus policies se aplicaron aquí en sub-plan 07. Su contenido se absorbe en sub-plan 09 (Server Actions) + sub-plan 10 (UI). No se ejecuta como fase separada.
 
 ## Goal
 

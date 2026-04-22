@@ -1,10 +1,10 @@
-import { pgTable, text, integer, boolean, numeric, doublePrecision, real, timestamp, index } from "drizzle-orm/pg-core";
+import { pgTable, text, uuid, integer, boolean, numeric, doublePrecision, real, timestamp, index } from "drizzle-orm/pg-core";
 import { propertyTypeEnum, operationTypeEnum, propertyStatusEnum, currencyEnum, surfaceUnitEnum, propertyConditionEnum, orientationEnum } from "./enums";
 
 export const properties = pgTable("properties", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
-  organizationId: text("organization_id").notNull(),
-  createdByUserId: text("created_by_user_id").notNull(),
+  organizationId: uuid("organization_id").notNull(),
+  createdByUserId: uuid("created_by_user_id").notNull(),
 
   // Core
   title: text("title").notNull(),

@@ -1,7 +1,8 @@
 "use client"
 
+import { useRouter } from "next/navigation"
+import { useTransition } from "react"
 import { Building2, ChevronsUpDown, Check, Plus } from "lucide-react"
-import { authClient } from "@/lib/auth-client"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,92 +17,108 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar"
+import { switchActiveOrgAction } from "@/features/shared/presentation/organization-actions"
+import type { OrganizationMembership } from "@/features/shared/domain/organization.entity"
 
-export function OrgSwitcher() {
+export type { OrganizationMembership }
+
+export interface OrgSwitcherProps {
+  activeOrgId: string
+  organizations: OrganizationMembership[]
+}
+
+export function OrgSwitcher({ activeOrgId, organizations }: OrgSwitcherProps) {
   const { isMobile } = useSidebar()
-  const { data: organizations, isPending: orgsLoading } = authClient.useListOrganizations()
-  const { data: activeOrg, isPending: orgLoading } = authClient.useActiveOrganization()
+  const router = useRouter()
+  const [isPending, startTransition] = useTransition()
 
-  const isLoading = orgsLoading || orgLoading
+  const activeOrg = organizations.find((o) => o.id === activeOrgId)
+  const hasMultipleOrgs = organizations.length > 1
 
-  const handleSetActive = async (orgId: string) => {
-    await authClient.organization.setActive({ organizationId: orgId })
+  const handleSwitch = (orgId: string) => {
+    if (orgId === activeOrgId) return
+    startTransition(async () => {
+      try {
+        await switchActiveOrgAction(orgId)
+        router.refresh()
+      } catch {
+        // Server Action threw (membership check failed, network, etc.)
+        // Transition ends, UI stays on current org — no crash.
+        router.refresh()
+      }
+    })
   }
 
-  const hasMultipleOrgs = organizations && organizations.length > 1
+  if (!activeOrg) return null
 
-  if (isLoading) return null
-
-  return (
-    <SidebarMenu>
-      <SidebarMenuItem>
-        {hasMultipleOrgs ? (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <SidebarMenuButton
-                size="lg"
-                className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
-              >
-                <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
-                  <Building2 className="size-4" />
-                </div>
-                <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-medium">
-                    {activeOrg?.name || "Seleccionar org"}
-                  </span>
-                  <span className="truncate text-xs">
-                    {activeOrg?.slug || ""}
-                  </span>
-                </div>
-                <ChevronsUpDown className="ml-auto size-4" />
-              </SidebarMenuButton>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              className="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg"
-              side={isMobile ? "bottom" : "right"}
-              align="start"
-              sideOffset={4}
-            >
-              <DropdownMenuLabel>Organizaciones</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              {organizations?.map((org) => (
-                <DropdownMenuItem
-                  key={org.id}
-                  onClick={() => handleSetActive(org.id)}
-                >
-                  <div className="flex aspect-square size-6 items-center justify-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground">
-                    <Building2 className="size-3" />
-                  </div>
-                  <span className="flex-1 truncate">{org.name}</span>
-                  {activeOrg?.id === org.id && (
-                    <Check className="size-4 text-primary" />
-                  )}
-                </DropdownMenuItem>
-              ))}
-              <DropdownMenuSeparator />
-              <DropdownMenuItem disabled>
-                <Plus className="size-4" />
-                Crear organización
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        ) : (
+  if (!hasMultipleOrgs) {
+    return (
+      <SidebarMenu>
+        <SidebarMenuItem>
           <SidebarMenuButton size="lg" asChild>
             <div>
               <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
                 <Building2 className="size-4" />
               </div>
               <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-medium">
-                  {activeOrg?.name}
-                </span>
-                <span className="truncate text-xs">
-                  {activeOrg?.slug}
-                </span>
+                <span className="truncate font-medium">{activeOrg.name}</span>
+                <span className="truncate text-xs">{activeOrg.slug}</span>
               </div>
             </div>
           </SidebarMenuButton>
-        )}
+        </SidebarMenuItem>
+      </SidebarMenu>
+    )
+  }
+
+  return (
+    <SidebarMenu>
+      <SidebarMenuItem>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <SidebarMenuButton
+              size="lg"
+              className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+              disabled={isPending}
+            >
+              <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
+                <Building2 className="size-4" />
+              </div>
+              <div className="grid flex-1 text-left text-sm leading-tight">
+                <span className="truncate font-medium">{activeOrg.name}</span>
+                <span className="truncate text-xs">{activeOrg.slug}</span>
+              </div>
+              <ChevronsUpDown className="ml-auto size-4" />
+            </SidebarMenuButton>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            className="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg"
+            side={isMobile ? "bottom" : "right"}
+            align="start"
+            sideOffset={4}
+          >
+            <DropdownMenuLabel>Organizaciones</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            {organizations.map((org) => (
+              <DropdownMenuItem
+                key={org.id}
+                onClick={() => handleSwitch(org.id)}
+                disabled={isPending}
+              >
+                <div className="flex aspect-square size-6 items-center justify-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground">
+                  <Building2 className="size-3" />
+                </div>
+                <span className="flex-1 truncate">{org.name}</span>
+                {org.id === activeOrgId && <Check className="size-4 text-primary" />}
+              </DropdownMenuItem>
+            ))}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem disabled>
+              <Plus className="size-4" />
+              Crear organización
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </SidebarMenuItem>
     </SidebarMenu>
   )

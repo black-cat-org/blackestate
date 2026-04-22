@@ -1,66 +1,84 @@
-import { headers } from "next/headers"
-import { eq, sql } from "drizzle-orm"
-import { auth } from "@/lib/auth"
-import { db } from "@/lib/db"
-import { platformAdmins } from "@/lib/db/schema"
+import "server-only"
+import { getSupabaseServerClient } from "@/lib/supabase/server"
 import type { SessionContext } from "@/features/shared/domain/session-context"
 
-/**
- * Extract RLS session context from the current Better Auth session.
- *
- * Returns userId, orgId, org role, and super admin status.
- * Throws if no session or no active organization.
- */
-export async function getSessionContext(): Promise<SessionContext> {
-  const h = await headers()
+type OrgRole = SessionContext["role"]
 
-  const session = await auth.api.getSession({ headers: h })
+const ORG_ROLES: readonly OrgRole[] = ["owner", "admin", "agent"]
 
-  if (!session) {
-    throw new Error("Not authenticated")
+function isOrgRole(value: unknown): value is OrgRole {
+  return typeof value === "string" && (ORG_ROLES as readonly string[]).includes(value)
+}
+
+export interface AuthState {
+  ctx: SessionContext
+  claims: Record<string, unknown>
+}
+
+function toSessionContext(claims: Record<string, unknown>): SessionContext {
+  if (typeof claims.sub !== "string") {
+    throw new Error("[auth] Not authenticated")
   }
 
-  let orgId = session.session.activeOrganizationId
-  let role: "owner" | "admin" | "agent" | undefined
+  const orgId = claims.active_org_id
+  const role = claims.org_role
 
-  // Try to get active member from the session cookie
-  if (orgId) {
-    const activeMember = await auth.api.getActiveMember({ headers: h })
-    if (activeMember) {
-      role = activeMember.role as "owner" | "admin" | "agent"
-    }
-  }
-
-  // Fallback: if session cookie doesn't have activeOrganizationId yet
-  // (first request after login/signup), read directly from member table.
-  // The dashboard layout calls ensureOrganization() first, so the org
-  // always exists in DB by the time this runs.
-  if (!orgId || !role) {
-    const memberRows = await db.execute(
-      sql`SELECT "organizationId", "role" FROM "member" WHERE "userId" = ${session.user.id} LIMIT 1`
+  if (typeof orgId !== "string" || !isOrgRole(role)) {
+    throw new Error(
+      "[auth] JWT is missing active_org_id / org_role. " +
+        "Verify the custom_access_token hook is enabled and that " +
+        "handle_new_user() created an org for this user.",
     )
-    const row = (memberRows.rows as Array<{ organizationId: string; role: string }>)[0]
-
-    if (row) {
-      orgId = row.organizationId
-      role = row.role as "owner" | "admin" | "agent"
-    }
   }
-
-  if (!orgId || !role) {
-    throw new Error("No active organization")
-  }
-
-  const superAdminRow = await db
-    .select({ userId: platformAdmins.userId })
-    .from(platformAdmins)
-    .where(eq(platformAdmins.userId, session.user.id))
-    .limit(1)
 
   return {
-    userId: session.user.id,
+    userId: claims.sub,
     orgId,
     role,
-    isSuperAdmin: superAdminRow.length > 0,
+    isSuperAdmin: claims.is_super_admin === true,
   }
+}
+
+/**
+ * Fetch the full Supabase Auth state in a single JWT read.
+ *
+ * Returns both the session context (for RLS) and the raw claims (for UI
+ * display info like email, full_name, avatar_url). Callers that need both
+ * should prefer this over calling `getSessionContext` twice.
+ */
+export async function getAuthState(): Promise<AuthState> {
+  const supabase = await getSupabaseServerClient()
+  const { data, error } = await supabase.auth.getClaims()
+
+  if (error) {
+    throw new Error(`[auth] Failed to read JWT claims: ${error.message}`)
+  }
+
+  const claims = data?.claims as Record<string, unknown> | undefined
+  if (!claims) {
+    throw new Error("[auth] Not authenticated")
+  }
+
+  return { ctx: toSessionContext(claims), claims }
+}
+
+/**
+ * Extract RLS session context from the current Supabase Auth session.
+ *
+ * Reads custom claims injected by the `custom_access_token` Postgres hook
+ * (see `drizzle/sql/003_custom_access_token_hook.sql`):
+ *   - `sub` — user UUID
+ *   - `active_org_id` — user's active organization (from `user_active_org`)
+ *   - `org_role` — role in the active org (owner/admin/agent)
+ *   - `is_super_admin` — optional platform admin flag
+ *
+ * Throws if the session is missing or claims are malformed. A missing
+ * `active_org_id` typically means the `handle_new_user()` trigger failed
+ * to auto-create an org for a new user — the trigger is the source of
+ * truth; we don't fall back to on-read creation here to avoid masking
+ * infrastructure failures.
+ */
+export async function getSessionContext(): Promise<SessionContext> {
+  const { ctx } = await getAuthState()
+  return ctx
 }

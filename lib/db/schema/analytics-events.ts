@@ -1,8 +1,8 @@
-import { pgTable, text, jsonb, timestamp, index } from "drizzle-orm/pg-core";
+import { pgTable, text, uuid, jsonb, timestamp, index } from "drizzle-orm/pg-core";
 
 export const analyticsEvents = pgTable("analytics_events", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
-  organizationId: text("organization_id").notNull(),
+  organizationId: uuid("organization_id").notNull(),
 
   eventType: text("event_type").notNull(), // property_created, lead_received, appointment_booked, deal_won, property_viewed, etc.
   metadata: jsonb("metadata").notNull().default({}), // { propertyId, leadId, source, amount, ... }

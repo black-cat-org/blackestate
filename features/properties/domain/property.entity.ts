@@ -34,6 +34,7 @@ export type Orientation =
 
 export interface Property {
   id: string
+  createdByUserId: string
   title: string
   description: string
   shortDescription?: string

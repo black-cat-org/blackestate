@@ -1,24 +1,29 @@
-"use client";
+"use client"
 
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { signIn } from "@/lib/auth-client";
-import { toast } from "sonner";
+import { useState } from "react"
+import { Button } from "@/components/ui/button"
+import { getSupabaseBrowserClient } from "@/lib/supabase/client"
+import { toast } from "sonner"
 
 export function SocialButtons() {
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(false)
 
   const handleGoogleSignIn = async () => {
-    setLoading(true);
-    const { error } = await signIn.social({
+    setLoading(true)
+    const supabase = getSupabaseBrowserClient()
+    const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      callbackURL: "/dashboard",
-    });
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback?next=/dashboard`,
+      },
+    })
     if (error) {
-      toast.error(error.message || "Error al iniciar sesión con Google");
-      setLoading(false);
+      toast.error(error.message || "Error al iniciar sesión con Google")
+      setLoading(false)
     }
-  };
+    // Success path: Supabase navigates the browser to Google; no further
+    // action needed here. The callback route finishes the flow.
+  }
 
   return (
     <Button
@@ -47,5 +52,5 @@ export function SocialButtons() {
       </svg>
       Continuar con Google
     </Button>
-  );
+  )
 }

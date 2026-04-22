@@ -1,6 +1,6 @@
 # Sub-plan 09 — Server Actions + Session Context Refactor
 
-> **Depends on:** 01, 02, 03, 05, 07
+> **Depends on:** 01, 02, 03, 05 (Block A), 07
 > **Unlocks:** 10
 
 ## Goal
@@ -13,6 +13,21 @@ Reescribir la infrastructure de auth en el proyecto:
 4. `features/shared/infrastructure/session-context.ts` — reescrito para leer de Supabase Auth (via `supabase.auth.getClaims()`).
 5. Eliminar `withRLS()` — ya no necesario. Drizzle queries siguen directo, RLS se aplica por cookies auth.
 6. Actualizar call sites: todas las Server Actions llaman `getSessionContext()` como antes (API compatible).
+7. **Block B absorbido de sub-plan 05** (ver abajo) — Server Actions de organization lifecycle.
+
+## Block B absorbido desde sub-plan 05
+
+Sub-plan 05 quedó reducido a Block A (DB trigger + indexes) por dependencia: los Server Actions de organization lifecycle necesitan `getSupabaseServerClient()` que esta fase crea. Implementación acá landea ambos simultáneamente.
+
+Archivo a crear en esta fase: `features/shared/presentation/organization-actions.ts` con 3 Server Actions:
+
+- **`switchActiveOrgAction(newOrgId: string)`** — valida que el user es member del newOrgId vía Drizzle query con `withRLS` (o cliente Supabase, según decisión final de esta fase); upsert en `public.user_active_org`; fuerza `supabase.auth.refreshSession()` para que el próximo JWT refleje el cambio; `revalidatePath("/dashboard")`.
+
+- **`createOrganizationAction({ name, slug })`** — valida slug format + uniqueness; transaction Drizzle: insert `organization` + insert `member(owner)` + upsert `user_active_org`; `supabase.auth.refreshSession()`.
+
+- **`updateOrganizationAction(orgId, patch: { name?, logoUrl? })`** — valida que `ctx.orgId === orgId` (solo active org) + `ctx.role IN ('owner','admin')`; UPDATE en `organization`; `revalidatePath("/dashboard/settings")`.
+
+El diseño detallado de estos Server Actions está en **`05-org-creation-lifecycle.md` Block B section** (reference). Esta fase implementa ese diseño con las dependencies ya presentes.
 
 ## Archivos
 
@@ -324,30 +339,95 @@ Los que llaman storage requieren actualización (cliente explícito, ver Fase 08
 
 ## Pasos
 
-- [ ] **1.** Reescribir `lib/supabase/server.ts` con `getSupabaseServerClient` + `getSupabaseAdmin`.
-- [ ] **2.** Crear `lib/supabase/client.ts`.
-- [ ] **3.** Crear `lib/supabase/proxy.ts`.
-- [ ] **4.** Reescribir `proxy.ts` raíz.
-- [ ] **5.** Reescribir `features/shared/infrastructure/session-context.ts`.
-- [ ] **6.** Actualizar `features/shared/infrastructure/rls.ts` con claim names nuevos.
-- [ ] **7.** Eliminar `lib/db/rls.ts` y `lib/db/session-context.ts`.
-- [ ] **8.** `rg "from \"@/lib/db/rls\"` → reemplazar por `@/features/shared/infrastructure/rls`. Grep + fix todos.
-- [ ] **9.** `rg "from \"@/lib/db/session-context\""` → reemplazar. Grep + fix.
-- [ ] **10.** Drizzle queries en Fase 06 (invitation-actions, organization-actions) → agregar `withRLS(ctx, async (tx) => ...)` donde corresponda.
-- [ ] **11.** Build check.
-- [ ] **12.** Test manual: sign-in → dashboard renders → properties page lista. Cada Server Action corre sin errores.
-- [ ] **13.** Commit.
+- [x] **1.** Reescribir `lib/supabase/server.ts` con `getSupabaseServerClient` + `getSupabaseAdmin`. ✅ (tarea #62)
+- [x] **2.** Crear `lib/supabase/client.ts`. ✅ (tarea #62)
+- [x] **3.** Crear helper Supabase para middleware. ✅ (tarea #62 — archivo nombrado `lib/supabase/middleware.ts` para distinguirlo del `proxy.ts` raíz y seguir convención oficial Supabase; export `updateSupabaseSession(request)`). Shared env helper extraído a `lib/supabase/env.ts` (DRY).
+- [x] **4.** Reescribir `proxy.ts` raíz. ✅ (tarea #63 — usa `updateSupabaseSession`, preserva cookies en redirect, redirect unauth → `/sign-in?next=X`, authed → `/dashboard`)
+- [x] **5.** Reescribir `features/shared/infrastructure/session-context.ts`. ✅ (tarea #63 — único `getClaims()` via `getAuthState()` que devuelve `{ctx, claims}`, defensas malformed JWT)
+- [x] **6.** Actualizar `features/shared/infrastructure/rls.ts` con claim names nuevos. ✅ (tarea #63 absorbió #64 — `active_org_id`, `org_role`, `sub`, `is_super_admin`; `set_config()` en vez de `SET LOCAL $1` porque Postgres no parametriza SET)
+- [x] **7.** Eliminar `lib/db/rls.ts` y `lib/db/session-context.ts`. ✅ (tarea #63)
+- [x] **8.** Reemplazar imports de `@/lib/db/rls` por `@/features/shared/infrastructure/rls`. ✅ (ya estaba, verificado con grep — zero matches)
+- [x] **9.** Reemplazar imports de `@/lib/db/session-context`. ✅ (ya estaba, verificado)
+- [x] **10.** Drizzle queries en Fase 06 (invitation-actions, organization-actions) → agregar `withRLS(ctx, async (tx) => ...)` donde corresponda. ✅ tareas #66 (commit `71a9bda`), #67 (commit `d58260a`)
+- [x] **11.** Build check. ✅ 22 rutas, lint limpio (warnings preexistentes unrelated)
+- [x] **12.** Test manual. ✅ Playwright smoke test end-to-end: sign-in email/pwd → `/dashboard` renders con sidebar + org + user, `/dashboard/properties` lista (RLS filtered) → sign-out → `/sign-in`, auth-route al estar authed → `/dashboard`, open-redirect `//evil.com` rechazado. Zero console errors post-fixes.
+- [x] **13.** Commit. ✅ (task #62 commit `8742830`, task #63 commit pendiente en esta sesión)
+
+### Tarea #63 — notas de implementación (big-bang)
+
+**Scope final**: absorbió #64 (claim names) + partes de sub-plans 10 (auth UI) y 12 (delete Better Auth dep) para dejar la app 100% Supabase en un único commit atómico. La razón: scope mini dejaba el sistema sin path de autenticación funcional entre commits.
+
+**Archivos creados/rewritten**:
+- `proxy.ts` — usa `updateSupabaseSession`, preserva cookies refreshed al redirect.
+- `lib/supabase/middleware.ts` — devuelve `{ response, claims }` (cambio de contrato vs tarea #62 para que proxy pueda decidir redirects). `setAll` ahora forwardea `headers` (parity canónica Supabase). Sin `server-only` (Edge Runtime).
+- `lib/supabase/env.ts` — `requireSupabaseEnv` con **accesos literales a `process.env`** por var. Dynamic `process.env[name]` no inlinea en browser bundle (Turbopack/Webpack), causaba runtime crash en client components.
+- `lib/supabase/server.ts` — `setAll` catch ahora logea warn en dev (observability para Route Handlers que sí pueden escribir cookies).
+- `features/shared/infrastructure/rls.ts` — usa `set_config(name, value, is_local)` en vez de `SET LOCAL $1` (SET no parametriza). `includeDeleted` GUC eliminado (dead code, policies ya filtran `deleted_at IS NULL`).
+- `features/shared/infrastructure/session-context.ts` — nuevo `getAuthState()` (single `getClaims()` + devuelve ctx + claims). `getSessionContext()` delega a él.
+- `app/(auth)/sign-in/page.tsx` — `signInWithPassword`, open-redirect defense (`safeNext` rechaza `//evil.com`), suspense wrapper por `useSearchParams`, `/forgot-password` link removido.
+- `app/(auth)/sign-up/page.tsx` — `signUp` con `emailRedirectTo=/auth/callback`, UI "Revisa tu correo" post-submit.
+- `app/auth/callback/route.ts` — PKCE `exchangeCodeForSession`, `x-forwarded-host` respetado, `next` param validado.
+- `app/(auth)/auth-code-error/page.tsx` — movido dentro del grupo (auth) para layout consistente. URL final `/auth-code-error`.
+- `components/auth/social-buttons.tsx` — `signInWithOAuth` provider Google.
+- `app/dashboard/layout.tsx` — single `getAuthState()`, `withRLS` para query de active org (critical: tabla tiene FORCE RLS, `db` directo retorna 0 rows).
+- `components/app-sidebar.tsx` + `components/nav-user.tsx` + `components/org-switcher.tsx` — props-driven desde server (sin client-side session hook); `nav-user` signout via browser client.
+
+**Archivos eliminados**:
+- `lib/auth.ts`, `lib/auth-client.ts`, `lib/auth-permissions.ts`, `lib/auth-utils.ts`
+- `lib/db/rls.ts`, `lib/db/session-context.ts` (duplicados legacy)
+- `app/api/auth/[...all]/route.ts` (Better Auth handler)
+
+**Deps**: `better-auth@1.6.2` desinstalado. `BETTER_AUTH_SECRET` + `BETTER_AUTH_URL` ya no se leen — usuario puede limpiar de `.env.local`.
+
+**Code review (feature-dev:code-reviewer)**: 3 Critical + 3 Important encontrados y resueltos:
+1. **FALSE POSITIVE**: `proxy.ts` naming. Reviewer no sabía que Next.js 16 acepta `proxy.ts` además de `middleware.ts`. Build confirma: `ƒ Proxy (Middleware)`.
+2. **Critical #2 fixed**: `organization` query directo con `db` → wrapped en `withRLS` (FORCE RLS aplica hasta al role `postgres`).
+3. **Critical #3 fixed**: open-redirect `//evil.com` → `safeNext` rechaza `startsWith("//")` y `startsWith("/\\")`.
+4. **Important #4 fixed**: double `getClaims()` en layout → `getAuthState()` single call.
+5. **Important #5 fixed**: `includeDeleted` GUC dead → removido de `rls.ts`.
+6. **Important #6 fixed**: `server-only` en `middleware.ts` semánticamente off para Edge → removido.
+
+Adicionales de smoke test (bugs encontrados en runtime, no detectados por reviewer):
+- `process.env[name]` dynamic no inlinea en browser → switch literal en `requireSupabaseEnv`.
+- `SET LOCAL $1` no es parametrizable por Postgres → `set_config(name, value, true)`.
+- `INSERT INTO auth.users` via raw SQL deja `confirmation_token`/similares NULL → auth server 500. No es bug del código pero documentado en este plan para el future testing workflow.
+
+**Orphan user descubierto**: `gonzalopinell@gmail.com` en `auth.users` sin org ni member. Posiblemente creado antes del trigger `handle_new_user()` (pre sub-plan 05). Decisión pendiente de usuario: deletear + re-signup, o backfill via SQL simulando el trigger.
+
+### Tarea #62 — notas de implementación
+
+- Code review robusto aplicado pre-merge. Reviewer flagged cookie options parity + JSDoc accuracy + DRY `requireEnv`. Resoluciones:
+  - `NextRequest.cookies.set` es 2-arg only (TS enforcement). Mantenemos `(name, value)` ahí. `response.cookies.set` sí recibe `options`. Esto matchea Supabase reference canónico.
+  - JSDoc de `updateSupabaseSession` suavizado — describe el contrato que aplicará al wirearse en tarea #63. Evita aserciones falsas sobre estado actual.
+  - `requireEnv` extraído a `lib/supabase/env.ts` — tipo `SupabaseEnvVar` centralizado. Tres copias → una fuente de verdad.
+  - `CookieOptions` re-export quitado de `client.ts` (dead export).
+- `@supabase/ssr@0.8.x` instalado como peer de `@supabase/supabase-js@2.103.2` (ya presente).
+- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` + `NEXT_PUBLIC_SUPABASE_URL` requeridas en `.env.local` (confirmado por usuario).
+
+### Tarea #65 — notas de implementación
+
+**Scope**: refactor storage helpers para aceptar `SupabaseClient` como primer param. Callers pasan cliente autenticado (RLS-enforced) o admin (Inngest).
+
+**Archivos tocados**: `lib/supabase/storage.ts` (5 helpers refactored), `lib/supabase/storage-utils.ts` (NEW — `extractStoragePath` sin `server-only`), `features/properties/application/upload-property-media.use-case.ts`, `features/properties/application/delete-property-media.use-case.ts`, `features/properties/presentation/storage-actions.ts`, `features/properties/domain/property.entity.ts`, `features/properties/infrastructure/property.mapper.ts`.
+
+**Code review (feature-dev:code-reviewer)**: 1 Critical + 1 Important.
+1. **Critical**: agent podía subir media a propiedad de otro agente en su org — fix: guard `ctx.role === "agent" && property.createdByUserId !== ctx.userId`. Requirió agregar `createdByUserId` a Property entity + mapper.
+2. **Important**: `server-only` en storage.ts envenenaba `extractStoragePath` (pure function) — fix: separado a `storage-utils.ts`. Re-export desde `storage.ts` para callers existentes.
+
+**Smoke test**: sign-in test user → dashboard → properties → zero errors. Test user limpiado post-test.
 
 ## Checklist
 
-- [ ] `getSupabaseServerClient` + `getSupabaseAdmin` separados
-- [ ] Proxy refresca cookies via `getClaims()`
-- [ ] `/dashboard` redirect si no auth
-- [ ] `getSessionContext` lee del JWT Supabase
-- [ ] `withRLS` usa claims `active_org_id`
-- [ ] Duplicados eliminados
-- [ ] Todas las imports actualizadas
-- [ ] Build + lint pass
+- [x] `getSupabaseServerClient` + `getSupabaseAdmin` separados
+- [x] Proxy refresca cookies via `getClaims()`
+- [x] `/dashboard` redirect si no auth
+- [x] `getSessionContext` lee del JWT Supabase
+- [x] `withRLS` usa claims `active_org_id`
+- [x] Duplicados eliminados
+- [x] Todas las imports actualizadas
+- [x] Build + lint pass
+- [x] Storage helpers aceptan `client` param
+- [x] Agent ownership check en upload media use case
 
 ## Rollback
 

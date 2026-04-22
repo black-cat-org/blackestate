@@ -2,13 +2,7 @@
 
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import {
-  BadgeCheck,
-  ChevronsUpDown,
-  CreditCard,
-  LogOut,
-  User,
-} from "lucide-react"
+import { BadgeCheck, ChevronsUpDown, CreditCard, LogOut, User } from "lucide-react"
 import {
   Avatar,
   AvatarFallback,
@@ -29,37 +23,39 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar"
-import { useSession, signOut } from "@/lib/auth-client"
+import { getSupabaseBrowserClient } from "@/lib/supabase/client"
+
+export interface NavUserData {
+  id: string
+  name: string
+  email: string
+  avatarUrl?: string
+}
 
 function getInitials(name: string) {
-  if (!name) return "??";
-  return name
+  if (!name) return "??"
+  const initials = name
     .split(" ")
     .map((n) => n[0] ?? "")
     .filter(Boolean)
     .join("")
     .toUpperCase()
-    .slice(0, 2) || "??";
+    .slice(0, 2)
+  return initials || "??"
 }
 
-export function NavUser() {
+export function NavUser({ user }: { user: NavUserData }) {
   const { isMobile } = useSidebar()
-  const { data: session } = useSession()
   const router = useRouter()
 
-  const user = session?.user
-
   const handleSignOut = async () => {
-    await signOut({
-      fetchOptions: {
-        onSuccess: () => {
-          router.push("/sign-in")
-        },
-      },
-    })
+    const supabase = getSupabaseBrowserClient()
+    await supabase.auth.signOut()
+    router.replace("/sign-in")
+    router.refresh()
   }
 
-  if (!user) return null
+  const initials = getInitials(user.name)
 
   return (
     <SidebarMenu>
@@ -71,10 +67,8 @@ export function NavUser() {
               className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
             >
               <Avatar className="h-8 w-8 rounded-lg">
-                <AvatarImage src={user.image || ""} alt={user.name} />
-                <AvatarFallback className="rounded-lg">
-                  {getInitials(user.name)}
-                </AvatarFallback>
+                <AvatarImage src={user.avatarUrl ?? ""} alt={user.name} />
+                <AvatarFallback className="rounded-lg">{initials}</AvatarFallback>
               </Avatar>
               <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-medium">{user.name}</span>
@@ -92,10 +86,8 @@ export function NavUser() {
             <DropdownMenuLabel className="p-0 font-normal">
               <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                 <Avatar className="h-8 w-8 rounded-lg">
-                  <AvatarImage src={user.image || ""} alt={user.name} />
-                  <AvatarFallback className="rounded-lg">
-                    {getInitials(user.name)}
-                  </AvatarFallback>
+                  <AvatarImage src={user.avatarUrl ?? ""} alt={user.name} />
+                  <AvatarFallback className="rounded-lg">{initials}</AvatarFallback>
                 </Avatar>
                 <div className="grid flex-1 text-left text-sm leading-tight">
                   <span className="truncate font-medium">{user.name}</span>

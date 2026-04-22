@@ -65,4 +65,4 @@ export interface PlanInfo {
   price: number
 }
 
-export type SettingsSection = "business" | "notifications" | "integrations" | "bot" | "plan"
+export type SettingsSection = "business" | "team" | "notifications" | "integrations" | "bot" | "plan"

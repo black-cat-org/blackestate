@@ -3,6 +3,7 @@
 import { getSessionContext } from "@/features/shared/infrastructure/session-context"
 import { uploadPropertyMediaUseCase } from "@/features/properties/application/upload-property-media.use-case"
 import { deletePropertyMediaUseCase } from "@/features/properties/application/delete-property-media.use-case"
+import { getSupabaseServerClient } from "@/lib/supabase/server"
 import {
   deleteFile,
   extractStoragePath,
@@ -14,16 +15,18 @@ export async function uploadPropertyMediaAction(
   formData: FormData,
 ): Promise<string[]> {
   const ctx = await getSessionContext()
+  const client = await getSupabaseServerClient()
 
   const files = formData.getAll("files").filter((v): v is File => v instanceof File)
   if (files.length === 0) return []
 
-  return uploadPropertyMediaUseCase(ctx, propertyId, files)
+  return uploadPropertyMediaUseCase(ctx, client, propertyId, files)
 }
 
 export async function deletePropertyMediaAction(photoUrl: string): Promise<void> {
   const ctx = await getSessionContext()
-  return deletePropertyMediaUseCase(ctx, photoUrl)
+  const client = await getSupabaseServerClient()
+  return deletePropertyMediaUseCase(ctx, client, photoUrl)
 }
 
 /**
@@ -35,20 +38,21 @@ export async function deletePropertyMediaAction(photoUrl: string): Promise<void>
  */
 export async function uploadAvatarAction(formData: FormData): Promise<string> {
   const ctx = await getSessionContext()
+  const client = await getSupabaseServerClient()
 
   const file = formData.get("file")
   if (!(file instanceof File)) {
     throw new Error("No file provided")
   }
 
-  const newUrl = await uploadFile("avatars", ctx.orgId, ctx.userId, file)
+  const newUrl = await uploadFile(client, "avatars", ctx.orgId, ctx.userId, file)
 
   const previousAvatarUrl = formData.get("previousAvatarUrl")
   if (typeof previousAvatarUrl === "string" && previousAvatarUrl.length > 0) {
     const previousPath = extractStoragePath("avatars", previousAvatarUrl)
     if (previousPath?.startsWith(`${ctx.orgId}/${ctx.userId}/`)) {
       try {
-        await deleteFile("avatars", previousPath)
+        await deleteFile(client, "avatars", previousPath)
       } catch (error) {
         console.warn(
           `[avatar] previous avatar delete failed (path=${previousPath})`,
