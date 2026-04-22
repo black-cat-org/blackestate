@@ -2,6 +2,14 @@ import type { Invitation, PendingInvitation, InvitableRole } from "./invitation.
 import type { SessionContext } from "./session-context"
 
 export interface IInvitationRepository {
+  /**
+   * Check whether an `auth.users` row exists for the given email. Used by
+   * the send-invitation flow to reject invitations aimed at people who
+   * have not yet signed up — invitations are strictly for existing users.
+   * Implemented as a SECURITY DEFINER RPC (`check_user_exists_by_email`)
+   * because `auth.users` is not readable by the `authenticated` role.
+   */
+  userExists(email: string): Promise<boolean>
   create(
     ctx: SessionContext,
     data: {

@@ -33,6 +33,21 @@ function translateAcceptError(message: string | undefined): Error {
 }
 
 export class DrizzleInvitationRepository implements IInvitationRepository {
+  /**
+   * Check existence of an auth.users row for the given email via the
+   * `check_user_exists_by_email` SECURITY DEFINER RPC. The RPC returns a
+   * plain boolean and leaks no metadata; we keep the repository method
+   * narrow so callers cannot accidentally expand it into a listing.
+   */
+  async userExists(email: string): Promise<boolean> {
+    const supabase = await getSupabaseServerClient()
+    const { data, error } = await supabase.rpc("check_user_exists_by_email", {
+      p_email: email,
+    })
+    if (error) throw new Error(`Failed to verify user existence: ${error.message}`)
+    return data === true
+  }
+
   async create(
     ctx: SessionContext,
     data: {

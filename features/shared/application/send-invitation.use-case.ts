@@ -22,6 +22,15 @@ export async function sendInvitationUseCase(
     throw new Error("Cannot invite yourself")
   }
 
+  // Invitations are for users who already exist in Black Estate. Onboarding
+  // brand-new people happens via sign-up (and eventually the referral link
+  // flow). Rejecting unknown emails upfront avoids creating "zombie"
+  // invitation rows that can never be accepted.
+  const exists = await repo.userExists(data.email)
+  if (!exists) {
+    throw new Error("El usuario con ese email no está registrado en Black Estate")
+  }
+
   const hasPending = await repo.hasPendingForEmail(ctx, data.email)
   if (hasPending) {
     throw new Error("A pending invitation already exists for this email")
