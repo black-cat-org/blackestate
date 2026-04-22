@@ -8,7 +8,13 @@ import { sendInvitationUseCase } from "@/features/shared/application/send-invita
 import { acceptInvitationUseCase } from "@/features/shared/application/accept-invitation.use-case"
 import { cancelInvitationUseCase } from "@/features/shared/application/cancel-invitation.use-case"
 import { listInvitationsUseCase } from "@/features/shared/application/list-invitations.use-case"
-import type { PendingInvitation, SendInvitationDTO } from "@/features/shared/domain/invitation.entity"
+import { listMyPendingInvitationsUseCase } from "@/features/shared/application/list-my-pending-invitations.use-case"
+import { rejectInvitationUseCase } from "@/features/shared/application/reject-invitation.use-case"
+import type {
+  IncomingInvitation,
+  PendingInvitation,
+  SendInvitationDTO,
+} from "@/features/shared/domain/invitation.entity"
 
 const repo = new DrizzleInvitationRepository()
 
@@ -70,4 +76,23 @@ export async function cancelInvitationAction(invitationId: string): Promise<void
 export async function listInvitationsAction(): Promise<PendingInvitation[]> {
   const ctx = await getSessionContext()
   return listInvitationsUseCase(ctx, repo)
+}
+
+/**
+ * List pending invitations addressed to the caller. Used by the dashboard
+ * "Invitaciones pendientes" panel and the sidebar unread badge.
+ */
+export async function listMyPendingInvitationsAction(): Promise<IncomingInvitation[]> {
+  const ctx = await getSessionContext()
+  return listMyPendingInvitationsUseCase(ctx, repo)
+}
+
+/**
+ * Invitee rejects an invitation. Takes the token (same shape as accept)
+ * to avoid exposing invitation ids on the invitee surface.
+ */
+export async function rejectInvitationAction(token: string): Promise<void> {
+  const ctx = await getSessionContext()
+  await rejectInvitationUseCase(ctx, repo, token)
+  revalidatePath("/dashboard")
 }

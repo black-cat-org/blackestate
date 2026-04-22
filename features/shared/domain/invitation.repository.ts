@@ -1,4 +1,9 @@
-import type { Invitation, PendingInvitation, InvitableRole } from "./invitation.entity"
+import type {
+  Invitation,
+  PendingInvitation,
+  IncomingInvitation,
+  InvitableRole,
+} from "./invitation.entity"
 import type { SessionContext } from "./session-context"
 
 export interface IInvitationRepository {
@@ -23,7 +28,22 @@ export interface IInvitationRepository {
   ): Promise<Invitation>
   findPendingByOrgId(ctx: SessionContext): Promise<PendingInvitation[]>
   hasPendingForEmail(ctx: SessionContext, email: string): Promise<boolean>
+  /**
+   * List invitations the caller has pending inbox-side (email matches the
+   * caller's JWT email claim). Joined with the inviting org to expose
+   * name/slug/logo in a single round trip. Authorised by the
+   * `invitation_select_admin_or_invitee` policy (invitee branch) and the
+   * `organization_select_via_pending_invitation` policy added in 010.
+   */
+  findMyPending(ctx: SessionContext): Promise<IncomingInvitation[]>
   markCancelled(ctx: SessionContext, invitationId: string): Promise<void>
+  /**
+   * Invitee-initiated rejection. Uses `token` rather than id so the call
+   * lines up with the accept flow and so an invitee cannot probe other
+   * users' invitation ids. Authorised by the
+   * `invitation_update_admin_or_invitee` policy.
+   */
+  markRejected(ctx: SessionContext, token: string): Promise<void>
   getOrgSeatInfo(ctx: SessionContext): Promise<{ maxSeats: number; currentMembers: number }>
   /**
    * Accept an invitation atomically via the `accept_invitation` SECURITY
