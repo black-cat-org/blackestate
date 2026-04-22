@@ -4,6 +4,7 @@ import { ChevronRight, type LucideIcon } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 
+import { Badge } from "@/components/ui/badge"
 import {
   Collapsible,
   CollapsibleContent,
@@ -22,6 +23,7 @@ import {
 
 export function NavMain({
   items,
+  dashboardBadge,
 }: {
   items: {
     title: string
@@ -33,6 +35,13 @@ export function NavMain({
       url: string
     }[]
   }[]
+  /**
+   * Unread count surfaced on the `/dashboard` entry. Rendered as a
+   * secondary Badge at the right of the row so it does not compete with
+   * `isActive` styling. Used by IMP-8 to highlight pending invitations
+   * without introducing a generic notification system.
+   */
+  dashboardBadge?: number
 }) {
   const pathname = usePathname()
 
@@ -77,6 +86,15 @@ export function NavMain({
                 <Link href={item.url}>
                   <item.icon />
                   <span>{item.title}</span>
+                  {item.url === "/dashboard" && dashboardBadge && dashboardBadge > 0 ? (
+                    <Badge
+                      variant="secondary"
+                      className="ml-auto h-5 min-w-5 px-1.5 text-xs"
+                      aria-label={`${dashboardBadge} invitaciones pendientes`}
+                    >
+                      {dashboardBadge}
+                    </Badge>
+                  ) : null}
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>

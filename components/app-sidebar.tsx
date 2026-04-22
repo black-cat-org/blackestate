@@ -56,16 +56,25 @@ const data = {
 interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
   user: NavUserData
   orgSwitcher: OrgSwitcherProps
+  /** Number of pending invitations addressed to the caller. Rendered as a
+   *  badge next to the `/dashboard` entry so the invitee notices them even
+   *  while navigating other sections. */
+  pendingInvitationCount?: number
 }
 
-export function AppSidebar({ user, orgSwitcher, ...props }: AppSidebarProps) {
+export function AppSidebar({
+  user,
+  orgSwitcher,
+  pendingInvitationCount,
+  ...props
+}: AppSidebarProps) {
   return (
     <Sidebar variant="inset" {...props}>
       <SidebarHeader>
         <OrgSwitcher {...orgSwitcher} />
       </SidebarHeader>
       <SidebarContent>
-        <NavMain items={data.navMain} />
+        <NavMain items={data.navMain} dashboardBadge={pendingInvitationCount} />
         <NavSecondary items={data.navSecondary} className="mt-auto" />
       </SidebarContent>
       <SidebarFooter>

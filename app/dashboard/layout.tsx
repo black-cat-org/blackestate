@@ -3,6 +3,7 @@ import { AppSidebar } from "@/components/app-sidebar"
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 import { getAuthState } from "@/features/shared/infrastructure/session-context"
 import { getUserOrganizationsAction } from "@/features/shared/presentation/organization-actions"
+import { listMyPendingInvitationsAction } from "@/features/shared/presentation/invitation-actions"
 
 type UserMetadata = { full_name?: string; avatar_url?: string }
 
@@ -33,7 +34,10 @@ export default async function DashboardLayout({
 
   const { ctx, claims } = authState
 
-  const organizations = await getUserOrganizationsAction()
+  const [organizations, pendingInvitations] = await Promise.all([
+    getUserOrganizationsAction(),
+    listMyPendingInvitationsAction(),
+  ])
 
   if (organizations.length === 0) {
     redirect("/sign-in")
@@ -52,6 +56,7 @@ export default async function DashboardLayout({
       <AppSidebar
         user={user}
         orgSwitcher={{ activeOrgId: ctx.orgId, organizations }}
+        pendingInvitationCount={pendingInvitations.length}
       />
       <SidebarInset>{children}</SidebarInset>
     </SidebarProvider>
