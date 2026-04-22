@@ -151,6 +151,11 @@ export class DrizzleInvitationRepository implements IInvitationRepository {
   async findMyPending(ctx: SessionContext): Promise<IncomingInvitation[]> {
     if (!ctx.email) return []
 
+    // Explicit email predicate so the planner can use `invitation_email_idx`
+    // (stored lowercased at insert) and the query does not rely solely on
+    // RLS to filter across every org. Mirrors the pattern in the
+    // admin-side queries that scope to `ctx.orgId`.
+    const normalizedEmail = ctx.email.toLowerCase()
     const rows = await withRLS(ctx, (tx) =>
       tx
         .select({
@@ -167,6 +172,7 @@ export class DrizzleInvitationRepository implements IInvitationRepository {
         .innerJoin(organization, eq(organization.id, invitation.organizationId))
         .where(
           and(
+            eq(invitation.email, normalizedEmail),
             eq(invitation.status, "pending"),
             gt(invitation.expiresAt, new Date()),
           ),
@@ -220,15 +226,26 @@ export class DrizzleInvitationRepository implements IInvitationRepository {
    * Invitee-initiated rejection. Keyed by `token` rather than id because
    * the token is what the invitee surface exposes (list-my-pending returns
    * it) and because rejecting by a scalar caller-supplied id invites
-   * probing. The RLS policy `invitation_update_admin_or_invitee` gates
-   * the UPDATE; the filter on `status = 'pending'` prevents mutating an
-   * already-accepted / cancelled / expired row. Returning no row means
-   * either the token does not match the caller's email (RLS hides it)
-   * or the invitation is no longer pending — both surface as a single
-   * domain error, which is enough for the UI and avoids leaking detail
-   * about the underlying cause.
+   * probing.
+   *
+   * The RLS policy `invitation_update_admin_or_invitee` would technically
+   * allow an org admin to hit this UPDATE too, but `rejected` is an
+   * invitee-side status (admins use `cancelled` via markCancelled). An
+   * explicit `email = ctx.email` predicate enforces the invitee-only
+   * semantic in the query itself, not just in naming — the audit trail
+   * stays meaningful: `rejected` always means "the invitee said no".
+   *
+   * Returning no row means either the token does not match the caller's
+   * email or the invitation is no longer pending — both surface as a
+   * single domain error, which is enough for the UI and avoids leaking
+   * detail about the underlying cause.
    */
   async markRejected(ctx: SessionContext, token: string): Promise<void> {
+    if (!ctx.email) {
+      throw new Error("Cannot reject invitation: caller session has no email claim")
+    }
+    const normalizedEmail = ctx.email.toLowerCase()
+
     const result = await withRLS(ctx, (tx) =>
       tx
         .update(invitation)
@@ -236,6 +253,7 @@ export class DrizzleInvitationRepository implements IInvitationRepository {
         .where(
           and(
             eq(invitation.token, token),
+            eq(invitation.email, normalizedEmail),
             eq(invitation.status, "pending"),
           ),
         )

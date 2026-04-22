@@ -36,11 +36,15 @@ async function refreshJwt(): Promise<void> {
  */
 export async function sendInvitationAction(input: SendInvitationDTO): Promise<PendingInvitation> {
   const ctx = await getSessionContext()
-  const supabase = await getSupabaseServerClient()
-  const { data: userData } = await supabase.auth.getUser()
-  const callerEmail = userData.user?.email ?? ""
+  // Use the JWT email claim directly instead of round-tripping to
+  // supabase.auth.getUser(): the JWT is already canonical for RLS, and
+  // falling back to "" on a missing user previously let a phone / anonymous
+  // caller bypass the self-invite check inside the use case.
+  if (!ctx.email) {
+    throw new Error("Cannot send invitation: caller session has no email claim")
+  }
 
-  const { invitation } = await sendInvitationUseCase(ctx, repo, input, callerEmail)
+  const { invitation } = await sendInvitationUseCase(ctx, repo, input, ctx.email)
 
   revalidatePath("/dashboard/settings")
   return {
@@ -94,5 +98,8 @@ export async function listMyPendingInvitationsAction(): Promise<IncomingInvitati
 export async function rejectInvitationAction(token: string): Promise<void> {
   const ctx = await getSessionContext()
   await rejectInvitationUseCase(ctx, repo, token)
-  revalidatePath("/dashboard")
+  // Use "layout" so the sidebar badge count (computed in dashboard/layout.tsx)
+  // re-fetches. "page" alone would only revalidate /dashboard and the badge
+  // would keep the stale count until the next full navigation.
+  revalidatePath("/dashboard", "layout")
 }
