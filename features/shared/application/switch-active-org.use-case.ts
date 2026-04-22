@@ -8,10 +8,10 @@ export async function switchActiveOrgUseCase(
 ): Promise<void> {
   if (newOrgId === ctx.orgId) return
 
-  const belongsToOrg = await repo.isMember(ctx.userId, newOrgId)
+  const belongsToOrg = await repo.isMember(ctx, newOrgId)
   if (!belongsToOrg) {
     throw new Error("User is not a member of this organization")
   }
 
-  await repo.setActiveForUser(ctx.userId, newOrgId)
+  await repo.setActiveForUser(ctx, newOrgId)
 }

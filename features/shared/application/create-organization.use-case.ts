@@ -4,6 +4,15 @@ import type { IOrganizationRepository } from "@/features/shared/domain/organizat
 
 const SLUG_PATTERN = /^[a-z0-9][a-z0-9-]{1,48}[a-z0-9]$/
 
+/**
+ * Orchestrate organization creation.
+ *
+ * Applies pre-validation for friendly error messages, then delegates to the
+ * repository which calls the `bootstrap_organization` RPC. The RPC enforces
+ * the same rules atomically (name_required / invalid_slug / slug_taken) so
+ * the validation here is defence-in-depth for UX — a race that slips past
+ * this check still fails cleanly at the database.
+ */
 export async function createOrganizationUseCase(
   ctx: SessionContext,
   repo: IOrganizationRepository,
@@ -21,10 +30,5 @@ export async function createOrganizationUseCase(
     )
   }
 
-  const taken = await repo.isSlugTaken(data.slug)
-  if (taken) {
-    throw new Error("Slug is already taken")
-  }
-
-  return repo.create(ctx.userId, data, ownerInfo)
+  return repo.create(ctx, data, ownerInfo)
 }

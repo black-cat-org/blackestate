@@ -21,7 +21,7 @@ async function refreshJwt(): Promise<void> {
 
 export async function getUserOrganizationsAction(): Promise<OrganizationMembership[]> {
   const ctx = await getSessionContext()
-  return repo.findAllForUser(ctx.userId)
+  return repo.findAllForUser(ctx)
 }
 
 export async function switchActiveOrgAction(newOrgId: string): Promise<void> {
