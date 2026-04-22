@@ -36,6 +36,7 @@ function toSessionContext(claims: Record<string, unknown>): SessionContext {
     orgId,
     role,
     isSuperAdmin: claims.is_super_admin === true,
+    email: typeof claims.email === "string" ? claims.email : null,
   }
 }
 

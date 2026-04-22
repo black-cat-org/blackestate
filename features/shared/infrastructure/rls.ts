@@ -16,14 +16,24 @@ export type RLSTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0]
  *   1. Switch the role to `authenticated` so policies targeting that role
  *      (from `drizzle/sql/006_rls_policies_supabase_auth.sql`) take effect.
  *   2. Inject a JSON `request.jwt.claims` config that `auth.uid()`,
- *      `auth.jwt()`, and the `authorize()` helper read. Claim names mirror
- *      what the `custom_access_token` hook emits: `sub`, `active_org_id`,
- *      `org_role`, `is_super_admin`.
+ *      `auth.jwt()`, `auth.email()`, and the `authorize()` helper read.
+ *      Claim names mirror what the `custom_access_token` hook emits on
+ *      top of the base Supabase JWT: `sub`, `active_org_id`, `org_role`,
+ *      `is_super_admin`, plus the baseline `email` claim that Supabase
+ *      sets automatically on every JWT.
  *
  * Both settings are applied via `set_config(name, value, is_local := true)`
  * — `SET LOCAL` does not accept query parameters (Postgres parses it as a
  * statement, not a value), so the parametrised form is the only safe way
  * to pass dynamic user data without string concatenation.
+ *
+ * Why the `email` claim matters: some policies (e.g.
+ * `invitation_select_admin_or_invitee`) authorise invitee self-lookups
+ * via `lower(email) = lower(auth.email())`. `auth.email()` reads
+ * `request.jwt.claims ->> 'email'`; without injecting it here, invitees
+ * would not be able to query their own pending invitations via Drizzle
+ * and we would need a SECURITY DEFINER RPC as a detour. Injecting the
+ * claim keeps the discipline "every user query through withRLS" intact.
  *
  * Soft-delete visibility is enforced per-policy: agents only see own
  * `deleted_at IS NOT NULL` rows; owner/admin see the full trash for their
@@ -40,6 +50,7 @@ export async function withRLS<T>(
       active_org_id: ctx.orgId,
       org_role: ctx.role,
       is_super_admin: ctx.isSuperAdmin ?? false,
+      email: ctx.email,
     })
 
     await tx.execute(sql`SELECT set_config('role', 'authenticated', true)`)
