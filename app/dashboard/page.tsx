@@ -18,6 +18,7 @@ import {
   getUpcomingAppointmentsAction,
   getRecentActivitiesAction,
 } from "@/features/dashboard/presentation/actions"
+import { PendingInvitationsPanel } from "@/features/shared/presentation/components/pending-invitations-panel"
 
 export default async function DashboardPage() {
   const [stats, leadsBySource, leadsByStatus, upcomingAppointments, recentActivities] =
@@ -41,6 +42,8 @@ export default async function DashboardPage() {
         </Breadcrumb>
       </DashboardHeader>
       <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
+        <PendingInvitationsPanel />
+
         {/* KPI Cards */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <StatCard
