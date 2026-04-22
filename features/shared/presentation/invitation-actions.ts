@@ -45,7 +45,19 @@ export async function sendInvitationAction(input: SendInvitationDTO): Promise<Pe
     // `markCancelled`. There is no DELETE policy on `invitation` (no hard
     // deletes by design), and soft cancel goes through withRLS like every
     // other mutation — no db-direct escape hatch.
-    await repo.markCancelled(ctx, invitation.id)
+    //
+    // Swallow rollback failures: the primary error is the email delivery
+    // failure, which is what the user needs to see. If the rollback fails
+    // the invitation row is left in `pending` (the token will expire after
+    // 7 days), but logging it surfaces the inconsistency for operators.
+    try {
+      await repo.markCancelled(ctx, invitation.id)
+    } catch (rollbackError) {
+      console.error(
+        "[invitation-actions] Failed to roll back invitation after email error",
+        { invitationId: invitation.id, rollbackError },
+      )
+    }
     throw new Error(`Failed to send invitation email: ${error.message}`)
   }
 

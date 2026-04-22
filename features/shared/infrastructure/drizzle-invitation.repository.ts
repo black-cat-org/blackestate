@@ -1,4 +1,4 @@
-import { eq, and, sql, isNull, gt } from "drizzle-orm"
+import { eq, and, sql, gt } from "drizzle-orm"
 import { invitation, member, organization } from "@/lib/db/schema"
 import { getSupabaseServerClient } from "@/lib/supabase/server"
 import { withRLS } from "./rls"
@@ -146,38 +146,35 @@ export class DrizzleInvitationRepository implements IInvitationRepository {
   }
 
   /**
-   * Seat-limit probe for the send-invitation use case. Runs the three
-   * counts inside a single RLS-scoped transaction so the snapshot is
-   * consistent (no partial state between the member count and the
-   * pending-invite count).
+   * Seat-limit probe for the send-invitation use case. Runs as a single
+   * statement with three correlated subqueries so the counts share one
+   * atomic snapshot — avoiding the seat-limit race that three sequential
+   * reads would expose under READ COMMITTED isolation (member or pending
+   * invite committed between queries and visible only to the later one).
    */
   async getOrgSeatInfo(ctx: SessionContext): Promise<{ maxSeats: number; currentMembers: number }> {
     return withRLS(ctx, async (tx) => {
-      const [org] = await tx
-        .select({ maxSeats: organization.maxSeats })
-        .from(organization)
-        .where(eq(organization.id, ctx.orgId))
-        .limit(1)
+      const result = await tx.execute<{
+        max_seats: number | null
+        member_count: number | null
+        pending_count: number | null
+      }>(sql`
+        select
+          (select ${organization.maxSeats} from ${organization}
+             where ${organization.id} = ${ctx.orgId}) as max_seats,
+          (select count(*)::int from ${member}
+             where ${member.organizationId} = ${ctx.orgId}
+               and ${member.deletedAt} is null) as member_count,
+          (select count(*)::int from ${invitation}
+             where ${invitation.organizationId} = ${ctx.orgId}
+               and ${invitation.status} = 'pending'
+               and ${invitation.expiresAt} > now()) as pending_count
+      `)
 
-      const [memberCount] = await tx
-        .select({ count: sql<number>`count(*)::int` })
-        .from(member)
-        .where(and(eq(member.organizationId, ctx.orgId), isNull(member.deletedAt)))
-
-      const [pendingCount] = await tx
-        .select({ count: sql<number>`count(*)::int` })
-        .from(invitation)
-        .where(
-          and(
-            eq(invitation.organizationId, ctx.orgId),
-            eq(invitation.status, "pending"),
-            gt(invitation.expiresAt, new Date()),
-          ),
-        )
-
+      const row = result.rows[0]
       return {
-        maxSeats: org?.maxSeats ?? 1,
-        currentMembers: (memberCount?.count ?? 0) + (pendingCount?.count ?? 0),
+        maxSeats: row?.max_seats ?? 1,
+        currentMembers: (row?.member_count ?? 0) + (row?.pending_count ?? 0),
       }
     })
   }

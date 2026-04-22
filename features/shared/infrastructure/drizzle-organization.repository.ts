@@ -14,17 +14,34 @@ import type {
 import type { IOrganizationRepository } from "@/features/shared/domain/organization.repository"
 
 /**
- * Map a Postgres SQLSTATE raised by the `bootstrap_organization` RPC to a
- * domain error. The RPC uses distinct codes so callers can surface meaningful
- * messages without parsing strings:
- *   - 28000 → not_authenticated
- *   - 22023 → invalid input (name_required / invalid_slug / email_required)
- *   - 23505 → slug_taken
+ * Map an error raised by the `bootstrap_organization` RPC to a domain error.
+ *
+ * Matches on the raise-exception token (`error.message`) first for the same
+ * reason `translateAcceptError` does: the token is stable across Postgres
+ * versions and PostgREST wrapping, while `error.code` depends on
+ * `raise exception ... using errcode = '...'` propagating unchanged through
+ * PostgREST — true today but fragile if the RPC ever gains a runtime error
+ * outside the explicit codes. Fallback to SQLSTATE matching as a secondary
+ * signal so a generic 23505 from an unexpected path still surfaces as
+ * "Slug is already taken" rather than a raw SQL message.
  */
 function translateBootstrapError(
   code: string | undefined,
   message: string | undefined,
 ): Error {
+  switch (message) {
+    case "slug_taken":
+      return new Error("Slug is already taken")
+    case "name_required":
+      return new Error("Organization name is required")
+    case "invalid_slug":
+      return new Error("Invalid organization slug")
+    case "email_required":
+      return new Error("Owner email is required")
+    case "not_authenticated":
+      return new Error("Not authenticated")
+  }
+
   switch (code) {
     case "23505":
       return new Error("Slug is already taken")

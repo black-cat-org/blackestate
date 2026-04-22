@@ -315,6 +315,12 @@ npx drizzle-kit check      # Verify config (safe, read-only)
 
 **DB trigger `handle_new_user()`** fires on INSERT to `auth.users`. Creates `organization` + `member (owner)` + `user_active_org` atomically (slug race-safe via nested EXCEPTION). Defined in `drizzle/sql/005_org_creation_trigger.sql`. No application-level fallback — if the trigger fails, session-context throws `[auth] JWT is missing active_org_id / org_role` to surface the infra failure instead of masking it with on-read creation.
 
+**SECURITY DEFINER RPCs for RLS-crossing flows** (`drizzle/sql/007_rls_helpers_and_bootstrap.sql` + `008_accept_invitation_fixes.sql`):
+- `public.bootstrap_organization(p_name, p_slug, p_email, p_name_user?, p_avatar_url?)` — subsequent-org creation for users who already have an `active_org_id`. Used by `createOrganizationAction` when a user adds another org. Validates slug format + uniqueness + email, inserts org + owner member + flips `user_active_org` atomically. Raises SQLSTATE 23505 `slug_taken`, 22023 `name_required`/`invalid_slug`/`email_required`, 28000 `not_authenticated`.
+- `public.accept_invitation(p_token)` — invitation acceptance. Validates token, email match against `auth.jwt() ->> 'email'`, and expiry; then creates the member row (or restores a soft-deleted one) + flips `user_active_org` + marks the invitation accepted. Idempotent for already-active memberships. Raises 02000 `invitation_not_found`, 22023 `invitation_not_pending` / `invitation_expired`, 28000 `not_authenticated` / `email_missing` / `invitation_email_mismatch`.
+
+Both are `SECURITY DEFINER` with `SET search_path = ''`, EXECUTE revoked from `anon`/`public`, granted only to `authenticated`. All mutations run against `auth.uid()` (never a caller-supplied id). Callers use `supabase.rpc('<name>', {...})` and map the raised `message` token to a domain error (see `translateBootstrapError` and `translateAcceptError` in the infrastructure repos).
+
 ### Auth Infrastructure
 
 - **Server client**: `lib/supabase/server.ts` — `getSupabaseServerClient()` (per-request, cookie-aware) + `getSupabaseAdmin()` (service_role singleton).
