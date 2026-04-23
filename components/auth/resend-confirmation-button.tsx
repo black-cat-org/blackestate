@@ -117,8 +117,8 @@ export function ResendConfirmationButton({
         // is registered (anti-enumeration is respected by the SDK).
         toast.error(
           error.status === 429
-            ? "Demasiados intentos. Esperá unos minutos antes de reenviar."
-            : "No pudimos reenviar el correo. Intentá de nuevo.",
+            ? "Demasiados intentos. Espera unos minutos antes de reenviar."
+            : "No pudimos reenviar el correo. Intenta de nuevo.",
         )
         return
       }

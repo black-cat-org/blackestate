@@ -60,7 +60,7 @@ UX:
 - Sending: "Enviando..."
 - Cooldown: "Reenviar en 29s..." (countdown live)
 - Success: toast "Te enviamos un nuevo enlace a {email}", cooldown 30s arranca
-- Error: toast "No pudimos reenviar. Intentá de nuevo" + link "¿Necesitás ayuda?"
+- Error: toast "No pudimos reenviar. Intenta de nuevo" + link "¿Necesitas ayuda?"
 
 ## Wiring en 3 lugares
 
@@ -69,7 +69,7 @@ UX:
 `app/(auth)/sign-in/page.tsx` — al recibir error.code `email_not_confirmed`, setear state `unconfirmedEmail` y mostrar inline después del form:
 
 ```
-Tu email no está confirmado. Revisá tu bandeja de entrada.
+Tu email no está confirmado. Revisa tu bandeja de entrada.
 [Reenviar correo de confirmación]
 ```
 

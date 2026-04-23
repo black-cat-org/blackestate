@@ -14,17 +14,17 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import { getAuthErrorMessage } from "@/lib/auth/error-messages"
 import { toast } from "sonner"
 import { Loader2, ArrowLeft, Mail } from "lucide-react"
 
-const RESET_ERRORS: Record<string, string> = {
-  over_email_send_rate_limit: "Por seguridad, intenta más tarde",
-  user_not_found: "No encontramos una cuenta con ese email",
-}
-
 function mapResetError(error: { message: string; code?: string }): string {
-  if (error.code && error.code in RESET_ERRORS) return RESET_ERRORS[error.code]
-  if (error.message.toLowerCase().includes("rate") || error.message.toLowerCase().includes("security")) {
+  // Delegate to the shared auth error map. Additional heuristic kept as
+  // a safety net for older SDK versions that sometimes return rate-limit
+  // or security errors without a machine-readable `code`.
+  if (error.code) return getAuthErrorMessage(error.code, error.message)
+  const msg = error.message.toLowerCase()
+  if (msg.includes("rate") || msg.includes("security")) {
     return "Por seguridad, intenta más tarde"
   }
   return "No se pudo enviar el email de recuperación. Intenta de nuevo"

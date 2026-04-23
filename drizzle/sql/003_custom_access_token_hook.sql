@@ -1,3 +1,16 @@
+-- ⚠️ SUPERSEDED BY drizzle/sql/012_custom_access_token_hook_nullif_trim.sql (2026-04-23)
+--
+-- Sub-plan 2026-04-23 (QA Lote 1 gap G13) replaced the `display_name`
+-- coalesce chain in this hook with the same `nullif(trim(...), '')` pattern
+-- that `handle_new_user` already uses in sub-plan 011. Without that wrapper
+-- a whitespace-only `full_name` metadata value would land verbatim in the
+-- `user_name` JWT claim and render as a blank display name in the UI.
+--
+-- This file is retained for historical context of the original sub-plan 03
+-- design. Do NOT re-run it — it will overwrite the canonical hook from 012
+-- with the older coalesce pattern.
+--
+-- ─── Original header (historical) ──────────────────────────────────────────
 -- Sub-plan 03 — Custom Access Token Hook
 --
 -- Enriches every JWT issued by Supabase Auth with multitenancy claims.

@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { getSupabaseBrowserClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { PasswordInput } from "@/components/auth/password-input"
 import { Label } from "@/components/ui/label"
 import {
@@ -16,17 +15,16 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import { getAuthErrorMessage } from "@/lib/auth/error-messages"
 import { toast } from "sonner"
 import { Loader2, CheckCircle, AlertCircle } from "lucide-react"
 
-const PASSWORD_ERRORS: Record<string, string> = {
-  same_password: "La nueva contraseña debe ser diferente a la actual",
-  weak_password: "La contraseña es muy débil. Usa letras y números",
-  session_not_found: "Tu sesión expiró. Solicita un nuevo enlace de recuperación",
-}
-
 function mapPasswordError(error: { message: string; code?: string }): string {
-  if (error.code && error.code in PASSWORD_ERRORS) return PASSWORD_ERRORS[error.code]
+  // Delegate to the shared auth error map so the same code (e.g.
+  // `session_not_found`) produces the same Spanish copy here as on
+  // sign-in / sign-up. Fall back to a reset-specific message when the
+  // SDK returns a plain-text "session" hint without a code.
+  if (error.code) return getAuthErrorMessage(error.code, error.message)
   if (error.message.toLowerCase().includes("session")) {
     return "Tu sesión expiró. Solicita un nuevo enlace de recuperación"
   }
@@ -77,6 +75,18 @@ export default function ResetPasswordPage() {
       if (error) {
         toast.error(mapPasswordError(error))
         return
+      }
+
+      // Invalidate any other active sessions the user might have.
+      // Password change is a security event — if someone was signed in on
+      // another device legitimately or otherwise, they should be forced
+      // to re-authenticate with the new credentials. Matches OWASP /
+      // NIST guidance and Stripe/GitHub/Google behavior.
+      // Best-effort: a failure here should NOT undo the password update,
+      // which already succeeded. Log for ops and continue to success.
+      const { error: signOutError } = await supabase.auth.signOut({ scope: "others" })
+      if (signOutError) {
+        console.warn("[reset-password] signOut(others) failed:", signOutError)
       }
 
       setSuccess(true)

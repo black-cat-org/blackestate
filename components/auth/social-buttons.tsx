@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { getSupabaseBrowserClient } from "@/lib/supabase/client"
+import { getAuthErrorMessage } from "@/lib/auth/error-messages"
 import { toast } from "sonner"
 
 export function SocialButtons() {
@@ -15,10 +16,16 @@ export function SocialButtons() {
       provider: "google",
       options: {
         redirectTo: `${window.location.origin}/auth/callback?next=/dashboard`,
+        // Force Google's account chooser even when only one Google account is
+        // logged in. Without this, multi-account users get auto-picked into
+        // the default account with no way to switch. Matches Clerk/Auth0 default.
+        queryParams: { prompt: "select_account" },
       },
     })
     if (error) {
-      toast.error(error.message || "Error al iniciar sesión con Google")
+      toast.error(
+        getAuthErrorMessage(error.code, error.message ?? "Error al iniciar sesión con Google"),
+      )
       setLoading(false)
     }
     // Success path: Supabase navigates the browser to Google; no further

@@ -19,6 +19,7 @@ import {
 import { SocialButtons } from "@/components/auth/social-buttons"
 import { AuthDivider } from "@/components/auth/auth-divider"
 import { ResendConfirmationButton } from "@/components/auth/resend-confirmation-button"
+import { getAuthErrorMessage } from "@/lib/auth/error-messages"
 import { toast } from "sonner"
 import { Loader2 } from "lucide-react"
 
@@ -50,7 +51,7 @@ export default function SignUpPage() {
       })
 
       if (error) {
-        toast.error(error.message || "Error al crear la cuenta")
+        toast.error(getAuthErrorMessage(error.code, error.message))
         return
       }
 
@@ -81,7 +82,7 @@ export default function SignUpPage() {
         </CardHeader>
         <CardContent className="grid gap-3">
           <p className="text-center text-xs text-muted-foreground">
-            ¿No llegó a tu bandeja? Revisá spam o pedí un nuevo enlace:
+            ¿No llegó a tu bandeja? Revisa spam o pide un nuevo enlace:
           </p>
           <ResendConfirmationButton email={email} className="w-full" />
         </CardContent>

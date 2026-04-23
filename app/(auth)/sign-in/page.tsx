@@ -19,6 +19,7 @@ import {
 import { SocialButtons } from "@/components/auth/social-buttons"
 import { AuthDivider } from "@/components/auth/auth-divider"
 import { ResendConfirmationButton } from "@/components/auth/resend-confirmation-button"
+import { getAuthErrorMessage } from "@/lib/auth/error-messages"
 import { toast } from "sonner"
 import { Loader2 } from "lucide-react"
 
@@ -56,10 +57,10 @@ function SignInForm() {
       if (error) {
         if (error.code === "email_not_confirmed") {
           setUnconfirmedEmail(email)
-          toast.error("Tu email no está confirmado. Revisá tu bandeja de entrada.")
+          toast.error(getAuthErrorMessage(error.code))
           return
         }
-        toast.error(error.message || "Credenciales incorrectas")
+        toast.error(getAuthErrorMessage(error.code, error.message))
         return
       }
 
