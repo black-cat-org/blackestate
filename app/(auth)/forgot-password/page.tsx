@@ -2,10 +2,11 @@
 
 import { useState } from "react"
 import Link from "next/link"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
 import { getSupabaseBrowserClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import {
   Card,
   CardContent,
@@ -14,7 +15,19 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form"
 import { getAuthErrorMessage } from "@/lib/auth/error-messages"
+import {
+  forgotPasswordSchema,
+  type ForgotPasswordValues,
+} from "@/lib/validations/auth"
 import { toast } from "sonner"
 import { Loader2, ArrowLeft, Mail } from "lucide-react"
 
@@ -31,32 +44,32 @@ function mapResetError(error: { message: string; code?: string }): string {
 }
 
 export default function ForgotPasswordPage() {
-  const [email, setEmail] = useState("")
-  const [loading, setLoading] = useState(false)
-  const [emailSent, setEmailSent] = useState(false)
+  // Email is captured on success so the confirmation screen can show it.
+  const [sentToEmail, setSentToEmail] = useState<string | null>(null)
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
+  const form = useForm<ForgotPasswordValues>({
+    resolver: zodResolver(forgotPasswordSchema),
+    defaultValues: { email: "" },
+    mode: "onBlur",
+  })
 
-    try {
-      const supabase = getSupabaseBrowserClient()
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/auth/callback?next=/reset-password`,
-      })
+  const onSubmit = async (values: ForgotPasswordValues) => {
+    const supabase = getSupabaseBrowserClient()
+    const { error } = await supabase.auth.resetPasswordForEmail(values.email, {
+      redirectTo: `${window.location.origin}/auth/callback?next=/reset-password`,
+    })
 
-      if (error) {
-        toast.error(mapResetError(error))
-        return
-      }
-
-      setEmailSent(true)
-    } finally {
-      setLoading(false)
+    if (error) {
+      toast.error(mapResetError(error))
+      return
     }
+
+    setSentToEmail(values.email)
   }
 
-  if (emailSent) {
+  const loading = form.formState.isSubmitting
+
+  if (sentToEmail) {
     return (
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
@@ -65,8 +78,8 @@ export default function ForgotPasswordPage() {
           </div>
           <CardTitle className="text-2xl font-bold">Revisa tu correo</CardTitle>
           <CardDescription>
-            Enviamos un enlace de recuperación a <strong>{email}</strong>.
-            Haz clic en el enlace para restablecer tu contraseña.
+            Enviamos un enlace de recuperación a <strong>{sentToEmail}</strong>. Haz clic en el
+            enlace para restablecer tu contraseña.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -93,24 +106,32 @@ export default function ForgotPasswordPage() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit} className="grid gap-4">
-          <div className="grid gap-2">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              placeholder="juan@ejemplo.com"
-              autoComplete="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-4" noValidate>
+            <FormField
+              control={form.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Email</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="email"
+                      placeholder="juan@ejemplo.com"
+                      autoComplete="email"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-          </div>
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading && <Loader2 className="animate-spin" />}
-            Enviar enlace de recuperación
-          </Button>
-        </form>
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading && <Loader2 className="animate-spin" />}
+              Enviar enlace de recuperación
+            </Button>
+          </form>
+        </Form>
       </CardContent>
       <CardFooter className="justify-center">
         <Link href="/sign-in" className="text-sm text-primary hover:underline font-medium">

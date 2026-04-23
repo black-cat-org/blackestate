@@ -3,10 +3,11 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
 import { getSupabaseBrowserClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { PasswordInput } from "@/components/auth/password-input"
-import { Label } from "@/components/ui/label"
 import {
   Card,
   CardContent,
@@ -15,7 +16,21 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form"
 import { getAuthErrorMessage } from "@/lib/auth/error-messages"
+import {
+  resetPasswordSchema,
+  type ResetPasswordValues,
+  PASSWORD_HINT,
+} from "@/lib/validations/auth"
 import { toast } from "sonner"
 import { Loader2, CheckCircle, AlertCircle } from "lucide-react"
 
@@ -33,12 +48,15 @@ function mapPasswordError(error: { message: string; code?: string }): string {
 
 export default function ResetPasswordPage() {
   const router = useRouter()
-  const [password, setPassword] = useState("")
-  const [confirmPassword, setConfirmPassword] = useState("")
-  const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
   const [sessionChecked, setSessionChecked] = useState(false)
   const [hasSession, setHasSession] = useState(false)
+
+  const form = useForm<ResetPasswordValues>({
+    resolver: zodResolver(resetPasswordSchema),
+    defaultValues: { password: "", confirmPassword: "" },
+    mode: "onBlur",
+  })
 
   useEffect(() => {
     const supabase = getSupabaseBrowserClient()
@@ -53,47 +71,31 @@ export default function ResetPasswordPage() {
     router.replace("/dashboard")
   }, [success, router])
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const onSubmit = async (values: ResetPasswordValues) => {
+    const supabase = getSupabaseBrowserClient()
+    const { error } = await supabase.auth.updateUser({ password: values.password })
 
-    if (password !== confirmPassword) {
-      toast.error("Las contraseñas no coinciden")
+    if (error) {
+      toast.error(mapPasswordError(error))
       return
     }
 
-    if (password.length < 8) {
-      toast.error("La contraseña debe tener al menos 8 caracteres")
-      return
+    // Invalidate any other active sessions the user might have.
+    // Password change is a security event — if someone was signed in on
+    // another device legitimately or otherwise, they should be forced
+    // to re-authenticate with the new credentials. Matches OWASP /
+    // NIST guidance and Stripe/GitHub/Google behavior.
+    // Best-effort: a failure here should NOT undo the password update,
+    // which already succeeded. Log for ops and continue to success.
+    const { error: signOutError } = await supabase.auth.signOut({ scope: "others" })
+    if (signOutError) {
+      console.warn("[reset-password] signOut(others) failed:", signOutError)
     }
 
-    setLoading(true)
-
-    try {
-      const supabase = getSupabaseBrowserClient()
-      const { error } = await supabase.auth.updateUser({ password })
-
-      if (error) {
-        toast.error(mapPasswordError(error))
-        return
-      }
-
-      // Invalidate any other active sessions the user might have.
-      // Password change is a security event — if someone was signed in on
-      // another device legitimately or otherwise, they should be forced
-      // to re-authenticate with the new credentials. Matches OWASP /
-      // NIST guidance and Stripe/GitHub/Google behavior.
-      // Best-effort: a failure here should NOT undo the password update,
-      // which already succeeded. Log for ops and continue to success.
-      const { error: signOutError } = await supabase.auth.signOut({ scope: "others" })
-      if (signOutError) {
-        console.warn("[reset-password] signOut(others) failed:", signOutError)
-      }
-
-      setSuccess(true)
-    } finally {
-      setLoading(false)
-    }
+    setSuccess(true)
   }
+
+  const loading = form.formState.isSubmitting
 
   if (!sessionChecked) return null
 
@@ -143,34 +145,41 @@ export default function ResetPasswordPage() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit} className="grid gap-4">
-          <div className="grid gap-2">
-            <Label htmlFor="password">Nueva contraseña</Label>
-            <PasswordInput
-              id="password"
-              autoComplete="new-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              minLength={8}
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-4" noValidate>
+            <FormField
+              control={form.control}
+              name="password"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Nueva contraseña</FormLabel>
+                  <FormControl>
+                    <PasswordInput autoComplete="new-password" {...field} />
+                  </FormControl>
+                  <FormDescription>{PASSWORD_HINT}</FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="confirmPassword">Confirmar contraseña</Label>
-            <PasswordInput
-              id="confirmPassword"
-              autoComplete="new-password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              required
-              minLength={8}
+            <FormField
+              control={form.control}
+              name="confirmPassword"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Confirmar contraseña</FormLabel>
+                  <FormControl>
+                    <PasswordInput autoComplete="new-password" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-          </div>
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading && <Loader2 className="animate-spin" />}
-            Actualizar contraseña
-          </Button>
-        </form>
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading && <Loader2 className="animate-spin" />}
+              Actualizar contraseña
+            </Button>
+          </form>
+        </Form>
       </CardContent>
       <CardFooter className="justify-center">
         <p className="text-sm text-muted-foreground">
