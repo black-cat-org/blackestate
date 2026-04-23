@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/card"
 import { SocialButtons } from "@/components/auth/social-buttons"
 import { AuthDivider } from "@/components/auth/auth-divider"
+import { ResendConfirmationButton } from "@/components/auth/resend-confirmation-button"
 import { toast } from "sonner"
 import { Loader2 } from "lucide-react"
 
@@ -39,16 +40,25 @@ function SignInForm() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [loading, setLoading] = useState(false)
+  // Tracks which email triggered an `email_not_confirmed` response so we can
+  // render the resend CTA inline without losing the user's context.
+  const [unconfirmedEmail, setUnconfirmedEmail] = useState<string | null>(null)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
+    setUnconfirmedEmail(null)
 
     try {
       const supabase = getSupabaseBrowserClient()
       const { error } = await supabase.auth.signInWithPassword({ email, password })
 
       if (error) {
+        if (error.code === "email_not_confirmed") {
+          setUnconfirmedEmail(email)
+          toast.error("Tu email no está confirmado. Revisá tu bandeja de entrada.")
+          return
+        }
         toast.error(error.message || "Credenciales incorrectas")
         return
       }
@@ -98,6 +108,14 @@ function SignInForm() {
         {loading && <Loader2 className="animate-spin" />}
         Iniciar sesión
       </Button>
+      {unconfirmedEmail ? (
+        <div className="grid gap-2 rounded-md border border-dashed border-muted-foreground/30 p-3 text-center">
+          <p className="text-xs text-muted-foreground">
+            ¿No recibiste el correo o el enlace expiró?
+          </p>
+          <ResendConfirmationButton email={unconfirmedEmail} className="w-full" />
+        </div>
+      ) : null}
     </form>
   )
 }

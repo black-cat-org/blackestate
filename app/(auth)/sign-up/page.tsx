@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/card"
 import { SocialButtons } from "@/components/auth/social-buttons"
 import { AuthDivider } from "@/components/auth/auth-divider"
+import { ResendConfirmationButton } from "@/components/auth/resend-confirmation-button"
 import { toast } from "sonner"
 import { Loader2 } from "lucide-react"
 
@@ -78,6 +79,12 @@ export default function SignUpPage() {
             activar tu cuenta.
           </CardDescription>
         </CardHeader>
+        <CardContent className="grid gap-3">
+          <p className="text-center text-xs text-muted-foreground">
+            ¿No llegó a tu bandeja? Revisá spam o pedí un nuevo enlace:
+          </p>
+          <ResendConfirmationButton email={email} className="w-full" />
+        </CardContent>
         <CardFooter className="justify-center">
           <p className="text-sm text-muted-foreground">
             ¿Ya verificaste?{" "}

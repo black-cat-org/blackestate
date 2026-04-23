@@ -1633,7 +1633,7 @@ Sección viva: se actualiza en cada lote según se van encontrando gaps. Es el �
 
 | ID | Nivel | Título | Tests relacionados | Sub-plan destino | Estado |
 |---|---|---|---|---|---|
-| G1 | **P1** | Resend confirmation flow faltante | T011, T014, T014b | "Auth resend confirmation flow" | Pendiente fix entre Bloque B y C |
+| G1 | **P1** | Resend confirmation flow faltante | T011, T014, T014b | "Auth resend confirmation flow" | ✅ **RESUELTO 2026-04-23** sub-plan `docs/plans/2026-04-23-auth-resend-confirmation.md`. Component `components/auth/resend-confirmation-button.tsx` + wire en 3 lugares (sign-in error recovery, `/auth-code-error`, pantalla post-signup). Cooldown 30s visible + sessionStorage persistence + aria-live polite. Code review 3 MAJOR + 3 MINOR + 1 SECURITY resueltos. Build + tsc + eslint ✅ |
 | G2 | **P2** | Mapping errores Supabase → copy ES consistente | T001 (nota) | "Auth UX polish" | Pendiente post-QA |
 | G3 | **P2** | Auth forms validation UX (Zod client + mensajes ES inline) | T005, T006, T007 | "Auth forms validation UX" | Pendiente post-QA |
 | G4 | **P2** | Password complexity client-side (hint + Zod regex) | T005 (casos edge) | "Auth forms validation UX" (mismo sub-plan que G3) | Pendiente post-QA |
