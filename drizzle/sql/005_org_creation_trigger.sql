@@ -1,3 +1,21 @@
+-- ⚠️ SUPERSEDED BY drizzle/sql/011_handle_new_user_sync.sql (2026-04-23)
+--
+-- During QA Lote 1 (see docs/plans/2026-04-22-qa-exhaustive.md gap G11) we
+-- detected that the `handle_new_user()` trigger running in production DB
+-- had drifted from this file. The version here was never the one users
+-- actually hit — some earlier change (likely applied inline via the
+-- Dashboard SQL editor) had replaced it.
+--
+-- Sub-plan 011 reclaims source of truth: it applies a canonical version
+-- via `mcp__supabase__apply_migration` (tracked in the Supabase migrations
+-- table) AND mirrors the exact same SQL in `drizzle/sql/011_*.sql` so the
+-- repo and DB stay aligned going forward.
+--
+-- This file is retained for historical context of the original Better Auth
+-- → Supabase Auth migration design. Do NOT re-run it — it will overwrite
+-- the canonical trigger from 011 with the old buggy version.
+--
+-- ─── Original header (historical) ──────────────────────────────────────────
 -- Sub-plan 05 (Block A) — Org creation lifecycle trigger + index optimization
 --
 -- Replaces the Better Auth `hooks.after` org-creation pattern with a single

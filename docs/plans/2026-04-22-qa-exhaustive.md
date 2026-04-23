@@ -90,7 +90,16 @@ select count(*) from public.member where role='owner';
 select count(*) from public.user_active_org;
 -- → 1
 ```
-**Estado:** ⏳
+**Estado:** ✅
+**Notas:** Ejecutado 2026-04-23 03:41 UTC. Signup 200 OK. UI pivotó a pantalla "Revisa tu correo" con email mostrado correctamente. DB: user `e58e6235-16c0-4657-919c-9ff2ea447f8c` creado, `email_confirmed_at=null` (pending email confirm), `raw_user_meta_data.full_name='Test A'`. Trigger `handle_new_user` creó org `4a6b98c3-7364-4f66-9fba-1907bd5e70af` (name=`Test A`, slug=`test-a`, plan=`free`, max_seats=1), member role=`owner` con email/name denormalizados, y `user_active_org` con foreign keys correctos.
+
+**Debug durante setup (fuera del test):** 3 iteraciones falladas antes de pass por issues de infraestructura SMTP, no del código:
+- `400 email_address_invalid` inicial — causa raíz pendiente de diagnóstico exacto (body no interceptado); pudo ser pre-checks de Supabase Auth antes de bypass de rate
+- `429 over_email_send_rate_limit` — consumo del cap built-in Supabase 2/h al encadenar retries
+- `500 tls: first record does not look like a TLS handshake` — port 465 en Mailtrap Sandbox no habla TLS implícito (solo STARTTLS en 587/2525). Fix: cambiar port Supabase SMTP de 465 → 587.
+- **Fix durable aplicado:** Custom SMTP Supabase apuntando a Mailtrap Email Testing Sandbox, port 587 STARTTLS. Rate limit built-in bypass completo.
+- **Nota UX [P2] — Mapping errores Supabase a español:** `app/(auth)/sign-up/page.tsx:52` usa `toast.error(error.message)` literal — errores GoTrue pasan textual al user (ej "email rate limit exceeded"). Mejora: mapear `error.code`/`error.status` a copy en español claro por caso (rate_limit, user_exists, weak_password, invalid_email). Queda como issue separado post-QA, no bloquea el flow. Entra en sub-plan **"Auth UX polish"**.
+- **Debug interceptor activo** en `lib/supabase/client.ts` (`installAuthFetchInterceptor`, marcado DEBUG-ONLY con comentario). Revertir al cerrar la QA run.
 
 ### T002 Trigger handle_new_user crea org con slug derivado
 **Pre:** T001 pasó.
@@ -100,51 +109,107 @@ select count(*) from public.user_active_org;
 select name, slug, plan, max_seats from public.organization;
 -- → name contiene "Test A" o email prefix, slug en formato a-z0-9-, plan='free', max_seats=1
 ```
-**Estado:** ⏳
+**Estado:** ✅
+**Notas:** Ejecutado 2026-04-23 03:42 UTC. Org creada por trigger `handle_new_user`: `name='Test A'` (del raw_user_meta_data.full_name), `slug='test-a'` (derivado — regex `^[a-z0-9]([a-z0-9-]*[a-z0-9])?$` match, length≥3), `plan='free'`, `max_seats=1`. Todos los assertions pasan.
 
 ### T003 JWT carga active_org_id + org_role + email tras sign-up
 **Pre:** T001 pasó, user A logged in.
 **Acción:** Abrir DevTools → Application → Cookies `sb-<project>-auth-token`. Decodificar payload JWT.
 **Esperado UI:** JWT claims incluye `active_org_id` (uuid), `org_role: "owner"`, `is_super_admin: false`, `email: "test-a@blackestate.dev"`, `user_name`.
-**Estado:** ⏳
+**Estado:** ✅
+**Notas:** Ejecutado 2026-04-23 03:50 UTC. User A confirmó email clickeando link real de Mailtrap (flow `/auth/confirm?token_hash=...&type=signup` → `/dashboard`). Cookie `sb-jaozybchjfengqlckiul-auth-token` viene split en `.0` y `.1` (Supabase SSR particiona cookies grandes); reassembly + base64-decode + JWT segment 1 decode. Claims verificados:
+- `sub`: `e58e6235-16c0-4657-919c-9ff2ea447f8c` (match user id)
+- `email`: `test-a@blackestate.dev` ✅
+- `role`: `authenticated` ✅
+- `active_org_id`: `4a6b98c3-7364-4f66-9fba-1907bd5e70af` (match org id) ✅
+- `org_role`: `owner` ✅
+- `is_super_admin`: `false` ✅
+- `user_name`: `Test A` ✅
+- `user_metadata.full_name`: `Test A` ✅
+- `app_metadata.provider`: `email` ✅
+- `aud`: `authenticated` ✅
+
+Todos los custom claims inyectados por `custom_access_token_hook` (drizzle/sql/003) presentes y correctos.
 
 ### T004 Sign-up duplicado mismo email
 **Pre:** T001 pasó. Sign-out (si estaba logged).
 **Acción:** Nav a `/sign-up`. Usar mismo email `test-a@blackestate.dev` + password `Other1234!`. Submit.
-**Esperado UI:** Error "User already registered" o similar. NO redirect.
+**Esperado UI:** ~~Error "User already registered" o similar. NO redirect.~~ **[Criterio revisado 2026-04-23]** Fake success screen "Revisa tu correo" (comportamiento anti-enumeration de Supabase — security feature, no bug). UI no puede distinguir fake success de signup real porque Supabase oculta la diferencia.
 **Esperado DB:** `select count(*) from auth.users where email='test-a@blackestate.dev'` = 1 (no se creó nada nuevo).
-**Estado:** ⏳
+**Esperado API:** Response `200 OK` con user id **fake** (distinto del real), `role=""`, sin session. Sin envío de email (Supabase no gasta el email en duplicados).
+**Estado:** ✅
+**Notas:** Ejecutado 2026-04-23 03:56 UTC. Sign-out via NavUser menuitem "Cerrar sesión" → redirect a `/sign-in` (covers parcial T019). Signup con email duplicado + password distinto `Other1234!` → `200 OK` con user fake `e7a552b9-3631-4e99-ba1b-982a639a52cc` (≠ user real `e58e6235-...`), `role=""`. UI pivotó a pantalla "Revisa tu correo". DB verificado: `count=1` — user real intacto, no se creó duplicado. Anti-enumeration de Supabase funcionando: atacante no puede determinar si email existe porque response es visualmente idéntica a signup legítimo.
+
+**Mejora UX [P3] — Email al user legítimo en caso de duplicado (Patrón A):** implementar Patrón A — email al user legítimo "Alguien intentó crear cuenta con tu email, si eras tú ya tienes cuenta. [Iniciar sesión]". Mantiene anti-enumeration (atacante no recibe nada) + user legítimo sabe qué hacer. Implementación encaja como handler adicional del Send Email Hook cuando se migre a React Email. **Importante para UX**: el user duplicado no debe quedar esperando un email de confirm que nunca llega. Entra en sub-plan **"Auth Send Email Hook + React Email"** (post-setup Resend prod).
 
 ### T005 Sign-up password débil rechazado
 **Pre:** Nav `/sign-up`.
 **Acción:** password `123` (menos de 6 chars). Submit.
 **Esperado UI:** Error cliente de validación Zod + toast/inline "mínimo 8 caracteres" (o similar).
 **Esperado DB:** No nuevo row.
-**Estado:** ⏳
+**Estado:** ✅
+**Notas:** Ejecutado 2026-04-23 04:14 UTC. Password `"123"` (3 chars) bloqueado por validación nativa HTML5 `minLength=8` en `PasswordInput`. Submit nunca llegó a Supabase (console sin `[sb-auth] POST`). `input.validity.tooShort=true`, `validationMessage="Alarga el texto a 8 o más caracteres (actualmente, usas 3 caracteres)."` (mensaje i18n del browser). DB: `count=0` para `weak@blackestate.dev`, no se creó ningún row. UI permaneció en `/sign-up`.
+
+**Corrección al test spec:** El test esperaba "validación Zod" pero la validación real es **HTML5 nativo** (`<input minLength={8}>` en `components/auth/password-input.tsx`), no Zod client-side. Resultado equivalente: submit bloqueado antes del API call. Funcionalmente correcto.
+
+**Casos edge adicionales probados (complexity check):**
+
+| Input | Client HTML5 `minLength=8` | Server Supabase Password Policy | DB | Result |
+|---|---|---|---|---|
+| `"abcdefgh"` (8 letras) | ✅ pasa | ❌ 422 `weak_password` | 0 rows | Server rechaza, toast con mensaje crudo en inglés |
+| `"12345678"` (8 números) | ✅ pasa | ❌ 422 `weak_password` | 0 rows | Server rechaza, toast con mensaje crudo en inglés |
+
+Supabase Password Policy configurada "Lowercase + Uppercase + Digits" (Dashboard → Auth → Password Requirements). Mensaje literal:
+> "Password should contain at least one character of abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ, 0123456789"
+
+Invariante DB preservada en todos los casos. Server hace su trabajo.
+
+**Mejora UX [P2] — Password validation UX (sub-plan "Auth forms validation UX"):**
+- **A. Hint visible** debajo del input: "Mínimo 8 caracteres con mayúsculas, minúsculas y números" — permite al user ver reglas antes de escribir.
+- **B. Zod client-side** que replica la Password Policy de Supabase + mensajes español custom. Valida antes del submit, ahorra roundtrip + cuenta rate-limit. Mantener HTML5 `minLength` (defense-in-depth, costo 0).
+- **C. (lujo futuro [P3])** Password strength meter (zxcvbn) — indicador visual fortaleza en tiempo real.
+
+Recomendación: A+B en el sub-plan. C queda para iteración futura.
+
+**No eliminar validación HTML5** — complementa server, bloquea <8 chars antes del API call. El gap es falta de complexity client-side, no exceso de HTML5.
 
 ### T006 Sign-up email inválido
 **Pre:** Nav `/sign-up`.
 **Acción:** email `notanemail`. Submit.
 **Esperado UI:** Validación cliente "email inválido".
-**Estado:** ⏳
+**Estado:** ✅
+**Notas:** Ejecutado 2026-04-23 04:21 UTC. Email `"notanemail"` (sin `@`) bloqueado por validación HTML5 nativa `type="email"`. `input.validity.typeMismatch=true`, submit nunca llegó a Supabase (console sin `[sb-auth] POST`). Mensaje browser en español (idioma sistema en este browser Playwright): _"Incluye un signo '@' en la dirección de correo electrónico. La dirección 'notanemail' no incluye el signo '@'."_. DB: `count=0` para `'notanemail'`, no row creado. UI permaneció en `/sign-up`.
+
+**Nota [P2]:** La mejora UX sugerida en T005 (Zod client-side con mensajes custom en español) cubriría también este caso para normalizar el mensaje independiente del idioma del browser del user. Queda en el mismo sub-plan post-QA **"Auth forms validation UX"** (incluye email + password + name juntos).
 
 ### T007 Sign-up name vacío
 **Pre:** Nav `/sign-up`.
 **Acción:** name "". Submit.
 **Esperado UI:** Validación "nombre requerido".
-**Estado:** ⏳
+**Estado:** ✅
+**Notas:** Ejecutado 2026-04-23 04:23 UTC. Name `""` bloqueado por HTML5 `required`. `input.required=true`, `validity.valueMissing=true`. Submit nunca llegó a Supabase (console sin `[sb-auth] POST`). Mensaje browser bubble en ES: _"Completa este campo"_. DB: `count=0`. UI permaneció en `/sign-up`.
+
+**Mejora [P2]:** mismo gap registrado en T005/T006 — bubble nativo del browser en lugar de inline error/toast consistente con shadcn `FormMessage` + sonner. Sub-plan post-QA **"Auth forms validation UX"** cubre: name vacío, email vacío, email inválido, password < 8, password sin complexity, password vacío. Implementación con `react-hook-form` + Zod + `<FormMessage>` inline. HTML5 `required`/`type="email"`/`minLength` se mantienen como defense-in-depth.
 
 ### T008 Password toggle show/hide
 **Pre:** `/sign-up` cargada.
 **Acción:** click ícono eye junto al field password.
 **Esperado UI:** Input type `text` → muestra password. Segundo click → `password`.
-**Estado:** ⏳
+**Estado:** ✅
+**Notas:** Ejecutado 2026-04-23 04:26 UTC. Field `#password` con valor `"Test1234!"`. Estado inicial `type="password"`. Primer click en botón toggle → `type="text"` ✅ (password visible). Segundo click → `type="password"` ✅ (vuelve oculto). Componente `components/auth/password-input.tsx` controla estado local vía `useState` y alterna el atributo `type` del `<Input>` correctamente. Íconos `Eye` / `EyeOff` (lucide-react) intercambian por estado visible.
 
 ### T009 Sign-up con Tab navigation (a11y)
 **Pre:** `/sign-up` cargada.
 **Acción:** Tab desde name → email → password → submit.
 **Esperado UI:** Focus se mueve ordenado. Submit con Enter desde password funciona.
-**Estado:** ⏳
+**Estado:** ✅
+**Notas:** Ejecutado 2026-04-23 04:27 UTC. Tab chain verificado leyendo `document.activeElement` después de cada `Tab`:
+1. Focus inicial `#name` (INPUT)
+2. Tab → `#email` (INPUT type=email) ✅
+3. Tab → `#password` (INPUT type=password) ✅
+4. Tab → submit button "Crear cuenta" ✅ (el botón toggle eye es saltado correctamente porque `password-input.tsx:28` tiene `tabIndex={-1}` — decisión intencional para mantener flow lineal)
+
+Submit con Enter desde password: form lleno con `name="T009 Tab Test"` + email válido + password `"abcdefgh"` (8 chars solo letras — complexity fail esperado). Enter desde `#password` disparó submit: console muestra `[sb-auth] → POST ... /signup`. Supabase respondió 422 `weak_password` (como se esperaba). DB `count=0`, no user creado. La key assertion — _Enter dispara el submit_ — confirmada.
 
 ### T010 Sign-up segundo user B (dependencia bloque N)
 **Pre:** T001 pasó. Sign-out de A.
@@ -156,7 +221,21 @@ select count(*) from auth.users where email in ('test-a@blackestate.dev','test-b
 select count(*) from public.organization;
 -- → 2 (cada user tiene su propia primera org por trigger)
 ```
-**Estado:** ⏳
+**Estado:** ✅
+**Notas:** Ejecutado 2026-04-23 04:29 UTC. Signup 200 OK real (user id `98f22d3b-38b9-421a-b1e2-f3d3a79eb5ab`, role `authenticated` — no es fake como T004). UI pivotó a "Revisa tu correo" con email `test-b@blackestate.dev`. `email_confirmed_at=null` (pending).
+
+DB verificado:
+- `auth.users` count (A+B) = **2** ✅
+- `public.organization` count = **2** ✅
+- `public.member WHERE role='owner'` count = **2** ✅
+- `public.user_active_org` count = **2** ✅
+- Orgs data:
+  - `{name:"Test A", slug:"test-a", plan:"free", max_seats:1}`
+  - `{name:"Test B", slug:"test-b", plan:"free", max_seats:1}`
+
+Trigger `handle_new_user` creó la segunda org + member owner + user_active_org atómicamente, sin conflicto de slug porque `test-a` y `test-b` son únicos. Los dos users son isolated (cada uno en su propia org, sin cross-membership).
+
+**Pendiente para bloque N (invitations):** confirmar email de user B clickeando link en Mailtrap. Se avisará cuando lo necesitemos para T085+.
 
 ---
 
@@ -166,62 +245,144 @@ select count(*) from public.organization;
 **Pre:** T001 pasó + email_confirmed_at seteado via MCP.
 **Acción:** Nav `/sign-in`. email+password. Submit.
 **Esperado UI:** Redirect a `/dashboard`. Sidebar carga con nombre "Test A" y org correcta.
-**Estado:** ⏳
+**Estado:** ✅
+**Notas:** Ejecutado 2026-04-23 04:31 UTC. User A confirmado via click real en Mailtrap (no shortcut SQL). Sign-in con `test-a@blackestate.dev` + `Test1234!` → redirect `/dashboard`. Sidebar muestra:
+- Header org: "Test A" + slug "test-a"
+- NavUser footer: "Test A" + `test-a@blackestate.dev`
+- Menú navegación: Dashboard, Propiedades, Leads, Conversaciones, Citas, Mi Bot, Analíticas, Marketing, Configuración
+- Widgets dashboard: Leads totales=0, Propiedades activas=0, Citas pendientes=0, Tasa conversión 0.0%
+
+Flow real end-to-end: Supabase Auth signInWithPassword → JWT con custom claims (active_org_id, org_role=owner) → proxy.ts valida JWT → server components queries con RLS → data correcta del org del user. Confirma que T003 sigue válido (claims reusables para sesión nueva).
 
 ### T012 Sign-in password incorrecto
 **Pre:** T001 pasó.
 **Acción:** Email correcto, password `Wrong9999!`. Submit.
 **Esperado UI:** Error "Invalid login credentials" o similar. Permanece en `/sign-in`.
-**Estado:** ⏳
+**Estado:** ✅
+**Notas:** Ejecutado 2026-04-23 04:44 UTC. POST `/auth/v1/token?grant_type=password` → **400** con `{code: "invalid_credentials", message: "Invalid login credentials"}`. URL permaneció `/sign-in`, sin redirect. Toast muestra message literal EN. Gap [P2] G2 aplica (mapping `error.code` → copy ES). DB sin cambios.
 
 ### T013 Sign-in email no registrado
 **Pre:** DB limpia en auth.users excepto test-a/b.
 **Acción:** email `ghost@nowhere.dev` + cualquier password.
 **Esperado UI:** Mismo error genérico que T012 (no debe revelar si email existe o no).
-**Estado:** ⏳
+**Estado:** ✅
+**Notas:** Ejecutado 2026-04-23 04:46 UTC. Email `ghost@nowhere.dev` + password `Anything1234!` → POST `/auth/v1/token?grant_type=password` → **400** con `{code: "invalid_credentials", message: "Invalid login credentials"}` — **exactamente igual a T012**. Anti-enumeration confirmado en sign-in: response, status y code son idénticos para "email inexistente" y "password incorrecto de email real". Atacante no puede diferenciar. URL sigue `/sign-in`. Misma nota [P2] G2 del toast en inglés.
 
 ### T014 Sign-in usuario no confirmado
 **Pre:** Crear user C via sign-up pero NO confirmar email. Sign-out.
 **Acción:** Intentar sign-in con user C.
 **Esperado UI:** Error "Email not confirmed" o redirect a "/auth-code-error" con mensaje claro.
+**Estado:** ✅
+**Notas:** Ejecutado 2026-04-23 04:48 UTC. En lugar de crear user C separado, se reutilizó `test-b@blackestate.dev` (creado en T010 sin confirmar — email_confirmed_at=null verificado pre-ejecución). Password correcto `Test1234!` + email no confirmado → POST `/auth/v1/token?grant_type=password` → **400** con `{code: "email_not_confirmed", message: "Email not confirmed"}`. URL permaneció `/sign-in`.
+
+**⚠️ Hallazgo de seguridad sutil (info leak parcial):**
+
+| Caso | Response code |
+|---|---|
+| T012 email real + password malo | `invalid_credentials` |
+| T013 email fake + password cualquier | `invalid_credentials` |
+| T014 email real unconfirmed + password correcto | **`email_not_confirmed`** |
+
+Anti-enumeration funciona completo **sólo cuando password es incorrecto** (T012=T013). Cuando password es correcto y email unconfirmed → Supabase devuelve `email_not_confirmed` explícito → **revela que el email existe en el sistema**. Atacante con password válido (ej: de un data breach de otra app) puede confirmar si ese email está registrado en Black Estate iterando credenciales. Edge case realista en ataques dirigidos (credential stuffing donde el atacante conoce la password del target).
+
+**Gap [P2] G7 — Trade-off anti-enumeration vs resend UX:**
+- Opción A (más seguro): tratar `email_not_confirmed` igual que `invalid_credentials` — indistinguible para atacante. Contra: user legítimo pierde CTA de "reenviar email" contextual.
+- Opción B (balanced): aceptar el info leak pero gatearlo con rate limiting agresivo en sign-in de users unconfirmed (ej: 3 intentos/h por IP). Preserva UX de resend. Menor riesgo en volumen.
+- Opción C (Supabase default actual): respuesta distinta, UX óptimo, security trade-off conocido.
+
+**Decisión del usuario (2026-04-23):** **Opción C** para MVP. Alineado con industria (Firebase/Auth0/Cognito/Clerk/Supabase todos aceptan el mismo trade-off). Mitigación vía G1 (resend flow manual). Revisitable si volumen/surface aumenta.
+
+**Relación con sub-plan G1 (resend confirmation):** este error es el trigger perfecto para el CTA "Reenviar email de confirmación" que va en el sub-plan P1 "Auth resend confirmation flow". Cuando se implemente ese sub-plan, handler específico para `code === 'email_not_confirmed'` en sign-in muestra botón "Reenviar email" inline.
+
+### T014b Token de confirmación expirado (gap crítico UX) ⚠️ AGREGADO 2026-04-23
+**Pre:** User con signup hace >24h (default Supabase token TTL) sin confirmar, O token ya consumido.
+**Acción:** Click link de confirmación del email.
+**Esperado UI:** Redirect a `/auth-code-error`. Página muestra "Error de verificación" + botones "Volver a sign-in" / "Crear cuenta nueva".
+**Esperado real:** User **queda stuck**. No hay forma de pedir nuevo email.
 **Estado:** ⏳
+**Notas pre-ejecución:** Caso realista — users olvidan/postergan confirmar el email. Con token TTL 24h, probabilidad alta de expiración. Sign-up de nuevo con mismo email → anti-enumeration (T004) → fake success → loop infinito. Sign-in → "Email not confirmed" literal inglés, sin CTA.
+
+### ⚠️ GAP CRÍTICO UX (P1) — Resend confirmation flow faltante
+**Detectado durante T011 (2026-04-23).** Verificado en código:
+- Cero calls a `supabase.auth.resend()` en `app/`, `features/`, `components/`
+- `/auth-code-error` (`app/(auth)/auth-code-error/page.tsx`) solo ofrece navegar a sign-in/sign-up — sin opción de reenviar
+- Sin handler específico para `error.code === 'email_not_confirmed'` en sign-in
+
+**Impacto:** users que postergan confirmar el email >24h quedan stuck permanentemente. No pueden recuperar su cuenta sin soporte manual.
+
+**Sub-plan post-Bloque B "Auth resend confirmation flow" (P1):**
+1. Server action `resendConfirmationEmail(email)` que llame `supabase.auth.resend({ type: 'signup', email })`
+2. Botón "Reenviar correo de verificación" en `/auth-code-error`
+3. Handler de `email_not_confirmed` en sign-in con CTA "Reenviar email" inline
+4. Botón "Reenviar" en la pantalla "Revisa tu correo" (post-signup)
+5. Rate limit UX 60s cooldown visible (evita spam + duplica el rate-limit de Supabase)
+6. Code review OBLIGATORIO + tests post-fix
+7. Re-run Bloque B pre-existente para detectar regresiones
+
+Estrategia: **fixear este P1 entre Bloque B y Bloque C**, antes de pasar a tenancy tests. P2/P3 quedan para sub-plan final "Auth UX polish".
 
 ### T015 Sesión persiste en refresh
 **Pre:** T011 pasó, logged in.
 **Acción:** F5 refresh de `/dashboard`.
 **Esperado UI:** Dashboard recarga con mismo user/org sin volver a login.
-**Estado:** ⏳
+**Estado:** ✅
+**Notas:** Ejecutado 2026-04-23 05:00 UTC. Sign-in user A → redirect `/dashboard`. Ejecuté navegación a mismo URL (equivalente F5). Post-refresh: URL sigue `/dashboard`, no redirect a `/sign-in`. Sidebar mantiene "Test A" + slug "test-a" + email. Cookie `sb-...-auth-token` persiste en localStorage/cookies + proxy valida JWT + renderiza dashboard sin re-login. Supabase SSR + middleware refresh-token work as expected.
 
 ### T016 Sesión persiste en close+reopen tab
 **Pre:** T011 pasó.
 **Acción:** Close tab. Open nueva. Nav `/dashboard`.
 **Esperado UI:** Dashboard abre sin login.
-**Estado:** ⏳
+**Estado:** ✅
+**Notas:** Ejecutado 2026-04-23 05:01 UTC. Tab cerrada (`browser_tabs close`). Nueva tab abierta + nav `/dashboard`. URL se mantuvo `/dashboard` (no redirect a `/sign-in`). Sidebar muestra "Test A" + `test-a@blackestate.dev`. Cookies auth persistentes (no session-only) sobreviven close tab — Supabase SSR usa `Set-Cookie` con `Expires`/`Max-Age` (no solo session), confirmado. **Caveat:** Playwright MCP mantiene mismo browser context entre tabs, por lo que este test valida "cookies persistentes" pero no "close browser process completo". Para prod-grade: confirmado que `sb-*-auth-token` cookie tiene `Max-Age` positivo (no session cookie).
 
 ### T017 Acceder a `/dashboard` sin login redirecciona
 **Pre:** Sign-out.
 **Acción:** Nav directo a `/dashboard`.
 **Esperado UI:** Redirect a `/sign-in?next=%2Fdashboard`.
-**Estado:** ⏳
+**Estado:** ✅
+**Notas:** Ejecutado 2026-04-23 05:03 UTC. Sign-out previo via NavUser → "Cerrar sesión". Nav directo `http://localhost:3000/dashboard` → redirect correcto a `http://localhost:3000/sign-in?next=%2Fdashboard` (path `/dashboard` URL-encoded como `%2Fdashboard` en query param). `proxy.ts` (Next.js 16) detecta ruta protegida + ausencia de session válida + agrega el `next` param para post-login redirect.
 
 ### T018 Acceder a `/sign-in` ya logged in redirecciona a dashboard
 **Pre:** Logged in.
 **Acción:** Nav `/sign-in`.
 **Esperado UI:** Redirect a `/dashboard`.
-**Estado:** ⏳
+**Estado:** ✅
+**Notas:** Ejecutado 2026-04-23 05:04 UTC. Sign-in user A (desde `/sign-in?next=%2Fdashboard` de T017) → redirect correcto a `/dashboard` respetando `next` param (bonus: valida feature `next` redirect post-login). Luego nav directo a `/sign-in` estando logged → proxy.ts detectó session activa + hizo reverse redirect a `/dashboard`. URL final `/dashboard`. Guard reverso funcionando.
 
 ### T019 Sign-out limpia cookies + redirige
 **Pre:** Logged in como A.
 **Acción:** Click sign-out desde NavUser.
 **Esperado UI:** Redirect a `/sign-in`. Cookies `sb-*-auth-token` removidas.
 **Esperado DB:** Session en `auth.sessions` invalidada (opcional — Supabase maneja server-side).
-**Estado:** ⏳
+**Estado:** ✅
+**Notas:** Ejecutado 2026-04-23 05:05 UTC. Triple verificación post-signout:
+
+| Check | Pre-signout | Post-signout |
+|---|---|---|
+| URL | `/dashboard` | `/sign-in` ✅ |
+| Cookies `sb-*` en browser | `["sb-...auth-token.0","sb-...auth-token.1"]` | `[]` ✅ |
+| `auth.sessions` rows para user A | 1 (id `f1e413b9-...`) | **0** ✅ |
+
+Supabase `scope=global` en logout → borra session row en DB (no solo invalidate flag). Proxy detectó ausencia de cookies + redirigió a `/sign-in`. Flow completo sin bugs.
 
 ### T020 Rate limiting en sign-in repetido
 **Pre:** Sign-out.
 **Acción:** 10 intentos rápidos con password malo.
 **Esperado UI:** Después de N intentos aparece error de rate limit ("Too many requests" o similar).
-**Estado:** ⏳
+**Estado:** ⏭️ DEFERRED
+**Notas:** Ejecutado 2026-04-23 05:09 UTC. Intenté 5 submits consecutivos con password incorrecto. Todos devolvieron `{code: "invalid_credentials"}` — **ningún rate limit disparó**. Incluso habiendo bajado el slider "Sign up and sign in" a 3/5min en Dashboard (luego restaurado).
+
+Razón descubierta investigando docs Supabase: **el slider "Sign up and sign in" del Dashboard NO controla `/token?grant_type=password`.** Los rate limits configurables son:
+- `auth.rate_limits.token_refresh` → endpoint `/token?grant_type=refresh_token`
+- `auth.rate_limits.verification` → endpoint `/verify`
+- `auth.rate_limits.signup_confirmation` → signup confirmation emails
+- `auth.rate_limits.email.inbuilt_smtp` → SMTP built-in
+
+**No hay rate limit público configurable para sign-in con password en Supabase default.** Confirmado empíricamente: Supabase vió la IP real (`131.0.197.227` en logs — no localhost), trackeó los 5 intentos, y no bloqueó.
+
+Test spec se basaba en asunción incorrecta. **Marcar deferred + registrar como gap G8 de seguridad.**
+
+Sobre **IP Address Forwarding** (Dashboard setting): se activó ON (preparación para prod en Vercel con server actions). No cambia el comportamiento observado — Supabase ya veía IP pública real porque el flow actual usa browser client directo (no service_role). Setting queda ON para forward `X-Forwarded-For` cuando eventualmente hagamos server-side auth calls.
 
 ---
 
@@ -231,39 +392,56 @@ select count(*) from public.organization;
 **Pre:** Sign-out.
 **Acción:** Nav `/forgot-password`.
 **Esperado UI:** Form con field email. Button "Enviar link".
-**Estado:** ⏳
+**Estado:** ✅
+**Notas:** Ejecutado 2026-04-23 15:32 UTC (reintento post-reinicio Playwright MCP). UI carga con: título "Recuperar contraseña", subtítulo "Ingresa tu email y te enviaremos un enlace para restablecer tu contraseña", input email con placeholder `juan@ejemplo.com`, botón "Enviar enlace de recuperación", link "Volver a iniciar sesión" → `/sign-in`. Copy en español correcto, shadcn styling, form minimal y claro.
 
 ### T022 Submit email válido
 **Pre:** User A existe.
 **Acción:** Email = `test-a@blackestate.dev`. Submit.
 **Esperado UI:** Toast/inline "Link enviado a tu email" (no revela si email existe).
 **Esperado DB:** `auth.one_time_tokens` nueva row con `token_type = 'recovery'`.
-**Estado:** ⏳
+**Estado:** ✅
+**Notas:** Ejecutado 2026-04-23 15:33 UTC. POST `/auth/v1/recover` → 200 OK. UI pivotó a pantalla "Revisa tu correo" con email `test-a@blackestate.dev` mostrado + hint "Si no recibes el correo en unos minutos, revisa tu carpeta de spam". DB: `auth.one_time_tokens` nueva row con `token_type='recovery_token'` + `user_id=e58e6235-...` match user A. Email entregado via Mailtrap SMTP.
 
 ### T023 Submit email no registrado
 **Pre:** Sign-out.
 **Acción:** Email = `ghost@nowhere.dev`. Submit.
 **Esperado UI:** MISMO mensaje que T022 (no debe diferenciar — anti-enumeration).
-**Estado:** ⏳
+**Estado:** ✅
+**Notas:** Ejecutado 2026-04-23 15:37 UTC. Email `ghost@nowhere.dev` → POST `/auth/v1/recover` → 200 OK (mismo status que T022). UI pivotó a "Revisa tu correo" con email `ghost@nowhere.dev` mostrado — **idéntico** a T022. Atacante no puede determinar si email existe. DB: `auth.users WHERE email='ghost@nowhere.dev'` = 0 (no user creado, no token emitido). Anti-enumeration en recovery flow funcionando correctamente.
 
 ### T024 /reset-password con token válido (dev shortcut)
 **Pre:** T022 emitió token. Tomar `token_hash` de `auth.one_time_tokens` via MCP.
 **Acción:** Nav a `/reset-password?token_hash=<hash>&type=recovery`.
 **Esperado UI:** Form con password + confirm password.
-**Estado:** ⏳
+**Estado:** ✅
+**Notas:** Ejecutado 2026-04-23 15:41 UTC. **Flow real via Mailtrap (no shortcut SQL)**: link del email = `http://localhost:3000/auth/confirm?token_hash=pkce_0d0d99321e...&type=recovery`. Navegado → redirect correcto a `/reset-password`. Verificado `app/auth/confirm/route.ts` hace `supabase.auth.verifyOtp({ token_hash, type })` + redirect al `next` param. UI muestra: título "Nueva contraseña", 2 inputs (Nueva + Confirmar con toggle visibility), botón "Actualizar contraseña", link "¿Recordaste tu contraseña?" → `/sign-in`. Sesión temporal establecida para permitir password update.
 
 ### T025 Submit nuevo password en /reset-password
 **Pre:** T024 cargado.
 **Acción:** password = `NewTest1234!`, confirm = mismo. Submit.
 **Esperado UI:** Redirect a `/dashboard` (o `/sign-in` con toast).
 **Esperado DB:** User A puede sign-in con nueva password. Password viejo deja de funcionar.
-**Estado:** ⏳
+**Estado:** ✅
+**Notas:** Ejecutado 2026-04-23 15:42 UTC. Ambos inputs "Nueva contraseña" + "Confirmar contraseña" llenados con `NewTest1234!`. Submit → redirect directo a `/dashboard` (sesión establecida post-update).
+
+**Verificación end-to-end post-update:**
+1. Sign-out via NavUser → `/sign-in` ✅
+2. Sign-in con password **viejo** `Test1234!` → rechazado, URL permanece `/sign-in` ✅ (old password invalidado)
+3. Sign-in con password **nuevo** `NewTest1234!` → 200 + redirect `/dashboard` ✅
+
+Flow real password reset end-to-end funcionando sin bugs.
+
+**⚠️ CAMBIO IMPORTANTE DE ESTADO:** Password de `test-a@blackestate.dev` cambió de `Test1234!` → `NewTest1234!`. **Todos los tests siguientes que usen user A deben usar el nuevo password.** (La convención original del doc "password `Test1234!` para todos los tests" aplica solo a users no alterados por flujos de reset).
 
 ### T026 /reset-password con token expirado/inválido
 **Pre:** Token del T022 ya consumido (post T025).
 **Acción:** Nav mismo link + submit.
 **Esperado UI:** Error "Link inválido o expirado". Link a pedir uno nuevo.
-**Estado:** ⏳
+**Estado:** ✅
+**Notas:** Ejecutado 2026-04-23 15:46 UTC. Navegué al mismo link que usé en T024 (ya consumido): `http://localhost:3000/auth/confirm?token_hash=pkce_0d0d99321e...&type=recovery`. `verifyOtp` falla (token one-time ya usado) → redirect correcto a `/auth-code-error`. UI muestra: título "Error de verificación", mensaje "No pudimos completar el inicio de sesión. El enlace puede haber expirado o haber sido usado anteriormente.", botones "Volver a iniciar sesión" + "Crear cuenta nueva". **Gap G1 aplica directamente acá** — falta botón "Reenviar enlace de recuperación" (o signup resend). Sub-plan P1 lo resolverá.
+
+**Cierre Bloque C — Password reset (T021-T026 todos ✅).**
 
 ---
 
@@ -272,24 +450,55 @@ select count(*) from public.organization;
 ### T027 Button "Continuar con Google" visible en sign-up y sign-in
 **Pre:** Nav `/sign-up` y `/sign-in`.
 **Esperado UI:** Button Google con ícono + label.
-**Estado:** ⏳
+**Estado:** ✅
+**Notas:** Ejecutado 2026-04-23 15:48-15:49 UTC. Button "Continuar con Google" presente en ambas páginas con ícono (svg/img) + label text. Componente `SocialButtons` en `components/auth/` renderizado consistente. T028-T030 deferred (OAuth real requiere cuenta Google + verificación manual).
 
 ### T028 Click button inicia OAuth flow
 **Pre:** T027 pasó.
 **Acción:** Click button.
 **Esperado UI:** Redirect a `https://accounts.google.com/...` con `redirect_uri` del project.
-**Estado:** ⏭️ Requires real Google account + manual verification. Skip en automation, documentar check manual.
+**Estado:** ✅
+**Notas:** Ejecutado 2026-04-23 15:55 UTC con cuenta Google real (`gonzalopinell@gmail.com`). Click botón `Continuar con Google` disparó `supabase.auth.signInWithOAuth({ provider: 'google' })`. Browser Playwright MCP ya tenía sesión Google activa del user → auto-consent instantáneo → redirect completo a `/auth/callback?code=...` → exchangeCodeForSession → `/dashboard`. Flow real end-to-end confirmado.
 
 ### T029 OAuth callback exitoso crea user + org
 **Pre:** T028 manual + account autenticada.
 **Acción:** Volver del callback.
 **Esperado DB:** `auth.users` nueva row con `app_metadata.provider='google'` + trigger creó org.
-**Estado:** ⏭️
+**Estado:** ✅
+**Notas:** Ejecutado 2026-04-23 15:55 UTC junto con T028. User OAuth creado:
+- `id=5ce53c6c-c624-4afa-be44-12dcd7eb41c4`
+- `email=gonzalopinell@gmail.com`
+- `raw_app_meta_data.provider='google'` ✅
+- `raw_user_meta_data.full_name='Gonzalo Pinell'`, `avatar_url` de Google CDN
+- `email_confirmed_at=2026-04-23 15:54:55+00` (auto-populated por OAuth, no requiere confirm email)
+- `last_sign_in_at=2026-04-23 15:55:30+00`
+
+Trigger `handle_new_user` creó atomicamente:
+- `public.organization`: `name='Gonzalo Pinell'`, `slug='gonzalo-pinell'`, `plan='free'`, `max_seats=1`
+- `public.member`: `role='owner'`, denormalized `name`, `email`, `avatar_url` todos desde OAuth metadata
+- `public.user_active_org`: link correcto
+
+**Bonus — esto cubre T038** (Trigger completa name y avatar desde OAuth metadata): verificado que `member.name='Gonzalo Pinell'` + `member.avatar_url='https://lh3.googleusercontent.com/...'`. Trigger extrae `raw_user_meta_data.full_name` + `raw_user_meta_data.avatar_url` correctamente.
 
 ### T030 OAuth callback failure redirige a /auth-code-error
 **Pre:** Cancelar consent en Google.
 **Esperado UI:** Redirect a `/auth-code-error` con mensaje.
-**Estado:** ⏭️
+**Estado:** ✅
+**Notas:** Ejecutado 2026-04-23 16:03 UTC — validación híbrida:
+
+1. **Browser back desde Google account chooser:** user logged out de Google + nav `/sign-in` + click "Continuar con Google" → Google account chooser → user presionó back en el browser → retorno a `/sign-in?next=%2Fdashboard` (history pop, sin disparar callback). Resultado: no session, no /auth-code-error, pero **tampoco harm** — user puede reintentar.
+
+2. **Simulación de failure real (Google redirect con error):** para validar el path `/auth-code-error` explícitamente, nav directo a `/auth/callback?error=access_denied&error_description=User+cancelled` (lo que Google enviaría si user clickea "Deny" en consent screen). Resultado: redirect correcto a `/auth-code-error`.
+
+Código `app/auth/callback/route.ts:37-39` confirma el handler:
+```ts
+if (!code) {
+  return NextResponse.redirect(`${baseUrl}/auth-code-error`)
+}
+```
++ linea 44-46 redirige a `/auth-code-error` si `exchangeCodeForSession` falla.
+
+**Observación UX:** el account chooser de Google no expone botón "Cancelar" directo — user debe navegar back o cerrar tab. En ambos casos NO se gatilla el callback. Flow /auth-code-error aplica cuando Google redirige explícitamente con `?error=...` (ej: user click "Deny" en consent screen real). Código preparado para el escenario real.
 
 ---
 
@@ -300,24 +509,38 @@ select count(*) from public.organization;
 **Acción:** Nav `/auth/confirm?token_hash=<hash>&type=signup`.
 **Esperado UI:** Redirect a `/dashboard`.
 **Esperado DB:** `auth.users.email_confirmed_at = now()`.
-**Estado:** ⏳
+**Estado:** ✅
+**Notas:** Ejecutado 2026-04-23 16:07 UTC. User E `test-e@blackestate.dev` creado via sign-up. Pre-click: `email_confirmed_at=null`. Link del email Mailtrap usa `type=email` (no `type=signup` como spec asumía — nomenclatura actual Supabase es `type=email`). Nav al link → redirect a `/dashboard` (user autenticado automáticamente). Post-click DB: `email_confirmed_at=2026-04-23 16:07:25+00`, `last_sign_in_at=2026-04-23 16:07:25+00` ✅.
+
+**Nota pequeña al spec original:** el `type` en el link de email de signup es `email` no `signup`. Ambos los maneja `supabase.auth.verifyOtp` correctamente, pero la URL generada por Supabase usa `type=email`.
 
 ### T032 /auth/confirm con token inválido
 **Pre:** Nav `/auth/confirm?token_hash=bogus&type=signup`.
 **Esperado UI:** Redirect a `/auth-code-error`.
-**Estado:** ⏳
+**Estado:** ✅
+**Notas:** Ejecutado 2026-04-23 16:08 UTC. Nav `http://localhost:3000/auth/confirm?token_hash=bogus_invalid_token_12345&type=signup` → redirect directo a `/auth-code-error`. `verifyOtp` falla con token inválido, handler detecta error + redirige. Flow defensivo correcto.
 
 ### T033 Gmail pre-fetch fix (verifyOtp método)
 **Pre:** Simular pre-fetch (duplicar request). Primera call consume token.
 **Acción:** Repetir /auth/confirm con mismo token.
 **Esperado UI:** Idempotente — no crash, redirect normal (o error específico "token ya usado").
-**Estado:** ⏳
+**Estado:** ✅
+**Notas:** Ejecutado 2026-04-23 16:09 UTC. Nav mismo link de T031 (ya consumido) → redirect limpio a `/auth-code-error`. Sin crash, sin side effects en DB. Handler `/auth/confirm` maneja correctamente la segunda ejecución (verifyOtp falla con token already-used, catch route redirige). Gmail pre-fetch (que dispara request implícita antes del click real) ya no corrompe al user: la primera request consume el token y gatilla redirect, la segunda request del user normal cae acá. Flow idempotente y robusto.
 
 ### T034 /auth/callback con code param (PKCE)
 **Pre:** OAuth flow simulado o redirect directo con `code=<short-lived>`.
 **Acción:** Nav `/auth/callback?code=...`.
 **Esperado UI:** `exchangeCodeForSession` succeeds → redirect a `next` param o `/dashboard`.
-**Estado:** ⏭️ Requiere OAuth real.
+**Estado:** ✅
+**Notas:** Dos paths validados:
+
+1. **Happy path (T028/T029 combo):** OAuth Google real → `/auth/callback?code=<valid>` → `exchangeCodeForSession` succeeds → redirect `/dashboard`. Ya ejecutado en T028 con cuenta Google real, user `5ce53c6c-...` creado + org auto-gen.
+
+2. **Error path (T034 ejecutado 2026-04-23 16:10):** Nav `http://localhost:3000/auth/callback?code=bogus_invalid_code_abc123` → `exchangeCodeForSession` falla con code inválido → handler `app/auth/callback/route.ts:44-46` detecta error + redirige a `/auth-code-error`. Confirmado.
+
+Ambos paths del PKCE callback cubiertos.
+
+**Cierre Bloque E — Email confirmation flow (T031-T034 todos ✅). Cierre Lote 1 — Auth (T001-T034) completo.**
 
 ---
 
@@ -1390,3 +1613,78 @@ select count(*) from storage.objects where bucket_id='avatars' and (storage.fold
 | 1 | — | — | — | — | Empezar T001 |
 
 Cada falla documenta el fix + commit SHA al lado del test. Después de un fix se reinicia desde T001 (per regla 2).
+
+---
+
+## 📋 Glosario de mejoras detectadas (QA running notes)
+
+Sección viva: se actualiza en cada lote según se van encontrando gaps. Es el índice consolidado de issues observados que no son blockers del test spec pero que deben resolverse según prioridad.
+
+### Clasificación de severidad
+
+| Nivel | Definición | Cuándo se fixea |
+|---|---|---|
+| **P0 — Blocker** | Crash, data loss, security hole, multitenancy breach, build roto, tests de infraestructura fallan end-to-end | **Stop QA inmediato**. Fix + code review + re-run tests afectados antes de continuar |
+| **P1 — UX blocker** | User queda stuck, no puede recuperarse, flow crítico roto, feature prometida no funciona | **Entre lotes**. Pausa al cerrar el lote actual, fix con sub-plan dedicado + code review + re-run bloques afectados, luego seguir siguiente lote |
+| **P2 — UX polish** | Mensajes confusos pero funcional, validaciones inconsistentes, copy en idioma equivocado, inconsistencias de estilo con el design system | **Sub-plan post-QA**. Se agrupan en batches por área (ej "Auth UX polish") y se ejecutan después de cerrar los 10 lotes |
+| **P3 — Nice-to-have** | Ideas de mejora, features adicionales no pedidas, lujos UX (ej strength meter), optimizaciones de performance no críticas | **Backlog**. Se priorizan en sesión de roadmap post-QA según business value |
+
+### Tabla consolidada de gaps detectados
+
+| ID | Nivel | Título | Tests relacionados | Sub-plan destino | Estado |
+|---|---|---|---|---|---|
+| G1 | **P1** | Resend confirmation flow faltante | T011, T014, T014b | "Auth resend confirmation flow" | Pendiente fix entre Bloque B y C |
+| G2 | **P2** | Mapping errores Supabase → copy ES consistente | T001 (nota) | "Auth UX polish" | Pendiente post-QA |
+| G3 | **P2** | Auth forms validation UX (Zod client + mensajes ES inline) | T005, T006, T007 | "Auth forms validation UX" | Pendiente post-QA |
+| G4 | **P2** | Password complexity client-side (hint + Zod regex) | T005 (casos edge) | "Auth forms validation UX" (mismo sub-plan que G3) | Pendiente post-QA |
+| G5 | **P3** | Email al user legítimo en duplicate signup (Patrón A) | T004 | "Auth Send Email Hook + React Email" | Backlog (requiere Resend prod + Auth Hook) |
+| G6 | **P3** | Password strength meter (zxcvbn) | T005 | "Auth forms validation UX" (opcional) | Backlog |
+| G7 | **P2** | Info leak sutil: `email_not_confirmed` distingue emails existentes cuando password es correcto | T014 | "Auth security hardening" (futuro) | Aceptado como trade-off por ahora. Mitigar con rate limit agresivo en sign-in de unconfirmed |
+| G8 | **P2** | Brute-force protection faltante en sign-in con password. Supabase no tiene rate limit configurable para `/token?grant_type=password` | T020 | **Vercel deploy setup + "Auth security hardening"** | Aceptado MVP. **Acción obligatoria al hacer deploy en Vercel:** configurar Cloudflare WAF (~$20/mo, 30min setup) para rate limiting por IP en el endpoint de auth. Trigger de acción: deploy a prod. Futuro: 2FA selectivo para roles owner/admin |
+| G9 | **P2** | Password reset no invalida OTRAS sesiones del user. Si atacante tenía sesión activa en otro device, no pierde acceso al cambiar password | T025 | "Auth security hardening" | Fix de 1 línea en `app/(auth)/reset-password/page.tsx:82`: agregar `await supabase.auth.signOut({ scope: "others" })` tras `updateUser` exitoso. Patrón OWASP/NIST. Industry standard (Stripe/GitHub/Google lo hacen) |
+| G10 | **P2** | OAuth Google no fuerza account picker. User con múltiples sesiones Google no puede elegir cuál usar — auto-selecciona la default | T028 (descubierto post-ejecución) | "Auth UX polish" | Fix 1 línea en `components/auth/social-buttons.tsx:14-19`: agregar `queryParams: { prompt: "select_account" }` en options de `signInWithOAuth`. Industry standard — Google mismo recomienda este flag cuando la app quiere control user-selector |
+| G11 | **P1** | **Drift SQL file vs DB real.** `drizzle/sql/005_org_creation_trigger.sql` tiene una versión de `handle_new_user()` distinta de la que corre en prod (DB usa display_name como base slug sin timestamp; SQL file usa email local + timestamp hex siempre). Source of truth perdido | Cierre Lote 1 — review trigger + slug | ✅ **RESUELTO 2026-04-23** sub-plan `docs/plans/2026-04-23-slug-trigger-sync.md`. 2 migrations Supabase aplicadas (`handle_new_user_sync_with_slug_suffix` + `handle_new_user_sync_review_fixes`). Canonical source en `drizzle/sql/011_handle_new_user_sync.sql`. `005_*.sql` marcado SUPERSEDED. Code review 2 MAJOR + 1 MINOR resueltos. Smoke test OK (user F slug `test-f-Z5iMLdx`) |
+| G12 | **P2** | Slug format inconsistente — unos con suffix y otros sin. Por default no agrega suffix, solo en colisión. Users legítimos quedan con slugs feos después de una colisión aleatoria | Cierre Lote 1 — review trigger + slug | ✅ **RESUELTO 2026-04-23** junto con G11 en el mismo sub-plan. Opción C implementada: `random_base62(7)` crypto-random via `extensions.gen_random_bytes`. Todos los nuevos slugs tendrán formato `{display-name}-{7charRandom}` (ej: `test-f-Z5iMLdx` verificado). Slugs pre-existentes (test-a/b, gonzalo-pinell, test-e) NO se migraron por decisión (breaking URLs) |
+| G13 | **P3** | `custom_access_token_hook` (drizzle/sql/003) no usa `nullif`/`trim` al leer `full_name`/`name` del raw_user_meta_data. Inconsistencia con 011 (handle_new_user ahora sí hace trim) — si metadata tiene whitespace-only, JWT `user_name` claim = string en blanco | Descubierto en code review del sub-plan G11/G12 | "Auth UX polish" o mini-fix | Fix 1 línea en `drizzle/sql/003_custom_access_token_hook.sql:88-89`: agregar `nullif(trim(...), '')` coalesce igual que 011. Scope separado porque tocar 003 requiere su propia migration + test del JWT hook path. No urgente — afecta solo display, no seguridad |
+
+### Sub-planes derivados (se crearán post-cierre de QA)
+
+1. **Auth resend confirmation flow (P1)** — entre Bloque B y C:
+   - Server action `resendConfirmationEmailAction(email)` → `supabase.auth.resend({ type: 'signup', email })`
+   - **Manual trigger** (no auto-trigger — alineado con industria: Stripe/Auth0/Clerk/Vercel/Slack). Evita envíos en vano.
+   - Botón "Reenviar correo de confirmación" en **3 lugares**:
+     1. `/sign-in` — inline debajo del form cuando response es `email_not_confirmed`
+     2. `/auth-code-error` — input email + botón
+     3. Pantalla "Revisa tu correo" (post-signup) — botón "No recibí el correo, reenviar"
+   - **Cooldown UX 30s** visible ("Reenviar en 29s..." — Clerk/Stripe/Vercel standard)
+   - Post-success toast: _"Te enviamos un nuevo enlace a {email}"_
+   - Fallback error: toast + link "Contáctanos"
+   - Copy ES consistente (no auto-map del mensaje GoTrue inglés)
+   - Code review obligatorio + tests post-fix + re-run Bloque B
+   - **Contiene G1.** Mitigación práctica de G7 (Opción C aceptada con soporte de resend manual).
+
+2. **Auth forms validation UX (P2)** — post-QA:
+   - `react-hook-form` + `@hookform/resolvers/zod`
+   - Zod schemas para sign-up + sign-in + forgot-password + reset-password
+   - Mensajes custom en español inline via `<FormMessage>` (shadcn)
+   - Password hint visible
+   - HTML5 defense-in-depth mantenido
+   - **Contiene G3, G4** (G6 opcional)
+
+3. **Auth UX polish (P2)** — post-QA:
+   - Mapping `error.code` de GoTrue → copy en español por caso
+   - Loading states, disabled states, skeleton consistency
+   - **Contiene G2**
+
+4. **Auth Send Email Hook + React Email (P3)** — requiere setup Resend prod + dominio verified:
+   - Migración de SMTP a Auth Hook custom
+   - Templates React Email branded
+   - Patrón A duplicate signup email
+   - **Contiene G5**
+
+### Convenciones del glosario
+
+- **Cada nueva nota en un test debe tener `[P#]` prefix** para consistencia con este glosario.
+- **Al detectar un gap nuevo**: agregarlo a la tabla G# + asignar nivel + sub-plan destino + escribir la nota completa en el test correspondiente.
+- **Al subir de nivel** (ej P2 → P1 por descubrir que bloquea algo): actualizar la tabla y mover al sub-plan correspondiente.
+- **Al completarse un sub-plan**: marcar G# como ✅ con commit SHA del fix y test ID de la re-ejecución que lo validó.
