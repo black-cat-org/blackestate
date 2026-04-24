@@ -847,86 +847,87 @@ Tests T041-T048 eliminados (8 tests). Los casos de switch entre orgs se cubren e
 
 # BLOQUE N — Invitations SEND (IMP-8)
 
-### T085 Send invite feliz path — B invitado a org de A
-**Pre:** User A logged. User B existe en auth.users. Org de A con max_seats bumpeado a 5 via MCP (free plan = 1).
-**Acción:** Settings → Miembros → Invitar → email test-b@blackestate.dev + role agent. Submit.
-**Esperado UI:** Toast success. Lista pending invitations muestra 1 row.
-**Esperado DB:**
-```sql
-select status, email, role from invitation where email='test-b@blackestate.dev';
--- → status='pending', role='agent'
-```
-**Estado:** ⏳
+### T085 Send invite feliz path — test-h invita test-a a su org
+**Pre:** test-h logged. test-a confirmed. Org "Test H" con max_seats bumpeado a 5 via MCP (free plan = 1).
+**Acción:** Settings → Equipo → Invitar → email `test-a@blackestate.dev` + role agent. Submit.
+**Esperado UI:** Toast success. Lista pending invitations muestra 1 row con email + role + fecha expiración.
+**Esperado DB:** fila `invitation` con `status='pending'`, `role='agent'`, `expires_at = now()+7days`, `invited_by_user_id = test-h.id`.
+**Estado:** ✅ **PASS 2026-04-24** — invitación creada, token UUID v4 (`1651cd1e-...`), ttl 6.9999977 días, panel UI muestra row. Cubre T085 + T095 + T096 + T097.
 
-### T086 Check: NO email enviado (Admin API no se llamó)
-**Pre:** T085 done.
-**Acción:** Verificar logs de Supabase Dashboard o inbox.
-**Esperado:** No email en inbox de B. No log de `inviteUserByEmail` triggered.
-**Estado:** ⏳
+### T086 Send invite manda email transaccional al invitee (post-G17)
+**Pre:** T085 pasó. SMTP Mailtrap configurado (ya activo en dev).
+**Acción:** Verificar Mailtrap inbox post-send.
+**Esperado:** Email recibido en `test-a@blackestate.dev` con asunto tipo "Te invitamos a unirte a {OrgName} en Black Estate" + magic link `/accept-invite?token=xxx` + branding mínimo.
+**Esperado server logs:** Llamada a SMTP send (no a Supabase `inviteUserByEmail` Admin API — ese flow está prohibido por feedback memory `feedback_invitation_flow_wrong.md` actualizada en G17).
+**Estado:** ⏭️ STANDBY — depende de G17. Comportamiento target redefinido 2026-04-24. Original spec ("verificar que NO se envió email") obsoleto.
 
-### T087 Send invite a email no registrado rechazado
+### T087 Send invite a email no registrado se acepta (post-G17)
 **Pre:** Logged A.
-**Acción:** Invite `ghost@nowhere.dev`.
-**Esperado UI:** Toast error "Invited email is not registered in Black Estate".
-**Esperado DB:** Ninguna nueva invitation row.
-**Estado:** ⏳
+**Acción:** Invite `ghost@nowhere.dev` (no existe en `auth.users`).
+**Esperado UI:** Toast success igual que T085. Pending invitation visible en lista.
+**Esperado DB:** Fila `invitation` con `email='ghost@nowhere.dev'`, `status='pending'`, `expires_at = now() + 7 days`.
+**Esperado email:** Mailtrap recibe email con magic link → si user clickea sin cuenta, lo manda a `/sign-up?email=ghost@nowhere.dev&invite_token=xxx`.
+**Estado:** ⏭️ STANDBY — depende de G17. Comportamiento target redefinido 2026-04-24. Original spec ("Invited email is not registered" rechazo) obsoleto desde la decisión Firebase-style.
 
 ### T088 Self-invite rechazado
-**Pre:** Logged A.
-**Acción:** Invite `test-a@blackestate.dev` (propio email).
-**Esperado UI:** Toast "Cannot invite yourself".
-**Estado:** ⏳
+**Pre:** Logged test-h.
+**Acción:** Invite `test-h@blackestate.dev` (propio email).
+**Esperado UI:** Toast "No puedes invitarte a ti mismo" (copy ES neutro post-G18).
+**Esperado HTTP:** 200 OK con `{ ok: false, error, code: 'self_invite' }` (post-G18).
+**Esperado DB:** No invitation row creada.
+**Estado:** ⚠️ **PARCIAL 2026-04-24** — server-side OK (DB confirma 0 self-invites, use case rechaza con `throw new Error("Cannot invite yourself")`). UX rotos: (1) HTTP 500 en lugar de 4xx (gap arquitectural, ver G18). (2) Toast genérico "Error al enviar la invitación" en lugar del mensaje específico (catch del cliente descarta `error.message`, ver G18). Ambos quedan pendientes hasta sub-plan G18 (Server actions error contract). Re-correr post-G18.
 
 ### T089 Invite case-insensitive detecta self
-**Pre:** Logged A.
-**Acción:** Invite `TEST-A@BLACKESTATE.DEV`.
+**Pre:** Logged test-h.
+**Acción:** Invite `TEST-H@BLACKESTATE.DEV` (uppercase).
 **Esperado UI:** Detecta self (lowercase compare).
-**Estado:** ⏳
+**Estado:** ✅ **PASS 2026-04-24** — server compara case-insensitive (`callerEmail.toLowerCase() === data.email.toLowerCase()`). DB sin invite. Misma observación G18 (500 + toast genérico).
 
 ### T090 Duplicate invite pendiente rechazado
-**Pre:** T085 pasó (B invitado).
-**Acción:** A invita B de nuevo.
-**Esperado UI:** Toast "A pending invitation already exists for this email".
-**Estado:** ⏳
+**Pre:** T085 pasó (test-a invitada con status pending).
+**Acción:** test-h invita test-a de nuevo.
+**Esperado UI:** Toast "A pending invitation already exists for this email" (post-G18).
+**Estado:** ✅ **PASS 2026-04-24** — DB sigue 1 fila, `hasPendingForEmail` rechaza correctamente. UX gap G18.
 
 ### T091 Max seats alcanzado rechazado
-**Pre:** Org max_seats=1, owner=1 (A). No room.
-**Acción:** A invita B.
-**Esperado UI:** Toast "Organization seat limit reached (1)...".
-**Estado:** ⏳
+**Pre:** Org max_seats=2, owner=1 (test-h) + 1 pending invite (test-a). No room.
+**Acción:** test-h invita test-e.
+**Esperado UI:** Toast "Sin asientos disponibles..." pre-submit.
+**Estado:** ⚠️ **PARCIAL 2026-04-24** — server-side OK (`getOrgSeatInfo` cuenta active+pending, rechaza). DB sin nueva invite. UX rotos: (1) UI dice "1 de 2 asientos" (solo cuenta active, no pending) → user confundido (G19). (2) Pre-submit check `seatsAvailable===0` no disparó por mismatch del conteo client/server. (3) Server tiró 500 + toast genérico (G18). Re-correr post-G18+G19.
 
 ### T092 Admin invita agent permitido
-**Pre:** B es admin (post T072).
-**Acción:** B invita C como agent.
-**Esperado:** Success.
-**Estado:** ⏳
+**Pre:** test-h tiene un admin en su org (post Bloque O accept + Bloque L update role).
+**Acción:** Admin invita otro user como agent.
+**Esperado:** Success igual que owner.
+**Estado:** ⏭️ DIFERIDO — depende de Bloques O + L (admin no existe sin aceptar invite + promover). Re-ejecutar al cierre de esos bloques.
 
-### T093 Admin NO puede invite admin (solo owner)
-**Pre:** B admin.
-**Acción:** B invita C como admin.
-**Esperado UI:** "Only the owner can invite administrators".
-**Estado:** ⏳
+### T093 Admin NO puede invitar admin (solo owner)
+**Pre:** Admin existe (mismo setup que T092).
+**Acción:** Admin intenta invitar a otro como rol admin.
+**Esperado UI:** Toast "Solo el propietario puede invitar administradores" (post-G18).
+**Esperado HTTP:** 403 Forbidden.
+**Estado:** ⏭️ DIFERIDO — depende de Bloques O + L.
 
 ### T094 Agent NO puede invitar (rol check)
-**Pre:** C agent.
-**Acción:** C intenta abrir dialog invite.
-**Esperado UI:** Botón oculto. Si forced → "Only owner or admin can send invitations".
-**Estado:** ⏳
+**Pre:** Agent existe en la org (post Bloque O accept).
+**Acción:** Agent nav a Settings → Equipo → intenta abrir dialog invite.
+**Esperado UI:** Botón "Invitar" oculto/disabled para agents. Si request forzado → toast "Solo propietarios o administradores pueden enviar invitaciones" (post-G18) + HTTP 403.
+**Estado:** ⏭️ DIFERIDO — depende de Bloque O (agent no existe sin aceptar invite).
 
 ### T095 Invitation row insertada por withRLS (RLS policy)
-**Pre:** A admin/owner invita.
+**Pre:** test-h owner invita.
 **Esperado DB:** Invite exitoso gracias a policy `invitation_insert_by_owner_admin` usando `is_org_admin`.
-**Estado:** ⏳
+**Estado:** ✅ **COVERED por T085** (la fila se insertó, RLS no la bloqueó — owner pasa policy).
 
 ### T096 Token generado es UUID v4
 **Pre:** T085 done.
 **Esperado DB:** `select token from invitation` = formato `xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx`.
-**Estado:** ⏳
+**Estado:** ✅ **COVERED por T085** — token `1651cd1e-9ef3-4fb7-a8f0-85ee2ff040a6` matchea regex UUID v4.
 
 ### T097 expires_at = created_at + 7 días
 **Pre:** T085 done.
 **Esperado DB:** `expires_at - created_at` ≈ 7 días.
-**Estado:** ⏳
+**Estado:** ✅ **COVERED por T085** — ttl medido en 6.9999977 días (= 7 días − ~0.2s precision).
 
 ---
 
@@ -945,50 +946,50 @@ select role from member where user_id=(select id from auth.users where email='te
 select organization_id from user_active_org where user_id=<B_id>;
 -- → org de A (flipped por RPC)
 ```
-**Estado:** ⏳
+**Estado:** ✅ **PASS 2026-04-24** — test-a aceptó invite a Test H. RPC `accept_invitation` ejecutó atómico: invitation status='accepted' + accepted_at, member nuevo role='agent', user_active_org flipped a Test H. UI panel desapareció + sidebar header cambió a Test H + dashboard cargó org context nuevo. Cubre T098 + T099 + T100.
 
 ### T099 Sidebar badge muestra 1 antes de aceptar
-**Pre:** T085 done, B logged in.
+**Pre:** T085 done, test-a logged in.
 **Esperado UI:** Badge "1" junto a "Dashboard" en sidebar.
-**Estado:** ⏳
+**Estado:** ✅ **COVERED por T098** — sidebar mostró "Dashboard 1 invitaciones pendientes" + badge numérico "1" pre-accept.
 
 ### T100 Badge desaparece tras accept
 **Pre:** T098 pasó.
 **Esperado UI:** Badge ausente (revalidatePath("/dashboard","layout") funcionó).
-**Estado:** ⏳
+**Estado:** ✅ **COVERED por T098** — post-accept snapshot confirmó link "Dashboard" sin badge ni texto "invitaciones pendientes".
 
 ### T101 Accept con email mismatch rechazado
-**Pre:** Invite para `other@blackestate.dev`. Intento con token desde user B (email distinto).
-**Esperado:** RPC raises `invitation_email_mismatch` → toast "This invitation belongs to a different email address".
-**Estado:** ⏳
+**Pre:** test-h invita test-e@. test-a (otro email) intenta aceptar token de test-e via RPC directo.
+**Esperado:** RPC raises `invitation_email_mismatch` → HTTP 403.
+**Estado:** ✅ **PASS 2026-04-24** — fetch directo a `/rest/v1/rpc/accept_invitation` con JWT de test-a + token de test-e devolvió 403 + body `{code:"28000",message:"invitation_email_mismatch"}`. DB invitation sigue `pending` (no muta). Anti-attack confirmado.
 
 ### T102 Accept con token no existente
-**Pre:** Modificar URL/request con token bogus.
-**Esperado UI:** "Invitation not found".
-**Estado:** ⏳
+**Pre:** test-a logged.
+**Acción:** RPC con token bogus `00000000-0000-0000-0000-000000000000`.
+**Esperado:** RPC `invitation_not_found`.
+**Estado:** ✅ **PASS 2026-04-24** — RPC devolvió 400 + `{code:"02000",message:"invitation_not_found"}`. Nota gap G20: HTTP 400 en lugar de 404 semantically correcto. Resto OK.
 
 ### T103 Accept invitation expirada
-**Pre:** MCP `update invitation set expires_at=now()-interval '1 day' where token=<t>`.
-**Acción:** B intenta accept.
-**Esperado UI:** "Invitation has expired".
-**Esperado DB:** Status cambia a 'expired'.
-**Estado:** ⏳
+**Pre:** SQL fixture: `UPDATE invitation SET expires_at=now()-interval '1 day' WHERE token=<test-e-token>`. test-e logged.
+**Acción:** test-e intenta accept.
+**Esperado UI:** "Invitation has expired" + DB status='expired' (cleanup proactivo).
+**Estado:** ⚠️ **PARCIAL 2026-04-24** — RPC devolvió 400 + `{code:"22023",message:"invitation_expired"}` (rechazo OK). Pero **DB status sigue `pending`** post-call: bug G21 (`UPDATE ... SET status='expired'` antes de `RAISE EXCEPTION` no persiste por rollback de Postgres). Cleanup proactivo no funciona. Re-correr post-G21 fix.
 
 ### T104 Accept invitation ya accepted idempotente
-**Pre:** T098 done.
-**Acción:** B intenta accept el mismo token otra vez.
-**Esperado UI:** "Invitation has already been processed" OR idempotente según implementación (RPC lo maneja).
-**Estado:** ⏳
+**Pre:** T098 done. test-a logged.
+**Acción:** test-a re-llama RPC con mismo token (status='accepted').
+**Esperado:** Idempotente — return organization_id sin mutar (decisión user 2026-04-24).
+**Estado:** ❌ **FAIL 2026-04-24** — RPC devolvió 400 + `{code:"22023",message:"invitation_not_pending"}`. Spec original aceptaba ambos comportamientos pero user explicitó: debe ser idempotente. Bug G22 — el check `if v_inv.status <> 'pending'` debe granularizarse: `accepted` retorna OK, `rejected/expired` siguen erroring. Re-correr post-G22 fix.
 
 ### T105 Accept restaura member soft-deleted (fix migration 008)
-**Pre:** B fue miembro y removido (deleted_at set). Nueva invitation. B accept.
-**Esperado DB:** Member row existente UPDATE con deleted_at=null + role refreshed del invitation.
-**Estado:** ⏳
+**Pre:** SQL fixture: `UPDATE member SET deleted_at=now() WHERE user_id=test-a AND organization_id=Test H`. test-h crea nueva invite a test-a. test-a accept.
+**Esperado DB:** Member row pre-existente UPDATE con `deleted_at=null` + role refresh del invitation. Mismo `id`, no fila nueva.
+**Estado:** ✅ **PASS 2026-04-24** — `on conflict ... do update set deleted_at=null, role=excluded.role` (migration 008) funcionó end-to-end. count=1 fila member. Mismo `id` pre/post-soft-delete (`78040fc7-...`). RPC devolvió 200 + organization_id Test H.
 
 ### T106 JWT refresh post-accept actualiza active_org_id
-**Pre:** T098.
-**Esperado:** Decoded JWT de B ahora tiene active_org_id = org de A.
-**Estado:** ⏳
+**Pre:** T098 done. test-a re-loguea.
+**Esperado:** Decoded JWT de test-a tiene `active_org_id` = Test H id.
+**Estado:** ✅ **PASS 2026-04-24** — JWT claims decoded: `active_org_id=893605f7-...`, `org_role=agent`, `user_name=Test A`, `email=test-a@blackestate.dev`. Match exacto con DB `user_active_org.organization_id`. Custom hook `custom_access_token_hook` (012) funciona post-RPC.
 
 ---
 
@@ -999,24 +1000,24 @@ select organization_id from user_active_org where user_id=<B_id>;
 **Acción:** B en dashboard → panel pending → click "Rechazar".
 **Esperado UI:** Panel desaparece. No toast de error.
 **Esperado DB:** `invitation.status='rejected'`.
-**Estado:** ⏳
+**Estado:** ❌ **FAIL 2026-04-24** — bug arquitectural G25 (RLS recursión infinita en policy `invitation_update_admin_or_invitee`). UPDATE nunca aplica. Repo recibe "0 rows affected" + throws "Invitation not found or cannot be rejected". Además G24: el `error.message` con SQL crudo + params se renderiza al user en UI (info leak). Verificación SQL directa con jwt.claims set: `ERROR: 42P17: infinite recursion detected in policy for relation "invitation"`. **DIFERIDO post-fix sub-plan `docs/plans/2026-04-24-fix-invitation-critical-bugs.md` (G24 + G25)**.
 
 ### T108 Badge decrementa tras reject
 **Pre:** T107 done.
 **Esperado UI:** Badge en sidebar actualiza (revalidate layout).
-**Estado:** ⏳
+**Estado:** ⏭️ DIFERIDO — depende de T107 (bloqueado por G25).
 
 ### T109 Reject con predicate email-only — admin NO puede usar este action
 **Pre:** A owner conoce token via DB.
 **Acción:** A intenta rejectInvitationAction(token) forced.
 **Esperado DB:** UPDATE no afecta filas (predicate email=ctx.email filtra).
-**Estado:** ⏳
+**Estado:** ⏭️ DIFERIDO — depende de fix G25 (UPDATE en invitation imposible hoy).
 
 ### T110 Post-reject, admin puede re-invitar
 **Pre:** T107 done. Invitation status=rejected.
 **Acción:** A invita B de nuevo.
 **Esperado:** Nueva invitation pending (hasPending no considera rejected como pending).
-**Estado:** ⏳
+**Estado:** ⏭️ DIFERIDO — depende de T107 (bloqueado por G25).
 
 ---
 
@@ -1027,13 +1028,13 @@ select organization_id from user_active_org where user_id=<B_id>;
 **Acción:** A → Settings → Pending invites list → click cancel.
 **Esperado UI:** Row desaparece.
 **Esperado DB:** `invitation.status='cancelled'`.
-**Estado:** ⏳
+**Estado:** ⏭️ DIFERIDO — `markCancelled` repo usa el mismo UPDATE pattern bloqueado por G25 (RLS recursión). No probado en runtime; deduced del análisis de código (drizzle-invitation.repository.ts línea ~markCancelled). Re-correr post-fix G25.
 
 ### T112 Cancel no-op sobre accepted
 **Pre:** Invitation accepted.
 **Acción:** Cancel forced via API.
 **Esperado:** "Invitation not found or cannot be cancelled".
-**Estado:** ⏳
+**Estado:** ⏭️ DIFERIDO — depende de fix G25.
 
 ### T113 Send rollback usa markCancelled (no hard delete)
 **Pre:** Forzar fallo post-insert (difícil — n/a runtime). Verify via grep código.
@@ -1042,7 +1043,7 @@ select organization_id from user_active_org where user_id=<B_id>;
 ### T114 Cancel por invitee imposible
 **Pre:** B quiere "cancelar" (tiene que usar reject).
 **Esperado UI:** No hay UI de cancel en invitee panel. Solo accept/reject.
-**Estado:** ⏳
+**Estado:** ✅ **PASS 2026-04-24** — verificado en snapshot del panel pending de test-a + test-e (Bloque O). UI muestra solo botones "Aceptar" y "Rechazar", sin "Cancel". Cancel es admin-only (Settings → Equipo → Pending list).
 
 ---
 
@@ -1618,6 +1619,16 @@ Sección viva: se actualiza en cada lote según se van encontrando gaps. Es el �
 | G14 | **Producto** | Modelo de tenencia cambió a **1 self-owned org por user**. Código muerto (`bootstrap_organization` RPC + `createOrganizationUseCase` + `createOrganizationAction` + "Crear organización" disabled en OrgSwitcher) + Bloque G del QA (T041-T048) obsoletos | Descubierto al arrancar Lote 2 Tenancy | Sub-plan propio | ✅ **RESUELTO 2026-04-24** sub-plan `docs/plans/2026-04-24-remove-multi-org-creation.md`. Removed: RPC (DROP FUNCTION applied), use case, action, repo `create` method, domain `CreateOrganizationDTO`, OrgSwitcher disabled item. Trigger `handle_new_user` permanece intacto (única fuente de org creation). OrgSwitcher permanece para cambiar entre memberships obtenidas via invitación. Docs actualizadas: CLAUDE.md, implementation-plan.md, 3 sub-plans históricos con SUPERSEDED headers. Lote 2 Bloque G removido (−8 tests) + H anotado como dep de Lote 3 |
 | G15 | **Feature** | UI completa de "Settings → Organización" no implementada. Backend (`updateOrganizationAction` + use case + repo) ya existe pero ningún componente lo invoca. Hace falta: edición de **name + slug + logo**. Slug se autogenera al sign-up con suffix random (`test-h-fkOO30G`) y queda fijo | Detectado al arrancar Bloque I — bloquea TODOS los tests T055-T060b | Sub-plan "Org settings UI" (también incluye IMP-6 del implementation-plan que ya menciona esto) | ⏳ **Pendiente — implementar al cerrar Lote 3.** Razón del orden: Lote 3 valida el flow real de invitations + agentes, lo cual permite testear T057 (agent rejected) en el mismo sub-plan. Después re-correr Bloque I completo. Alcance: (1) Extender `UpdateOrganizationDTO` con `slug?: string`. (2) Validation Zod en `lib/validations/org.ts` con regex `^[a-z0-9][a-z0-9-]{1,48}[a-z0-9]$` + name min 2 + logoUrl válido. (3) Pre-check de unicidad de slug en `updateOrganizationUseCase` (query `organization` por slug, error `slug_taken` si existe en otra org). (4) Catch `unique_violation` (23505) en repo `update` por defensa. (5) UI section "Organización" en `/dashboard/settings` con form inline (name + slug + logo + dropzone para upload). (6) Storage flow para logo: bucket `avatars/{orgId}/logo.{ext}`, signed URL persistida. (7) Owner/admin only via `authorize()` (UI oculta edit a agent). (8) Tests T055, T056, T057, T058, T060, T060b A/B/C/D pasan tras implementación |
 | G16 | **Feature** | User debe poder editar su display name (full_name) desde profile UI. Hoy `ProfileSection` actualiza tabla `member` (denormalizado) pero NO actualiza `auth.users.raw_user_meta_data` — desincronización: si user re-loguea o el JWT hook lee de metadata, el nombre vuelve al original | Detectado al diseñar T037 — necesario para test realista de "trigger no se re-ejecuta en UPDATE" | Sub-plan "Profile edit + auth.users sync" | ⏳ **Pendiente.** Alcance: (1) En `updateAgentProfileAction`, además del UPDATE en member, llamar `supabase.auth.updateUser({ data: { full_name: newName } })` para mantener sincronizado `raw_user_meta_data`. (2) Verificar que el JWT hook (`custom_access_token_hook` 012) sigue leyendo full_name correctamente post-update. (3) Validation Zod del nombre. (4) Test T037 desbloqueado: editar nombre desde UI → UPDATE en auth.users dispara → confirmar org count no cambia (trigger AFTER INSERT only) |
+| G24 + G25 | **Sub-plan dedicado:** [`docs/plans/2026-04-24-fix-invitation-critical-bugs.md`](2026-04-24-fix-invitation-critical-bugs.md) — escribir migration RLS sin recursión + audit de error.message + mapper ES neutro + ESLint rule. Aplicar al cierre del Lote 3. | | | |
+| G25 | **🚨 CRÍTICO — RLS policy invitation_update_admin_or_invitee causa recursión infinita** | La WITH CHECK clause incluye subquery `SELECT i2.organization_id FROM invitation i2 WHERE i2.id = invitation.id` para "validar que organization_id no cambia". Esa subquery dispara la misma RLS policy recursivamente → Postgres aborta con `42P17: infinite recursion detected in policy for relation "invitation"`. **Resultado: reject + cancel de invitations rotos en producción desde día 1**. El repo recibe "0 rows affected" y throws "Invitation not found or cannot be rejected" — pero real cause es el loop. Detectado simulando UPDATE como invitee con set_config jwt.claims | T107 (Lote 3 Bloque P) — bloquea T107 + T108 + probablemente T109 + T110 + T111 (cancel) + T112 | Sub-plan dedicado URGENT (P0 producción si va a deploy ya) | ⏳ **Pendiente — fix obligatorio antes de cualquier deploy de invitations.** Alcance: (1) Migration SQL drop la subquery redundante de WITH CHECK. La policy debe quedar `WITH CHECK (is_org_admin(organization_id) OR lower(email) = lower(auth.email()))` sin la subquery. (2) La protección "no se puede mover invitation a otra org" se logra implícitamente porque WITH CHECK se evalúa POST-mutation y `is_org_admin` ya valida la org final. (3) Re-correr T107 con UPDATE real funcional. (4) Re-correr T108 (badge decrement). (5) Cubrir cancel admin (T111). (6) Audit otras policies del proyecto buscando subqueries similares en WITH CHECK |
+| G24 | **🚨 CRÍTICO — Info leak: error.message expone query SQL + params + PII al user en UI** | UI del panel de invitaciones pendientes muestra al user el `error.message` completo del repo cuando reject falla. Mensaje incluye: query Drizzle completa con table/column names, params (incluido el email del user, status, timestamps), SQL postgres encoded. **Riesgos:** (a) schema enumeration trivial, (b) PII leak en otros casos (email, IDs), (c) facilita SQL injection / fingerprinting backend, (d) profesionalmente vergonzoso. Patrón ocurre en `incoming-invitations-panel` y posiblemente otros catches de la app que pasan `error.message` directo a UI sin sanitizar | T107 (Lote 3 Bloque P) | Sub-plan dedicado — relacionado con G18 (error contract). En el mismo sub-plan agregar regla "NUNCA pasar error.message del backend a UI; usar mensajes ES neutro mapeados por code" | ⏳ **Pendiente — P0 si va a deploy.** Alcance: (1) Audit grep de `toast.error(error.message)` o `<p>{error.message}</p>` en todo el codebase. (2) Reemplazar por `toast.error(getXxxErrorMessage(error.code))` donde xxx es el dominio. (3) Add ESLint custom rule (o regex test) que prohíba `error.message` en UI. (4) Server: never include SQL/Drizzle errors in response body — mapear a códigos de dominio antes de cruzar la frontera. (5) Verificación: re-correr T107 post-G25 fix + verificar que UI muestra "No se pudo rechazar la invitación" en lugar del SQL crudo |
+| G23 | **Validación faltante — invite a member activo no debería permitirse** | `sendInvitationUseCase` valida self-invite + email duplicado + pending duplicado + seat limit, pero NO valida que el invitee ya sea member activo de la org. Permite escenarios feos: Maria invita Juan → Juan acepta → Maria vuelve a invitar Juan → invite pending para una org donde Juan ya es agente activo. Resultado: invite zombie en panel del invitee, contador de seats inflado, UX confuso. El RPC accept atrapa el caso después (check "ya member" cierra sin duplicar) pero la invitation no debió crearse | T107 setup (Lote 3 Bloque P) | Sub-plan dedicado o junto con G15/G18 (mismo área de invitations) | ⏳ **Pendiente.** Alcance: (1) En `sendInvitationUseCase` agregar check `await repo.isActiveMember(ctx, data.email)` antes del seat check. (2) Si exists → throw `ValidationError('User is already a member of this organization')` → mapear a HTTP 409 Conflict (post-G18). (3) Mensaje ES neutro: "Este usuario ya es miembro de la organización". (4) Test nuevo T097h: invite a member activo → 409 + mensaje + DB sin nueva fila |
+| G22 | **DB bug — accept_invitation no es idempotente** | RPC `accept_invitation` (007:123-125) lanza `invitation_not_pending` si status `≠ pending`. Si user re-clickea el link de email o hace doble-click → recibe error 400 "invitación ya procesada" en lugar de aterrizar gracefully en dashboard. Decisión de producto del user 2026-04-24: debe ser **idempotente** para `status='accepted'` (return org_id sin mutar) y mantener error explícito para `expired`/`rejected` | T104 (Lote 3 Bloque O) | Sub-plan dedicado o junto con G21 (mismo file SQL 007) | ⏳ **Pendiente.** Alcance: (1) Migration que reemplaza el block `if v_inv.status <> 'pending'` por checks granulares: `if accepted return organization_id;`, `if rejected raise 'invitation_rejected';`, `if expired raise 'invitation_expired'`. (2) Verificar que return idempotente NO mute member ni user_active_org (ya lo hace correctamente el branch interno de "ya member"). (3) Re-correr T104 verificando status=200 + body=org_id. (4) Re-correr T098 verificando que primer accept sigue funcionando |
+| G21 | **DB bug — cleanup no persiste por rollback** | RPC `accept_invitation` (007) tiene `UPDATE invitation SET status='expired'` antes de `RAISE EXCEPTION 'invitation_expired'`. Postgres hace rollback de TODA la transacción al raise → el UPDATE NO persiste. Resultado: invitaciones expiradas siguen como `pending` en DB indefinidamente, polucionando queries de listado | T103 (Lote 3 Bloque O) | Sub-plan dedicado | ⏳ **Pendiente.** Opciones: (1) Cron job (pg_cron o Inngest scheduled) que cada N min haga `UPDATE invitation SET status='expired' WHERE status='pending' AND expires_at < now()`. Limpio + escalable + no acopla cleanup a accept flow. (2) Función helper `mark_expired(p_token)` que corre en transacción separada (autonomous via `dblink` o background worker — complejo en Supabase). (3) En el RPC, sacar el UPDATE antes del raise + dejar que cron lo procese — requiere cron. **Recomendado: opción 1 con pg_cron** (Supabase soporta nativo). Frecuencia sugerida: cada 1 hora. Re-correr T103 verificando cambio de status post-cleanup window |
+| G20 | **HTTP semantic mismatch** | RPC `accept_invitation` con SQLSTATE `02000` (no_data, "invitation_not_found") es mapeado por PostgREST → HTTP **400 Bad Request**. Strict semantically debería ser **404 Not Found** porque el recurso (token) no existe. Mismatch sutil pero inconsistente con G18/feedback memory http_status_codes | T102 (Lote 3 Bloque O) | Sub-plan G18 (mismo) | ⏳ **Pendiente.** Opciones: (1) Cambiar SQLSTATE en `accept_invitation` de `02000` → `P0002` (no_data_found) que PostgREST mapea más cerca de 404. (2) Si migramos a API route en G18, hacer mapping explícito en el wrapper: `code === 'invitation_not_found' → 404`. (3) Mantener 400 con justificación: "token malformado o inexistente" cubre ambos casos sin distinción. Decisión final cuando se ejecute G18. Re-correr T102 verificando 404 |
+| G19 | **UX inconsistencia** | Sidebar/header de Equipo cuenta `seatsAvailable = max_seats − activeMembers` (solo miembros activos). Server cuenta `seatsAvailable = max_seats − (activeMembers + pendingInvitations)`. Ejemplo: max_seats=2, 1 owner activo, 1 pending invite → UI dice "1 de 2 asientos" (sugiere 1 libre), server rechaza siguiente invite (full). User confundido | Detectado en T091 (Lote 3 Bloque N) | Junto con G18 (en el mismo sub-plan de error contract) | ⏳ **Pendiente.** Alcance: (1) Source of truth = server. (2) Endpoint/RSC que devuelve `getOrgSeatInfo` ya incluye pending invites — exponerlo al UI. (3) UI muestra "X de Y asientos (incluyendo Z invitaciones pendientes)" o número combinado. (4) Re-correr T091 verificando que (a) UI label coincide con server, (b) pre-submit toast "No hay asientos disponibles" SÍ dispara cuando 2/2 (active+pending) sin necesidad de roundtrip al server |
+| G18 | **Arquitectura + UX** | Server actions de invitations (y otros) usan `throw new Error(...)` para errores de validación de input (self-invite, email duplicado, seat limit, role insuficiente, slug taken futuro). Resultado: Next.js responde **500 Internal Server Error** + el `error.message` específico se pierde en el catch genérico del cliente (`toast.error("Error al enviar la invitación")`). User no entiende qué falló | Detectado en T088 (Lote 3 Bloque N) | Sub-plan "Proper HTTP status codes API contract" — implementar antes de cerrar Lote 3 | ⏳ **Pendiente.** **Regla global del proyecto (saved a memoria):** SIEMPRE status codes HTTP correctos según RFC 7231. NUNCA 500 para errores de validación de input. NUNCA 200 con `{ ok: false, error }` (anti-pattern novato). **Alcance del sub-plan:** (1) Migrar flows write de Server Actions a **API Routes (`route.ts`)** con `NextResponse.json(body, { status: 400 \| 401 \| 403 \| 404 \| 409 \| 422 \| 500 })`. Reads pueden seguir como Server Actions o RSC. (2) Status code map por tipo de error de dominio: `400 Bad Request` (validation, malformed input), `401 Unauthorized` (no session), `403 Forbidden` (role insuficiente, RLS), `404 Not Found` (recurso no existe), `409 Conflict` (duplicate, slug_taken, pending_already_exists), `422 Unprocessable Entity` (semantic input wrong: self_invite, weak_password). (3) Body shape consistente para errors: `{ error: string; code: string; details?: object }`. (4) Domain errors: clases `ValidationError`/`ConflictError`/`ForbiddenError` que el route handler atrapa y mapea al status correcto. (5) Cliente: `fetch()` + `if (!response.ok) handleByStatus(response.status, await response.json())`. (6) Mapper `getInvitationErrorMessage(code)` ES neutro. (7) Re-correr T088, T087 (post-G17), T090, T091, T093, T094 + accept tests T101, T102, T103 — verificando status code correcto + body shape + UI con mensaje específico | 
+| G17 | **Producto + Feature** | Modelo Firebase-style: A puede invitar a cualquier email, exista o no en `auth.users`. Invite manda email transaccional via Mailtrap (dev) / Resend (prod) con magic link. Si invitee no tiene cuenta, click en link → sign-up con email pre-rellenado + invite_token preservado → tras confirm auto-acepta. Reemplaza decisión IMP-8 ("invitar solo users existentes") basada en comportamiento Admin API que ya no usamos | Decisión de producto 2026-04-24 al arrancar Lote 3 Bloque N — bloquea T086, T087 + agrega T097c-g | Sub-plan "Firebase-style invitations + email" — implementar **al cerrar Lote 3** | ⏳ **Pendiente.** Alcance: (1) Sacar validación `check_user_exists_by_email` del `sendInvitationUseCase` — invite a cualquier email se acepta. (2) Decidir si borrar el RPC o dejar (verify ningún otro caller). (3) Crear template de email con React Email (asunto, branding, magic link, copy ES neutro). (4) Server action `sendInvitationEmail(invitation)` que llama Mailtrap SMTP (Resend en prod). (5) Page `/accept-invite?token=xxx` que: si logged + email match → accept directo; si logged + email mismatch → reject; si NO logged → redirect `/sign-in?next=/accept-invite?token=xxx` (con cuenta) o `/sign-up?email=X&invite_token=xxx` (sin cuenta). (6) Sign-up: aceptar query param `email` (pre-relleno + readonly) + `invite_token` (preservar en sessionStorage). (7) `/auth/confirm` o `/auth/callback` post-email-verify: detectar invite_token → auto-llamar `acceptInvitationUseCase` tras crear org propia. (8) Update memoria `feedback_invitation_flow_wrong.md` — marcar superseded. (9) Re-correr T086, T087 con nuevo comportamiento. (10) Nuevos tests T097c (email recibido en Mailtrap), T097d (magic link logged in → accept), T097e (magic link sin cuenta → redirect sign-up con pre-relleno), T097f (sign-up con token + email match → auto-accept), T097g (sign-up con token + email mismatch → reject) |
 
 ### Sub-planes derivados (se crearán post-cierre de QA)
 
