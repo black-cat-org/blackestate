@@ -12,8 +12,8 @@ import { organizationPlanEnum } from "./enums";
 /**
  * Tenant root. Every domain row references one organization.
  *
- * Created via trigger `on_auth_user_created` for new users (sub-plan 05),
- * or explicitly via Server Action `createOrganizationAction` (sub-plan 05).
+ * Created via trigger `handle_new_user` at sign-up. A user owns exactly one
+ * organization; additional memberships are acquired via invitation only.
  */
 export const organization = pgTable(
   "organization",

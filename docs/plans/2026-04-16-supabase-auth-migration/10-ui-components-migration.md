@@ -1,5 +1,7 @@
 # Sub-plan 10 — UI Components Migration
 
+> **⚠️ PARTIALLY SUPERSEDED 2026-04-24** — The "Crear organización" dropdown item described here was removed when the product adopted the 1-self-owned-org model. See `docs/plans/2026-04-24-remove-multi-org-creation.md`. The rest of this sub-plan (sign-up/sign-in pages, OrgSwitcher for switching between memberships, OAuth) remains current.
+>
 > **Depends on:** 02, 05, 06, 09
 > **Unlocks:** 12
 

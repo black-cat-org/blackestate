@@ -1,58 +1,15 @@
 import { eq, and, isNull } from "drizzle-orm"
 import { organization, member, userActiveOrg } from "@/lib/db/schema"
 import type { NewOrganization } from "@/lib/db/schema/organization"
-import { getSupabaseServerClient } from "@/lib/supabase/server"
 import { withRLS } from "./rls"
 import { mapOrgRowToEntity } from "./organization.mapper"
 import type { SessionContext } from "@/features/shared/domain/session-context"
 import type {
   Organization,
   OrganizationMembership,
-  CreateOrganizationDTO,
   UpdateOrganizationDTO,
 } from "@/features/shared/domain/organization.entity"
 import type { IOrganizationRepository } from "@/features/shared/domain/organization.repository"
-
-/**
- * Map an error raised by the `bootstrap_organization` RPC to a domain error.
- *
- * Matches on the raise-exception token (`error.message`) first for the same
- * reason `translateAcceptError` does: the token is stable across Postgres
- * versions and PostgREST wrapping, while `error.code` depends on
- * `raise exception ... using errcode = '...'` propagating unchanged through
- * PostgREST — true today but fragile if the RPC ever gains a runtime error
- * outside the explicit codes. Fallback to SQLSTATE matching as a secondary
- * signal so a generic 23505 from an unexpected path still surfaces as
- * "Slug is already taken" rather than a raw SQL message.
- */
-function translateBootstrapError(
-  code: string | undefined,
-  message: string | undefined,
-): Error {
-  switch (message) {
-    case "slug_taken":
-      return new Error("Slug is already taken")
-    case "name_required":
-      return new Error("Organization name is required")
-    case "invalid_slug":
-      return new Error("Invalid organization slug")
-    case "email_required":
-      return new Error("Owner email is required")
-    case "not_authenticated":
-      return new Error("Not authenticated")
-  }
-
-  switch (code) {
-    case "23505":
-      return new Error("Slug is already taken")
-    case "22023":
-      return new Error(message ?? "Invalid organization input")
-    case "28000":
-      return new Error("Not authenticated")
-    default:
-      return new Error(message ?? "Failed to create organization")
-  }
-}
 
 export class DrizzleOrganizationRepository implements IOrganizationRepository {
   async findById(ctx: SessionContext, id: string): Promise<Organization | undefined> {
@@ -107,52 +64,6 @@ export class DrizzleOrganizationRepository implements IOrganizationRepository {
       plan: row.plan,
       role: row.role,
     }))
-  }
-
-  /**
-   * Create an org atomically via the `bootstrap_organization` SECURITY DEFINER
-   * RPC. The RPC inserts `organization`, `member (owner)`, and `user_active_org`
-   * in a single transaction, bypassing RLS because the caller has no
-   * `active_org_id` until the transaction completes.
-   *
-   * After the RPC returns the new org UUID, we fetch the full row through
-   * `withRLS` so the caller receives a hydrated `Organization` entity. The
-   * read uses a synthetic context scoped to the new org: the RLS policies
-   * verify membership via `is_org_member(id)` (member-table lookup), which
-   * passes because the RPC just created the owner row.
-   */
-  async create(
-    ctx: SessionContext,
-    data: CreateOrganizationDTO,
-    ownerInfo: { email: string; name?: string; avatarUrl?: string },
-  ): Promise<Organization> {
-    const supabase = await getSupabaseServerClient()
-    const { data: rpcData, error } = await supabase.rpc("bootstrap_organization", {
-      p_name: data.name,
-      p_slug: data.slug,
-      p_email: ownerInfo.email,
-      p_name_user: ownerInfo.name ?? null,
-      p_avatar_url: ownerInfo.avatarUrl ?? null,
-    })
-
-    if (error) throw translateBootstrapError(error.code, error.message)
-    if (typeof rpcData !== "string") {
-      throw new Error("bootstrap_organization RPC returned an unexpected payload")
-    }
-
-    const newOrgId = rpcData
-    const readCtx: SessionContext = {
-      userId: ctx.userId,
-      orgId: newOrgId,
-      role: "owner",
-      isSuperAdmin: ctx.isSuperAdmin,
-      email: ctx.email,
-    }
-    const org = await this.findById(readCtx, newOrgId)
-    if (!org) {
-      throw new Error("Organization bootstrap succeeded but the row could not be fetched")
-    }
-    return org
   }
 
   async update(

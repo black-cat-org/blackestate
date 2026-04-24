@@ -44,8 +44,8 @@ Cada test sigue este formato:
 | D | Auth — Google OAuth | T027–T030 | 4 |
 | E | Auth — email confirmation flow | T031–T034 | 4 |
 | F | Tenancy — first-org (trigger) | T035–T040 | 6 |
-| G | Tenancy — create-org (RPC) | T041–T048 | 8 |
-| H | Tenancy — switch-org | T049–T054 | 6 |
+| ~~G~~ | ~~Tenancy — create-org (RPC)~~ **REMOVED 2026-04-24 — model 1-self-owned-org** | — | 0 |
+| H | Tenancy — switch-org (depends on Lote 3 invitations) | T049–T054 (T041–T048 retired with Bloque G) | 6 |
 | I | Org profile (update) | T055–T060 | 6 |
 | J | Members — listar + ver | T061–T066 | 6 |
 | K | Members — remove | T067–T071 | 5 |
@@ -67,7 +67,7 @@ Cada test sigue este formato:
 | AA | Error boundaries + 404 | T201–T205 | 5 |
 | AB | Build + env readiness | T206–T210 | 5 |
 
-**Total:** 210 tests
+**Total:** 202 tests (210 original − 8 del bloque G removidos 2026-04-24)
 
 ---
 
@@ -592,66 +592,22 @@ select name, avatar_url from member where user_id=<oauth_user_id>;
 
 ---
 
-# BLOQUE G — Create subsequent org (bootstrap_organization RPC)
+# BLOQUE G — Create subsequent org — ❌ REMOVED 2026-04-24
 
-### T041 Crear 2da org via Settings/dialog
-**Pre:** User A logged. Pre-creada org desde sign-up.
-**Acción:** Nav Settings → botón "Crear organización" (o equivalente). Dialog: name "Org Alpha", slug "org-alpha". Submit.
-**Esperado UI:** Toast success. Sidebar muestra ambas orgs. Active cambia a la nueva.
-**Esperado DB:**
-```sql
-select count(*) from organization where id in (select organization_id from member where user_id=(select id from auth.users where email='test-a@blackestate.dev'));
--- → 2
-```
-**Estado:** ⏳
+**Razón:** el modelo de negocio fue restringido a **1 self-owned organization por user**. El único org propio se crea automáticamente al sign-up via trigger `handle_new_user`. Pertenencia a orgs adicionales se adquiere **solo** por aceptación de invitación (Bloques N/O).
 
-### T042 Slug duplicado rechazado (23505)
-**Pre:** Org "org-alpha" existe.
-**Acción:** Crear otra con slug "org-alpha".
-**Esperado UI:** Toast error "Slug is already taken".
-**Esperado DB:** Sigue en 2 orgs para user A.
-**Estado:** ⏳
+El RPC `bootstrap_organization`, la Server Action `createOrganizationAction`, el use case `createOrganizationUseCase`, y el item "Crear organización" del OrgSwitcher fueron removidos — ver sub-plan `docs/plans/2026-04-24-remove-multi-org-creation.md`.
 
-### T043 Slug inválido rechazado (22023)
-**Pre:** User A logged.
-**Acción:** Slug "Invalid Slug!!" (uppercase + espacios + !).
-**Esperado UI:** Toast error "Slug must be 3-50 chars lowercase...".
-**Estado:** ⏳
-
-### T044 Name vacío rechazado
-**Pre:** Logged.
-**Acción:** Name "" (o solo espacios).
-**Esperado UI:** Toast error "Organization name is required".
-**Estado:** ⏳
-
-### T045 Slug muy corto (<3)
-**Pre:** Logged.
-**Acción:** Slug "ab".
-**Esperado UI:** Error por regex.
-**Estado:** ⏳
-
-### T046 Slug con guión al inicio/fin
-**Pre:** Logged.
-**Acción:** Slug "-foo" o "foo-".
-**Esperado UI:** Error por regex (debe empezar y terminar con alfanumérico).
-**Estado:** ⏳
-
-### T047 Post-create auto-switch activa nueva org
-**Pre:** Create "org-beta".
-**Esperado UI:** Sidebar OrgSwitcher muestra "org-beta" como activo. Dashboard recarga con data de org-beta (vacía).
-**Esperado DB:** `user_active_org.organization_id` = id de org-beta.
-**Estado:** ⏳
-
-### T048 RPC bootstrap_organization retorna UUID nueva
-**Pre:** MCP SQL call con auth.uid() via SET (no fácil — covered indirectly por T041).
-**Estado:** ✅ Covered by T041+T047.
+Tests T041-T048 eliminados (8 tests). Los casos de switch entre orgs se cubren en Bloque H (que ahora depende de Lote 3 invitations para que el user pertenezca a 2+ orgs) y los de update profile en Bloque I.
 
 ---
 
 # BLOQUE H — Switch-org
 
+> **⚠️ Dependencia:** Este bloque requiere que user A pertenezca a 2+ orgs. Tras remover el Bloque G, la única vía para obtener multi-membership es Bloque N/O (invitations). Ejecutar **después** de Lote 3. Hasta entonces el dropdown del OrgSwitcher no renderiza (se requieren 2+ orgs activas — ver `components/org-switcher.tsx:53`).
+
 ### T049 Switch via OrgSwitcher dropdown
-**Pre:** User A tiene 2 orgs (de T041).
+**Pre:** User A tiene 2 orgs (1 propia + 1 por aceptar invitación de Bloque O).
 **Acción:** Click OrgSwitcher → click la otra org.
 **Esperado UI:** Page refresh. Dashboard carga con datos de la otra org (props/leads vacíos).
 **Esperado DB:** `user_active_org.organization_id` actualizado.
@@ -1646,6 +1602,7 @@ Sección viva: se actualiza en cada lote según se van encontrando gaps. Es el �
 | G11 | **P1** | **Drift SQL file vs DB real.** `drizzle/sql/005_org_creation_trigger.sql` tiene una versión de `handle_new_user()` distinta de la que corre en prod (DB usa display_name como base slug sin timestamp; SQL file usa email local + timestamp hex siempre). Source of truth perdido | Cierre Lote 1 — review trigger + slug | ✅ **RESUELTO 2026-04-23** sub-plan `docs/plans/2026-04-23-slug-trigger-sync.md`. 2 migrations Supabase aplicadas (`handle_new_user_sync_with_slug_suffix` + `handle_new_user_sync_review_fixes`). Canonical source en `drizzle/sql/011_handle_new_user_sync.sql`. `005_*.sql` marcado SUPERSEDED. Code review 2 MAJOR + 1 MINOR resueltos. Smoke test OK (user F slug `test-f-Z5iMLdx`) |
 | G12 | **P2** | Slug format inconsistente — unos con suffix y otros sin. Por default no agrega suffix, solo en colisión. Users legítimos quedan con slugs feos después de una colisión aleatoria | Cierre Lote 1 — review trigger + slug | ✅ **RESUELTO 2026-04-23** junto con G11 en el mismo sub-plan. Opción C implementada: `random_base62(7)` crypto-random via `extensions.gen_random_bytes`. Todos los nuevos slugs tendrán formato `{display-name}-{7charRandom}` (ej: `test-f-Z5iMLdx` verificado). Slugs pre-existentes (test-a/b, gonzalo-pinell, test-e) NO se migraron por decisión (breaking URLs) |
 | G13 | **P3** | `custom_access_token_hook` (drizzle/sql/003) no usa `nullif`/`trim` al leer `full_name`/`name` del raw_user_meta_data. Inconsistencia con 011 (handle_new_user ahora sí hace trim) — si metadata tiene whitespace-only, JWT `user_name` claim = string en blanco | Descubierto en code review del sub-plan G11/G12 | "Auth UX polish" o mini-fix | ✅ **RESUELTO 2026-04-23** sub-plan auth quick wins. 2 migrations aplicadas (`custom_access_token_hook_nullif_trim` + `custom_access_token_hook_review_fixes`). Canonical source `drizzle/sql/012_custom_access_token_hook_nullif_trim.sql`. 003 SUPERSEDED. Fallback de 4 niveles + inline grants para fresh-DB safety + claim siempre injected (nunca omitido) |
+| G14 | **Producto** | Modelo de tenencia cambió a **1 self-owned org por user**. Código muerto (`bootstrap_organization` RPC + `createOrganizationUseCase` + `createOrganizationAction` + "Crear organización" disabled en OrgSwitcher) + Bloque G del QA (T041-T048) obsoletos | Descubierto al arrancar Lote 2 Tenancy | Sub-plan propio | ✅ **RESUELTO 2026-04-24** sub-plan `docs/plans/2026-04-24-remove-multi-org-creation.md`. Removed: RPC (DROP FUNCTION applied), use case, action, repo `create` method, domain `CreateOrganizationDTO`, OrgSwitcher disabled item. Trigger `handle_new_user` permanece intacto (única fuente de org creation). OrgSwitcher permanece para cambiar entre memberships obtenidas via invitación. Docs actualizadas: CLAUDE.md, implementation-plan.md, 3 sub-plans históricos con SUPERSEDED headers. Lote 2 Bloque G removido (−8 tests) + H anotado como dep de Lote 3 |
 
 ### Sub-planes derivados (se crearán post-cierre de QA)
 

@@ -21,11 +21,6 @@ export interface OrganizationMembership {
   role: "owner" | "admin" | "agent"
 }
 
-export interface CreateOrganizationDTO {
-  name: string
-  slug: string
-}
-
 export interface UpdateOrganizationDTO {
   name?: string
   logoUrl?: string | null

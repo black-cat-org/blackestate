@@ -1,5 +1,7 @@
 # Sub-plan 09 — Server Actions + Session Context Refactor
 
+> **⚠️ PARTIALLY SUPERSEDED 2026-04-24** — `createOrganizationAction` was removed when the product adopted the 1-self-owned-org model. See `docs/plans/2026-04-24-remove-multi-org-creation.md`. The rest of this sub-plan (session context, getSupabaseServerClient vs getSupabaseAdmin split, switch/update actions) remains current.
+>
 > **Depends on:** 01, 02, 03, 05 (Block A), 07
 > **Unlocks:** 10
 

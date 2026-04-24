@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation"
 import { useTransition } from "react"
-import { Building2, ChevronsUpDown, Check, Plus } from "lucide-react"
+import { Building2, ChevronsUpDown, Check } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -112,11 +112,6 @@ export function OrgSwitcher({ activeOrgId, organizations }: OrgSwitcherProps) {
                 {org.id === activeOrgId && <Check className="size-4 text-primary" />}
               </DropdownMenuItem>
             ))}
-            <DropdownMenuSeparator />
-            <DropdownMenuItem disabled>
-              <Plus className="size-4" />
-              Crear organización
-            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </SidebarMenuItem>

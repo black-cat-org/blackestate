@@ -307,7 +307,7 @@ npx drizzle-kit check      # Verify config (safe, read-only)
 - **Custom roles:** `owner` (1 per org), `admin` (N), `agent` (N) — enum `member_role` + `role_permissions` table
 - **Plans:** `free` (1 member), `pro` (1 member), `enterprise` (N members) — plan lives on the org
 - **Visibility:** Agents can see other agents' data in the same org (read-only, cannot edit)
-- **Multi-org:** A user can belong to multiple orgs with different roles
+- **1 self-owned org per user:** A user owns exactly one organization, provisioned automatically by the `handle_new_user` trigger at sign-up. Additional memberships (with roles `admin`/`agent`) are acquired **only** by accepting invitations from other orgs. There is no UI or RPC to create a second self-owned org — simplifies pricing (1 org = 1 subscription) and removes trial abuse.
 - **Billing:** Paddle (MoR) + Payoneer (payout to Bolivia)
 - **Full reference:** `docs/roles-and-permissions.md`
 
@@ -315,12 +315,13 @@ npx drizzle-kit check      # Verify config (safe, read-only)
 
 **DB trigger `handle_new_user()`** fires on INSERT to `auth.users`. Creates `organization` + `member (owner)` + `user_active_org` atomically — all three inserts are wrapped in a single savepoint block so partial failure rolls back (no orphan rows). **Canonical source: `drizzle/sql/011_handle_new_user_sync.sql`** (SUPERSEDES `005_org_creation_trigger.sql`, retained with a header note for historical context only). Slug format: `{slug(display_name)}-{7-char-base62-random}` using the crypto-random helper `public.random_base62(int)` (via `extensions.gen_random_bytes`). 62^7 = 3.5T combinations → collision-free in practice; `unique_violation` fallback retries with a 10-char suffix. No application-level fallback — if the trigger fails, session-context throws `[auth] JWT is missing active_org_id / org_role` to surface the infra failure instead of masking it with on-read creation.
 
-**SECURITY DEFINER RPCs for RLS-crossing flows** (`drizzle/sql/007_rls_helpers_and_bootstrap.sql` + `008_accept_invitation_fixes.sql` + `009_check_user_exists_by_email.sql`):
-- `public.bootstrap_organization(p_name, p_slug, p_email, p_name_user?, p_avatar_url?)` — subsequent-org creation for users who already have an `active_org_id`. Used by `createOrganizationAction` when a user adds another org. Validates slug format + uniqueness + email, inserts org + owner member + flips `user_active_org` atomically. Raises SQLSTATE 23505 `slug_taken`, 22023 `name_required`/`invalid_slug`/`email_required`, 28000 `not_authenticated`.
+**SECURITY DEFINER RPCs for RLS-crossing flows** (`drizzle/sql/007_rls_helpers_and_bootstrap.sql` (filename historical — `bootstrap_organization` was removed 2026-04-24, file now contains only `accept_invitation`) + `008_accept_invitation_fixes.sql` + `009_check_user_exists_by_email.sql`):
 - `public.accept_invitation(p_token)` — invitation acceptance. Validates token, email match against `auth.jwt() ->> 'email'`, and expiry; then creates the member row (or restores a soft-deleted one) + flips `user_active_org` + marks the invitation accepted. Idempotent for already-active memberships. Raises 02000 `invitation_not_found`, 22023 `invitation_not_pending` / `invitation_expired`, 28000 `not_authenticated` / `email_missing` / `invitation_email_mismatch`.
 - `public.check_user_exists_by_email(p_email)` — returns BOOLEAN. Used by the send-invitation flow to reject invites aimed at emails that do not have a Black Estate account (invitations are for existing users; onboarding newcomers happens through sign-up or the future referral link flow). Returns only a boolean — no metadata leaks.
 
-All three are `SECURITY DEFINER` with `SET search_path = ''`, EXECUTE revoked from `anon`/`public`, granted only to `authenticated`. Mutations run against `auth.uid()` (never a caller-supplied id). Callers use `supabase.rpc('<name>', {...})` and map the raised `message` token to a domain error (see `translateBootstrapError` and `translateAcceptError` in the infrastructure repos).
+Both are `SECURITY DEFINER` with `SET search_path = ''`, EXECUTE revoked from `anon`/`public`, granted only to `authenticated`. Mutations run against `auth.uid()` (never a caller-supplied id). Callers use `supabase.rpc('<name>', {...})` and map the raised `message` token to a domain error (see `translateAcceptError` in the infrastructure repos).
+
+**Removed 2026-04-24:** `bootstrap_organization` RPC + `createOrganizationAction` + `createOrganizationUseCase`. The product model forbids creating more than one self-owned org; first-org is provisioned by the trigger, additional memberships come via invitation. See `docs/plans/2026-04-24-remove-multi-org-creation.md`.
 
 **RLS policy addition** (`drizzle/sql/010_organization_select_via_pending_invitation.sql`): `organization_select_via_pending_invitation` grants SELECT on an `organization` row to an authenticated caller while they have a pending, non-expired invitation for it (email matched via `auth.email()`). Enables invitees to see the inviting org in a JOIN without being a member yet. Scoped to the invitation lifecycle; no write access.
 

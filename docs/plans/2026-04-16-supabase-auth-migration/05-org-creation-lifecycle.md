@@ -1,8 +1,10 @@
 # Sub-plan 05 — Organization Creation Lifecycle
 
+> **⚠️ SUPERSEDED 2026-04-24 — Block B ("Crear organización adicional") was removed.** The product model was reduced to **1 self-owned organization per user**: the trigger `handle_new_user` provisions the single owned org at sign-up; additional memberships are acquired only via invitation. The `createOrganizationAction` flow, `bootstrap_organization` RPC, and "Crear organización" dropdown item described here no longer exist. See `docs/plans/2026-04-24-remove-multi-org-creation.md`. Block A (first-org via trigger) remains current.
+>
 > **Depends on:** 01, 03
 > **Unlocks:** 07, 09, 10
-> **Status:** ✅ Block A Completed — 2026-04-16 (Block B moved to sub-plan 09)
+> **Status:** ✅ Block A Completed — 2026-04-16 (Block B moved to sub-plan 09, then removed 2026-04-24)
 > **Branch:** `feat/auth-migration-phase-05`
 
 ## Scope split (importante)
