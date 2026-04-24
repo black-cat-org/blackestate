@@ -43,10 +43,10 @@ Cada test sigue este formato:
 | C | Auth — password reset | T021–T026 | 6 |
 | D | Auth — Google OAuth | T027–T030 | 4 |
 | E | Auth — email confirmation flow | T031–T034 | 4 |
-| F | Tenancy — first-org (trigger) | T035–T040 | 6 |
+| F | Tenancy — first-org (trigger) | T035–T040 (T036, T039, T040 removed) | 3 |
 | ~~G~~ | ~~Tenancy — create-org (RPC)~~ **REMOVED 2026-04-24 — model 1-self-owned-org** | — | 0 |
 | H | Tenancy — switch-org (depends on Lote 3 invitations) | T049–T054 (T041–T048 retired with Bloque G) | 6 |
-| I | Org profile (update) | T055–T060 | 6 |
+| I | Org profile (update) | T055–T060 + T060b | 7 |
 | J | Members — listar + ver | T061–T066 | 6 |
 | K | Members — remove | T067–T071 | 5 |
 | L | Members — update role | T072–T077 | 6 |
@@ -67,7 +67,7 @@ Cada test sigue este formato:
 | AA | Error boundaries + 404 | T201–T205 | 5 |
 | AB | Build + env readiness | T206–T210 | 5 |
 
-**Total:** 202 tests (210 original − 8 del bloque G removidos 2026-04-24)
+**Total:** 200 tests (210 original − 8 del bloque G removidos 2026-04-24 − T036, T039, T040 removidos 2026-04-24 + T060b agregado 2026-04-24)
 
 ---
 
@@ -559,17 +559,16 @@ where m.user_id=(select id from auth.users where email='test-a@blackestate.dev')
 ```
 **Estado:** ⏳
 
-### T036 Slug único bajo carrera
-**Pre:** Crear 2 users con emails que generarían mismo slug (ej: `test-a@foo.com` y `test-a@bar.com` si slug deriva de email local-part).
-**Acción:** Sign-ups consecutivos.
-**Esperado DB:** Ambas orgs creadas, slugs distintos (ej: `test-a`, `test-a-1`).
-**Estado:** ⏳
+### ~~T036 Slug único bajo carrera~~ ❌ REMOVIDO 2026-04-24
+Astronómicamente improbable (1 en 62^7 ≈ 3.5T). El trigger 011 maneja `unique_violation` con retry `random_base62(10)` por defensa, pero forzar la colisión en runtime es imposible. Decisión: el test no aporta valor práctico.
 
 ### T037 Trigger idempotent en upsert
-**Pre:** User A existe.
-**Acción:** Borrar org de A + member + user_active_org manualmente, re-ejecutar trigger (INSERT en auth.users no se repite; workaround: `perform handle_new_user()` via function — n/a). Alternative: verify trigger NO se re-ejecuta al UPDATE de auth.users.
-**Esperado:** Trigger solo on INSERT → al UPDATE no se re-crea org. OK si user queda sin org (infra-failure mode; proxy lo manda a /sign-in).
-**Estado:** ⏳
+**Pre:** User logged + UI de "edit profile name" implementada (G16 — ver glosario).
+**Acción:** Desde UI realista del producto, disparar un flow que UPDATE `auth.users.raw_user_meta_data` (ej: editar display name → `auth.updateUser({ data: { full_name: ... } })`).
+**Esperado:** Trigger NO se re-ejecuta. Org count de ese user se mantiene en 1, no aparece org duplicada.
+**Estado:** ⏭️ DIFERIDO — el cliente no tiene flow de UI para tocar `auth.users` hoy. Bypass por SQL sería falso positivo (cliente nunca lo haría así). Re-ejecutar cuando G16 esté implementado.
+
+**Nota técnica:** trigger definition verificada `AFTER INSERT ON auth.users` (sin UPDATE) — design-level OK. El test runtime queda pendiente de un flow UI real que dispare UPDATE.
 
 ### T038 Trigger completa name y avatar desde OAuth metadata
 **Pre:** OAuth user (simulado — setear raw_user_meta_data manualmente).
@@ -581,14 +580,11 @@ select name, avatar_url from member where user_id=<oauth_user_id>;
 ```
 **Estado:** ⏭️ OAuth manual.
 
-### T039 Trigger maneja email null (future phone auth)
-**Pre:** Crear user sin email (via admin API futuro) — n/a por ahora.
-**Estado:** ⏭️ Futuro.
+### ~~T039 Trigger maneja email null~~ ❌ REMOVIDO 2026-04-24
+Decisión de producto: Black Estate **nunca** permitirá creación de usuarios sin email. Phone auth no entra en el roadmap. Test sin caso de uso real.
 
-### T040 Trigger atomico — rollback si falla insert member
-**Pre:** Trigger inserta org → member → active_org. Romper una de las 3 (ej: violar UNIQUE).
-**Esperado:** Todo rollback, user en auth.users queda sin org (JWT sin active_org_id → proxy redirige).
-**Estado:** ⏭️ Difícil de forzar sin modificar schema; documentar como "covered by trigger design review".
+### ~~T040 Trigger atómico — rollback si falla insert member~~ ❌ REMOVIDO 2026-04-24
+No reproducible en runtime sin modificar schema temporalmente (rompería DB para todos). Atomicidad garantizada design-level por savepoint Postgres en trigger 011 (verificada en code review G11/G12). Si llega a fallar en prod, se atiende como postmortem caso por caso.
 
 ---
 
@@ -611,64 +607,67 @@ Tests T041-T048 eliminados (8 tests). Los casos de switch entre orgs se cubren e
 **Acción:** Click OrgSwitcher → click la otra org.
 **Esperado UI:** Page refresh. Dashboard carga con datos de la otra org (props/leads vacíos).
 **Esperado DB:** `user_active_org.organization_id` actualizado.
-**Estado:** ⏳
+**Estado:** ⏭️ DIFERIDO — depende de Lote 3 (un user con multi-membership)
 
 ### T050 JWT refresh tras switch
 **Pre:** T049 done.
 **Acción:** DevTools → decode JWT cookie.
 **Esperado:** `active_org_id` claim coincide con la org nueva.
-**Estado:** ⏳
+**Estado:** ⏭️ DIFERIDO — depende de T049
 
 ### T051 Switch a org donde NO soy miembro rechazado
 **Pre:** User A. Crear org C via MCP (insertada manualmente, A no es miembro).
 **Acción:** Intento llamar `switchActiveOrgAction(id_de_C)` via DevTools o modificando request.
 **Esperado:** Error "User is not a member of this organization".
-**Estado:** ⏳
+**Estado:** ⏭️ DIFERIDO — depende de Lote 3 (estructural; no hay forma realista de obtener id de org ajena en UI)
 
 ### T052 Switch al mismo org (no-op)
 **Pre:** A está en org-alpha (active).
 **Acción:** switchActiveOrgAction con mismo id.
 **Esperado:** Silent, no-op, no throw.
-**Estado:** ⏳
+**Estado:** ⏭️ DIFERIDO — depende de Lote 3
 
 ### T053 OrgSwitcher muestra todas las orgs del user
 **Pre:** User A tiene 2 orgs.
 **Esperado UI:** Dropdown muestra ambas. Active marcado con check.
-**Estado:** ⏳
+**Estado:** ⏭️ DIFERIDO — depende de Lote 3
 
 ### T054 RLS permite findAllForUser cross-org
 **Pre:** A tiene 2 orgs.
 **Esperado DB:** `SELECT ... FROM member WHERE user_id=A.id` retorna 2 filas (RLS policy allows self-membership cross-org via is_org_member usando member table).
-**Estado:** ⏳
+**Estado:** ⏭️ DIFERIDO — depende de Lote 3
 
 ---
 
 # BLOQUE I — Org profile (update)
 
+> **⚠️ TODO el bloque ⏭️ DIFERIDO 2026-04-24** — la UI de "Settings → Organización" (name + slug + logo) **no está implementada**. Backend (action + use case + repo) ya existe pero ningún componente lo invoca. Implementar la feature como sub-plan dedicado **al cerrar Lote 3** (cuando ya tengamos validado el flow de invitations + agentes), después re-correr Bloque I completo (T055-T060b). Alcance del sub-plan: ver **G15** en glosario.
+
 ### T055 Update name
-**Pre:** Org "org-alpha" existe.
-**Acción:** Settings → org section → edit name → "Org Alpha Renamed". Save.
+**Pre:** Org "Test H" existe + UI Settings → Organización implementada (G15).
+**Acción:** Settings → org section → edit name → "Inmobiliaria H LP". Save.
 **Esperado UI:** Toast success. Sidebar muestra nombre nuevo.
-**Esperado DB:** `organization.name = 'Org Alpha Renamed'`.
-**Estado:** ⏳
+**Esperado DB:** `organization.name = 'Inmobiliaria H LP'`, `updated_at` avanza.
+**Estado:** ⏭️ DIFERIDO post-Lote 3 — bloqueado por G15
 
 ### T056 Update logo_url
-**Pre:** Settings logo field.
-**Acción:** Upload logo (vía storage flow) o set URL manual.
-**Esperado DB:** `organization.logo_url` populated.
-**Estado:** ⏳
+**Pre:** Settings logo field implementado (G15) + bucket `avatars` configurado.
+**Acción:** Upload imagen `todotix_icon.jpg` (provista por user) → se sube a Supabase Storage → URL persiste en DB.
+**Esperado DB:** `organization.logo_url` populated con URL del bucket.
+**Esperado UI:** Sidebar muestra el logo + Settings preview lo refleja.
+**Estado:** ⏭️ DIFERIDO post-Lote 3 — bloqueado por G15
 
 ### T057 Update sin permisos (role=agent) rechazado
-**Pre:** B es agent en org de A.
-**Acción:** B intenta update name.
-**Esperado UI:** Forbidden (UI oculta edit; si request forced → RLS rechaza).
-**Estado:** ⏳ (requires bloque N completado para crear agent B).
+**Pre:** B es agent en org de A (post Lote 3 invitations).
+**Acción:** B intenta update name desde DevTools (UI debe ocultar el botón).
+**Esperado UI:** Botón edit no visible para agents. Si request forzado → RLS rechaza con error claro.
+**Estado:** ⏭️ DIFERIDO post-Lote 3 — bloqueado por G15 + Lote 3 (necesita agent real)
 
 ### T058 Update con patch vacío retorna org actual
-**Pre:** Org existe.
-**Acción:** updateOrganizationAction con body {}.
-**Esperado:** Retorna existing org sin error.
-**Estado:** ⏳
+**Pre:** Org existe + form Settings implementado (G15).
+**Acción:** Submit form sin cambios o `updateOrganizationAction(orgId, {})`.
+**Esperado:** Retorna existing org sin error, no toast (o toast neutral "Sin cambios").
+**Estado:** ⏭️ DIFERIDO post-Lote 3 — bloqueado por G15
 
 ### T059 Update failed si org deleted
 **Pre:** Soft-delete org (set deleted_at). Intentar update.
@@ -676,9 +675,23 @@ Tests T041-T048 eliminados (8 tests). Los casos de switch entre orgs se cubren e
 **Estado:** ⏭️ requires soft-delete org flow (n/a — orgs no se borran hoy).
 
 ### T060 Update preserva created_at
-**Pre:** Pre-update timestamp.
+**Pre:** Pre-update timestamp + UI implementada (G15).
 **Esperado DB:** `created_at` invariante, `updated_at` avanza.
-**Estado:** ⏳
+**Estado:** ⏭️ DIFERIDO post-Lote 3 — bloqueado por G15
+
+### T060b Editar slug propio con validación de unicidad ⏭️ bloqueado feature pendiente (G15)
+**Pre:** Owner de org "Test H" con slug actual `test-h-fkOO30G`. UI de edición de slug en Settings → Organización.
+**Acción A — Happy:** Cambiar slug a `inmobiliaria-h`. Save.
+**Esperado UI A:** Toast success. Sidebar muestra nuevo slug. URL `/p/[id]` (público) sigue funcionando (id-based, no slug-dependent).
+**Esperado DB A:** `organization.slug = 'inmobiliaria-h'`, `updated_at` avanzó, `created_at` igual.
+**Acción B — Conflict:** Cambiar slug a uno ya existente, ej `test-a` (existe).
+**Esperado UI B:** Toast error "Este identificador ya está en uso. Elige otro."
+**Esperado DB B:** Slug sin cambio.
+**Acción C — Invalid format:** Cambiar slug a `Inmo Biliaria!!` (uppercase + espacios + símbolos).
+**Esperado UI C:** Validación inline `<FormMessage>` antes de submit (Zod) — "Solo minúsculas, números y guiones. Entre 3 y 50 caracteres".
+**Acción D — Permission denied (agent):** Agent intenta editar slug.
+**Esperado UI D:** Botón edit oculto para agents. Si request forzado → RLS/use-case rechaza.
+**Estado:** ⏭️ Feature no implementada — ver G15 en glosario para alcance del sub-plan.
 
 ---
 
@@ -1603,6 +1616,8 @@ Sección viva: se actualiza en cada lote según se van encontrando gaps. Es el �
 | G12 | **P2** | Slug format inconsistente — unos con suffix y otros sin. Por default no agrega suffix, solo en colisión. Users legítimos quedan con slugs feos después de una colisión aleatoria | Cierre Lote 1 — review trigger + slug | ✅ **RESUELTO 2026-04-23** junto con G11 en el mismo sub-plan. Opción C implementada: `random_base62(7)` crypto-random via `extensions.gen_random_bytes`. Todos los nuevos slugs tendrán formato `{display-name}-{7charRandom}` (ej: `test-f-Z5iMLdx` verificado). Slugs pre-existentes (test-a/b, gonzalo-pinell, test-e) NO se migraron por decisión (breaking URLs) |
 | G13 | **P3** | `custom_access_token_hook` (drizzle/sql/003) no usa `nullif`/`trim` al leer `full_name`/`name` del raw_user_meta_data. Inconsistencia con 011 (handle_new_user ahora sí hace trim) — si metadata tiene whitespace-only, JWT `user_name` claim = string en blanco | Descubierto en code review del sub-plan G11/G12 | "Auth UX polish" o mini-fix | ✅ **RESUELTO 2026-04-23** sub-plan auth quick wins. 2 migrations aplicadas (`custom_access_token_hook_nullif_trim` + `custom_access_token_hook_review_fixes`). Canonical source `drizzle/sql/012_custom_access_token_hook_nullif_trim.sql`. 003 SUPERSEDED. Fallback de 4 niveles + inline grants para fresh-DB safety + claim siempre injected (nunca omitido) |
 | G14 | **Producto** | Modelo de tenencia cambió a **1 self-owned org por user**. Código muerto (`bootstrap_organization` RPC + `createOrganizationUseCase` + `createOrganizationAction` + "Crear organización" disabled en OrgSwitcher) + Bloque G del QA (T041-T048) obsoletos | Descubierto al arrancar Lote 2 Tenancy | Sub-plan propio | ✅ **RESUELTO 2026-04-24** sub-plan `docs/plans/2026-04-24-remove-multi-org-creation.md`. Removed: RPC (DROP FUNCTION applied), use case, action, repo `create` method, domain `CreateOrganizationDTO`, OrgSwitcher disabled item. Trigger `handle_new_user` permanece intacto (única fuente de org creation). OrgSwitcher permanece para cambiar entre memberships obtenidas via invitación. Docs actualizadas: CLAUDE.md, implementation-plan.md, 3 sub-plans históricos con SUPERSEDED headers. Lote 2 Bloque G removido (−8 tests) + H anotado como dep de Lote 3 |
+| G15 | **Feature** | UI completa de "Settings → Organización" no implementada. Backend (`updateOrganizationAction` + use case + repo) ya existe pero ningún componente lo invoca. Hace falta: edición de **name + slug + logo**. Slug se autogenera al sign-up con suffix random (`test-h-fkOO30G`) y queda fijo | Detectado al arrancar Bloque I — bloquea TODOS los tests T055-T060b | Sub-plan "Org settings UI" (también incluye IMP-6 del implementation-plan que ya menciona esto) | ⏳ **Pendiente — implementar al cerrar Lote 3.** Razón del orden: Lote 3 valida el flow real de invitations + agentes, lo cual permite testear T057 (agent rejected) en el mismo sub-plan. Después re-correr Bloque I completo. Alcance: (1) Extender `UpdateOrganizationDTO` con `slug?: string`. (2) Validation Zod en `lib/validations/org.ts` con regex `^[a-z0-9][a-z0-9-]{1,48}[a-z0-9]$` + name min 2 + logoUrl válido. (3) Pre-check de unicidad de slug en `updateOrganizationUseCase` (query `organization` por slug, error `slug_taken` si existe en otra org). (4) Catch `unique_violation` (23505) en repo `update` por defensa. (5) UI section "Organización" en `/dashboard/settings` con form inline (name + slug + logo + dropzone para upload). (6) Storage flow para logo: bucket `avatars/{orgId}/logo.{ext}`, signed URL persistida. (7) Owner/admin only via `authorize()` (UI oculta edit a agent). (8) Tests T055, T056, T057, T058, T060, T060b A/B/C/D pasan tras implementación |
+| G16 | **Feature** | User debe poder editar su display name (full_name) desde profile UI. Hoy `ProfileSection` actualiza tabla `member` (denormalizado) pero NO actualiza `auth.users.raw_user_meta_data` — desincronización: si user re-loguea o el JWT hook lee de metadata, el nombre vuelve al original | Detectado al diseñar T037 — necesario para test realista de "trigger no se re-ejecuta en UPDATE" | Sub-plan "Profile edit + auth.users sync" | ⏳ **Pendiente.** Alcance: (1) En `updateAgentProfileAction`, además del UPDATE en member, llamar `supabase.auth.updateUser({ data: { full_name: newName } })` para mantener sincronizado `raw_user_meta_data`. (2) Verificar que el JWT hook (`custom_access_token_hook` 012) sigue leyendo full_name correctamente post-update. (3) Validation Zod del nombre. (4) Test T037 desbloqueado: editar nombre desde UI → UPDATE en auth.users dispara → confirmar org count no cambia (trigger AFTER INSERT only) |
 
 ### Sub-planes derivados (se crearán post-cierre de QA)
 
