@@ -1059,55 +1059,55 @@ select organization_id from user_active_org where user_id=<B_id>;
 **Pre:** A logged en org A.
 **Acción:** Properties → New → llenar form → save.
 **Esperado DB:** `properties.organization_id = org_A`.
-**Estado:** ⏳
+**Estado:** ✅ **PASS 2026-04-25** — vía Playwright: test-a en Org A active completa wizard 6-pasos (Casa, Venta, $120000, Bolivia/Santa Cruz, "Av. Test QA 1500", título "QA Test Property — Org A isolation T115") + Publicar. DB `properties.id=609fc689-c663-46dc-9426-f0ccac362559`, `organization_id=4a6b98c3-...`(Org A), `created_by_user_id=test-a`, status=active. ✅
 
 ### T116 User B en su org propia NO ve property de A
 **Pre:** T115 done. B logged en org propia.
 **Esperado UI:** Properties list vacía.
-**Estado:** ⏳
+**Estado:** ✅ **PASS 2026-04-25** — vía Playwright: test-h logged in, active org Test H, /dashboard/properties muestra "No se encontraron propiedades" + 0 cards + texto "T115" no aparece en main. RLS oculta property de Org A. ✅
 
 ### T117 User B nav directo a /dashboard/properties/<id_de_A>
 **Pre:** T115.
 **Acción:** B navega URL directa.
 **Esperado UI:** 404 o "Propiedad no encontrada" (RLS hides).
-**Estado:** ⏳
+**Estado:** ✅ **PASS 2026-04-25** — test-h navega `/dashboard/properties/609fc689-c663-46dc-9426-f0ccac362559` → Page Title literal `"404: This page could not be found."`. RLS hides + Next.js notFound rendering correcto.
 
 ### T118 Isolation con leads
 **Pre:** Crear lead en org A.
 **Esperado:** Análogo a T116-T117.
-**Estado:** ⏳
+**Estado:** ⏭️ **DIFERIDO 2026-04-25** — `/dashboard/leads` no tiene botón "Nuevo lead" / no existe UI de creación. Re-ejecutar tras implementar UI lead create (ver tarea pendiente al final del lote).
 
 ### T119 Isolation con appointments
 **Pre:** Crear appointment en org A.
 **Esperado:** Análogo.
-**Estado:** ⏳
+**Estado:** ⏭️ **DIFERIDO 2026-04-25** — UI "Nueva cita" existe en `/dashboard/appointments` pero el flujo depende de leads (T118 deferred) y properties existentes. Re-ejecutar tras T118.
 
 ### T120 Isolation con ai_contents
 **Pre:** Crear ai_content en org A.
 **Esperado:** Análogo.
-**Estado:** ⏳
+**Estado:** ⏭️ **DIFERIDO 2026-04-25** — `/dashboard/marketing/publications` no tiene botón crear / no existe UI generación AI content. Re-ejecutar tras implementar.
 
 ### T121 Isolation con bot_config
 **Pre:** Config en org A.
 **Esperado:** Análogo.
-**Estado:** ⏳
+**Estado:** ⏭️ **DIFERIDO 2026-04-25** — UI bot_config en `/dashboard/settings` tab "Mi Bot" existe parcialmente (combos de horario, sin form completo de prompt/persona). No es testeable end-to-end aún. Re-ejecutar tras completar UI.
 
 ### T122 Query forced en URL cross-org bloquea
 **Pre:** B conoce UUID de property de A.
 **Acción:** B GET /api/properties/<id_A> (si existe endpoint) o Server Action con id forzado.
 **Esperado:** RLS/use case retorna undefined → 404.
-**Estado:** ⏳
+**Estado:** ✅ **PASS 2026-04-25** — equivalente a T117 (mismo flujo URL forzada → 404). No existe endpoint `/api/properties/[id]` separado (rendering vía Server Component en page.tsx). RLS via `withRLS()` retorna undefined → `notFound()` dispara 404.
 
 ### T123 Super admin bypassa RLS (platform_admins)
 **Pre:** A super_admin. Logged en org A.
 **Acción:** View property de otra org C.
 **Esperado:** Accesible (is_super_admin claim = true en JWT).
-**Estado:** ⏳
+**Estado:** ⏭️ **DIFERIDO 2026-04-25** — tabla `public.platform_admins` existe pero está vacía. No hay super_admin user en sistema. No hay UI/seed para crear uno. Re-ejecutar tras implementar.
 
 ### T124 RLS evaluated en cada query (no caching)
 **Pre:** Cambiar active_org_id de A via switch.
 **Esperado:** Properties list cambia acorde sin login re-cycle.
-**Estado:** ⏳
+**Estado:** ⚠️ **PASS PARCIAL 2026-04-25** — funcionalmente RLS funciona (Org A muestra T115, Org H muestra empty list tras switch + navigate). Pero **descubierto G27**: el OrgSwitcher actualiza el header sidebar inmediatamente pero la lista de Properties (server component) NO se re-fetcha automáticamente; necesita navegación explícita o reload para refrescar. RLS no cachea — el bug es de revalidatePath/router refresh post-switch. Anotado como nuevo gap G27 en glosario.
 
 ---
 
@@ -1629,6 +1629,13 @@ Sección viva: se actualiza en cada lote según se van encontrando gaps. Es el �
 | G25 | **🚨 CRÍTICO — RLS policy invitation_update_admin_or_invitee causa recursión infinita** | La WITH CHECK clause incluye subquery `SELECT i2.organization_id FROM invitation i2 WHERE i2.id = invitation.id` para "validar que organization_id no cambia". Esa subquery dispara la misma RLS policy recursivamente → Postgres aborta con `42P17: infinite recursion detected in policy for relation "invitation"`. **Resultado: reject + cancel de invitations rotos en producción desde día 1**. El repo recibe "0 rows affected" y throws "Invitation not found or cannot be rejected" — pero real cause es el loop. Detectado simulando UPDATE como invitee con set_config jwt.claims | T107 (Lote 3 Bloque P) — bloquea T107 + T108 + probablemente T109 + T110 + T111 (cancel) + T112 | Sub-plan dedicado URGENT (P0 producción si va a deploy ya) | ✅ **RESUELTO 2026-04-25** sub-plan `docs/plans/2026-04-24-fix-invitation-critical-bugs.md`. Migration `fix_invitation_update_policy_recursion` aplicada vía Supabase MCP. Policy nueva: `USING (is_org_admin OR lower(email)=lower(auth.email())) WITH CHECK (mismo predicate)` — sin subquery a invitation. Cross-org protection conservada vía `is_org_admin(NEW.organization_id)` (T111b verifica). Mirror en `drizzle/sql/013`. Re-test T107: UPDATE real funcional, sin 42P17 |
 | G24 | **🚨 CRÍTICO — Info leak: error.message expone query SQL + params + PII al user en UI** | UI del panel de invitaciones pendientes muestra al user el `error.message` completo del repo cuando reject falla. Mensaje incluye: query Drizzle completa con table/column names, params (incluido el email del user, status, timestamps), SQL postgres encoded. **Riesgos:** (a) schema enumeration trivial, (b) PII leak en otros casos (email, IDs), (c) facilita SQL injection / fingerprinting backend, (d) profesionalmente vergonzoso. Patrón ocurre en `incoming-invitations-panel` y posiblemente otros catches de la app que pasan `error.message` directo a UI sin sanitizar | T107 (Lote 3 Bloque P) | Sub-plan dedicado — relacionado con G18 (error contract). En el mismo sub-plan agregar regla "NUNCA pasar error.message del backend a UI; usar mensajes ES neutro mapeados por code" | ✅ **RESUELTO 2026-04-25**. Pipeline de 3 capas: (1) Repo + use cases lanzan `InvitationDomainError` con codes typed (caller_role_insufficient, self_invite, seat_limit_reached, not_found_or_rejected, etc). (2) Server action helper `withInvitationActionBoundary` atrapa todo throw, traduce vía `sanitizeInvitationError` a copy ES neutro, re-lanza Error sanitizado preservando original como `cause` para logs. (3) UI usa `getDisplayMessage(err, fallback)` (whitelisted en `lib/errors/`) en lugar de `err.message` directo. ESLint `no-restricted-syntax` rule scopeada a `app/`+`components/`+`features/*/presentation/` prohíbe `(error\|err\|e).message` en JSX/`toast.error`/setState para defense-in-depth. Re-test T107 confirmó UI sin SQL leak, 0 console errors |
 | G26 | **P3** | `member_update_self_title_only` policy (006:193-198) usa el mismo anti-pattern self-referential subquery que causó G25 — `select m2.role from public.member m2 where m2.id = public.member.id` para pinear role/org en WITH CHECK. Bajo `FORCE RLS` la subquery re-evalúa las policies de `member`, exponiendo el mismo riesgo de `42P17 infinite recursion`. No reportado como roto en runtime (self-update de profile es low-traffic), pero es la misma vulnerabilidad estructural que G25 | Detectado en code review del fix G25 (reviewer m2) | Mini-fix dedicado o junto con futuro audit de RLS policies | ✅ **RESUELTO 2026-04-25.** 2 migrations aplicadas via Supabase MCP: (a) `fix_member_update_self_title_only_recursion` (014) crea helpers `public.get_member_current_role(uuid)` + `public.get_member_current_org_id(uuid)` SECURITY DEFINER + policy sin self-lookup; (b) `fix_member_helpers_enum_return_and_comments` (015) post-review upgrade de helpers a return `member_role` enum (en vez de text) + COMMENT ON para `is_org_member`/`is_org_admin`. Mirrors `drizzle/sql/014_*.sql` y `015_*.sql`. Live policy blocks G25+G26 en 006 commented out con warning `🚫 DO NOT re-run` para prevenir re-introducción. Code review (1 MAJOR + 2 MINOR) resuelto. Smoke tests post-fix: T-G26-1 ✅ self-update name OK, T-G26-2 ✅ role escalation blocked (42501), T-G26-3 ✅ cross-org migration blocked (42501). Audit grep confirmó solo 2 instancias del anti-pattern (G25+G26 — ambas resueltas). |
+| G27 | **UX/SSR** | OrgSwitcher actualiza el header sidebar inmediatamente al cambiar de organización pero la lista de Properties (server component en `/dashboard/properties/page.tsx`) NO se re-fetcha automáticamente. Tras switch, el user sigue viendo properties de la org anterior hasta que navega manualmente o refresca. RLS funciona — el bug es de cache invalidation: la action que cambia `user_active_org` no dispara `revalidatePath('/dashboard', 'layout')` o `router.refresh()` en el componente cliente del switcher | T124 (Lote 4 Bloque R) | Mini-fix en OrgSwitcher | ⏳ **Pendiente.** Alcance: (1) En el componente client del OrgSwitcher, tras successful switch, llamar `router.refresh()` (Next.js App Router) para que server components re-rendericen con el nuevo JWT. (2) Verificar que el server action `setActiveOrgAction` ya hace `revalidatePath('/dashboard', 'layout')` — si no, agregarlo. (3) Re-test T124 confirmando que post-switch la lista de properties cambia sin reload manual. (4) Cross-check otras pages stateful que dependen de active_org_id: leads, appointments, settings/team |
+| **Tareas pendientes de desarrollo — bloqueos del Lote 4** | | | | ⏳ Implementar para re-correr tests deferidos: |
+| TPD-1 | **UI lead create** | `/dashboard/leads` no tiene botón "Nuevo lead". Bloquea T118 (lead isolation) y T119 (appointment depende de lead). Implementar form de creación + server action `createLeadAction` (use case probablemente ya existe en `features/leads/application/`) | T118+T119 | | ⏳ |
+| TPD-2 | **UI ai_content create** | `/dashboard/marketing/publications` no tiene UI para generar contenido AI. Bloquea T120 (ai_content isolation). Diseño: form para seleccionar property + tipo (Instagram, Facebook, brochure) + trigger generación AI (placeholder o real call a Anthropic) | T120 | | ⏳ |
+| TPD-3 | **bot_config form completo** | `/dashboard/settings` tab "Mi Bot" tiene combos (horario) pero falta form de prompt/persona/respuestas predefinidas. Bloquea T121 (bot config isolation). Implementar campos: nombre del bot, persona, mensaje de bienvenida, horario activo (ya existe), respuestas a FAQs | T121 | | ⏳ |
+| TPD-4 | **super_admin seed/UI** | Tabla `public.platform_admins` está vacía. No hay user super_admin en sistema ni UI/seed para crear uno. Bloquea T123. Decisión: (a) seed manual via SQL al primer deploy con email del fundador, o (b) UI dedicada en `/admin/superusers` accesible solo a is_super_admin=true existentes (chicken-and-egg requiere seed inicial igual). Recomiendo (a) | T123 | | ⏳ |
+| TPD-5 | **Re-correr T118-T121 + T123** | Tras TPD-1/2/3/4 implementadas, re-correr todos los tests deferidos del Lote 4 con el flujo UI real. Verificar también T119 con dependencia de T118 cubierta | T118-T123 | | ⏳ |
 | G23 | **Validación faltante — invite a member activo no debería permitirse** | `sendInvitationUseCase` valida self-invite + email duplicado + pending duplicado + seat limit, pero NO valida que el invitee ya sea member activo de la org. Permite escenarios feos: Maria invita Juan → Juan acepta → Maria vuelve a invitar Juan → invite pending para una org donde Juan ya es agente activo. Resultado: invite zombie en panel del invitee, contador de seats inflado, UX confuso. El RPC accept atrapa el caso después (check "ya member" cierra sin duplicar) pero la invitation no debió crearse | T107 setup (Lote 3 Bloque P) | Sub-plan dedicado o junto con G15/G18 (mismo área de invitations) | ⏳ **Pendiente.** Alcance: (1) En `sendInvitationUseCase` agregar check `await repo.isActiveMember(ctx, data.email)` antes del seat check. (2) Si exists → throw `ValidationError('User is already a member of this organization')` → mapear a HTTP 409 Conflict (post-G18). (3) Mensaje ES neutro: "Este usuario ya es miembro de la organización". (4) Test nuevo T097h: invite a member activo → 409 + mensaje + DB sin nueva fila |
 | G22 | **DB bug — accept_invitation no es idempotente** | RPC `accept_invitation` (007:123-125) lanza `invitation_not_pending` si status `≠ pending`. Si user re-clickea el link de email o hace doble-click → recibe error 400 "invitación ya procesada" en lugar de aterrizar gracefully en dashboard. Decisión de producto del user 2026-04-24: debe ser **idempotente** para `status='accepted'` (return org_id sin mutar) y mantener error explícito para `expired`/`rejected` | T104 (Lote 3 Bloque O) | Sub-plan dedicado o junto con G21 (mismo file SQL 007) | ⏳ **Pendiente.** Alcance: (1) Migration que reemplaza el block `if v_inv.status <> 'pending'` por checks granulares: `if accepted return organization_id;`, `if rejected raise 'invitation_rejected';`, `if expired raise 'invitation_expired'`. (2) Verificar que return idempotente NO mute member ni user_active_org (ya lo hace correctamente el branch interno de "ya member"). (3) Re-correr T104 verificando status=200 + body=org_id. (4) Re-correr T098 verificando que primer accept sigue funcionando |
 | G21 | **DB bug — cleanup no persiste por rollback** | RPC `accept_invitation` (007) tiene `UPDATE invitation SET status='expired'` antes de `RAISE EXCEPTION 'invitation_expired'`. Postgres hace rollback de TODA la transacción al raise → el UPDATE NO persiste. Resultado: invitaciones expiradas siguen como `pending` en DB indefinidamente, polucionando queries de listado | T103 (Lote 3 Bloque O) | Sub-plan dedicado | ⏳ **Pendiente.** Opciones: (1) Cron job (pg_cron o Inngest scheduled) que cada N min haga `UPDATE invitation SET status='expired' WHERE status='pending' AND expires_at < now()`. Limpio + escalable + no acopla cleanup a accept flow. (2) Función helper `mark_expired(p_token)` que corre en transacción separada (autonomous via `dblink` o background worker — complejo en Supabase). (3) En el RPC, sacar el UPDATE antes del raise + dejar que cron lo procese — requiere cron. **Recomendado: opción 1 con pg_cron** (Supabase soporta nativo). Frecuencia sugerida: cada 1 hora. Re-correr T103 verificando cambio de status post-cleanup window |
