@@ -213,6 +213,15 @@ create policy "invitation_insert_by_owner_admin" on public.invitation
 -- UPDATE: WITH CHECK pins organization_id to its pre-update value via
 -- self-lookup (prevents migration across orgs) AND re-enforces the
 -- admin-or-invitee rule on the post-update row.
+-- ⚠️  SUPERSEDED by migration 013_fix_invitation_update_policy_recursion.sql
+-- (2026-04-24): the self-lookup `select organization_id from invitation i2`
+-- triggered Postgres `42P17 infinite recursion detected in policy for
+-- relation invitation` because the subquery re-evaluated the same UPDATE
+-- policy on i2. Migration 013 dropped this policy and recreated it without
+-- the self-lookup. Cross-org protection is now provided by
+-- `is_org_admin(NEW.organization_id)` in WITH CHECK — if an admin tries
+-- to migrate an invitation to a foreign org, the check fails because the
+-- caller is not admin of that org. See 013 for full rationale.
 create policy "invitation_update_admin_or_invitee" on public.invitation
   for update to authenticated
   using (

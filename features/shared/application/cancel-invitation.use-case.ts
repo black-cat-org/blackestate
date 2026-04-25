@@ -1,3 +1,4 @@
+import { InvitationDomainError } from "@/lib/errors/invitation-errors"
 import type { SessionContext } from "@/features/shared/domain/session-context"
 import type { IInvitationRepository } from "@/features/shared/domain/invitation.repository"
 
@@ -7,7 +8,7 @@ export async function cancelInvitationUseCase(
   invitationId: string,
 ): Promise<void> {
   if (ctx.role !== "owner" && ctx.role !== "admin") {
-    throw new Error("Only owner or admin can cancel invitations")
+    throw new InvitationDomainError("caller_role_insufficient")
   }
 
   await repo.markCancelled(ctx, invitationId)

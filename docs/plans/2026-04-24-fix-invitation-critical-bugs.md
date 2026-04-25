@@ -52,44 +52,33 @@ returning "id" params: rejected,2026-04-24...,test-e@blackestate.dev,pending
 
 ## Alcance
 
-- [ ] 1. Crear este sub-plan con checkboxes
-- [ ] 2. **G25 fix** — Migration SQL `fix_invitation_update_policy_recursion`:
-  - DROP POLICY `invitation_update_admin_or_invitee` ON public.invitation
-  - CREATE POLICY con USING + WITH CHECK simplificado (sin subquery a invitation)
-  - WITH CHECK: `is_org_admin(organization_id) OR lower(email) = lower(auth.email())` — equivalente a USING, sin self-reference
-  - Aplicar via `mcp__supabase__apply_migration`
-  - Mirror en `drizzle/sql/013_fix_invitation_update_policy_recursion.sql`
-- [ ] 3. **G24 fix part 1** — Audit grep `grep -rEn "error\.message|err\.message" app/ components/ features/*/presentation/`
-- [ ] 4. **G24 fix part 2** — Reemplazar cada catch que pasa `error.message` directo:
-  - Si es action de invitation → `getInvitationErrorMessage(error.code)` (crear si no existe)
-  - Si es action de org → `getOrgErrorMessage(error.code)`
-  - Si es auth → `getAuthErrorMessage` (ya existe G2)
-  - Default fallback: copy genérico ES "Ocurrió un error. Intenta de nuevo."
-- [ ] 5. **G24 fix part 3** — Crear `lib/errors/invitation-errors.ts` con map similar a `lib/auth/error-messages.ts`:
-  - `Invitation not found or cannot be rejected` → "No se pudo rechazar la invitación. Puede que ya no exista."
-  - `Invitation not found or cannot be cancelled` → "No se pudo cancelar la invitación. Puede que ya no exista."
-  - `Cannot invite yourself` → "No puedes invitarte a ti mismo"
-  - `Invited email is not registered in Black Estate` → "Este email no tiene cuenta en Black Estate" (solo válido pre-G17, después se cambia)
-  - `A pending invitation already exists for this email` → "Ya existe una invitación pendiente para este email"
-  - `Only owner or admin can send invitations` → "Solo propietarios o administradores pueden enviar invitaciones"
-  - `Only the owner can invite administrators` → "Solo el propietario puede invitar administradores"
-  - `Organization seat limit reached` → "Sin asientos disponibles. Mejora tu plan para invitar más miembros."
-- [ ] 6. **G24 fix part 4** — Add ESLint rule (custom o regex en CI) que prohíbe `error.message` y `err.message` en JSX o `toast.error` calls dentro de `app/` `components/` `features/*/presentation/`
-- [ ] 7. Code review obligatorio (`feature-dev:code-reviewer`) con context completo
-- [ ] 8. Resolver TODOS los issues
-- [ ] 9. `tsc --noEmit` + `eslint` + `npm run build` limpios
-- [ ] 10. Re-correr tests bloqueados:
-  - **T107** B rechaza invitation — verifica DB status='rejected', UI desaparece, NO leak en errores
-  - **T108** Badge decrementa post-reject
-  - **T109** Reject email-only predicate (admin no puede usar este action)
-  - **T110** Post-reject, admin puede re-invitar
-  - **T111** Admin cancela invitation pending
-  - **T112** Cancel no-op sobre accepted
-  - **T113-T114** (resto Bloque Q)
-  - **Adicional:** verificar UI de error de TODOS los flows de invitation muestra copy ES neutro, NO SQL
-- [ ] 11. Update QA doc — G24 + G25 ✅ con commit SHA + tests re-ejecutados
-- [ ] 12. Update sub-plan checkboxes + commit atómico
-- [ ] 13. Reporte de cierre
+- [x] 1. Crear este sub-plan con checkboxes
+- [x] 2. **G25 fix** — Migration `fix_invitation_update_policy_recursion` aplicada via `mcp__supabase__apply_migration`. DROP+CREATE policy sin subquery. Mirror `drizzle/sql/013_*.sql`. Comment SUPERSEDED en 006:213-225 documenta el cambio.
+- [x] 3. **G24 fix part 1** — Audit grep arrojó 3 hits user-facing: `pending-invitation-actions.client.tsx:39+53`, `accept-invite/page.tsx:38`, `team-section.tsx:155+319`. Otros hits (`*-actions.ts` server, auth pages con mapper) son safe.
+- [x] 4. **G24 fix part 2** — Todos los catches en UI usan ahora `getDisplayMessage(err, fallback)` (helper whitelisted en `lib/errors/`).
+- [x] 5. **G24 fix part 3** — `lib/errors/invitation-errors.ts` creado con `InvitationDomainError extends Error { code }` + `InvitationErrorCode` union (15 codes) + `INVITATION_ERROR_MESSAGES` map ES neutro + `sanitizeInvitationError(unknown)` server boundary + `getDisplayMessage(unknown, fallback)` client helper. Repo + use cases lanzan DomainError typed.
+- [x] 6. **G24 fix part 4** — ESLint `no-restricted-syntax` con 3 selectors AST (JSXExpressionContainer, `toast.*` arg, setState arg) prohibiendo `(error|err|e).message` en `app/`+`components/`+`features/*/presentation/`. Excluye `*-actions.ts` server-side files.
+- [x] 7. Code review (`feature-dev:code-reviewer`) ejecutado — output completo mostrado al user. Resultado: 0 CRITICAL, 3 MAJOR, 2 MINOR.
+- [x] 8. Resolver TODOS los issues:
+  - **M1** ✅ team-section.tsx 2 catches usan getDisplayMessage (admin invite + cancel)
+  - **M2** ✅ getInvitationErrorMessage dead export removido
+  - **M3** ✅ comment 006 marca policy SUPERSEDED por 013 con full rationale
+  - **m1** ✅ caller_session_no_email copy mejorado a "Tu cuenta no tiene email asociado..."
+  - **m2** → tracked como nuevo gap **G26** en QA doc (out of scope explícito por reviewer; mismo anti-pattern self-referential subquery en `member_update_self_title_only` policy 006:193-198, vulnerabilidad estructural pero low-traffic path)
+- [x] 9. Checks: `tsc --noEmit` ✅ clean. `eslint` ✅ files del patch sin nuevos warnings (los 7 warnings de main son pre-existentes en files no tocados — fuera de scope). `npm run build` ✅ end-to-end pass (26 routes generadas).
+- [x] 10. Re-correr tests bloqueados — todos PASS:
+  - **T107** ✅ test-e UI Rechazar → DB row `ddefba2e` migra `pending`→`rejected`, panel desaparece, sidebar badge "1" decrementa, **0 console errors, 0 SQL leak**
+  - **T108** ✅ badge decrementa post-reject (mismo flujo que T107, snapshot confirma sin aria-label "1 invitaciones")
+  - **T109** ✅ admin con invitee predicate `email = ctx.email` ejecutado vía SQL spoofed: `rows_updated=0` (predicate filtra por email mismatch)
+  - **T110** ✅ post-reject re-invite vía Playwright: row nuevo `2da98f4d` status pending creado
+  - **T111** ✅ admin cancel UI: DB `2da98f4d` → cancelled, row sale del panel pending, 0 errors
+  - **T111b NEW** ✅ admin Org H intenta UPDATE org_id → Org A: `42501 new row violates row-level security policy` (simplified WITH CHECK preserva cross-org protection vía `is_org_admin(NEW.org_id)`)
+  - **T112** ✅ cancel sobre row ya rejected: `rows_updated=0` (predicate `status='pending'` filtra)
+  - **T113** ✅ post-cancel SQL inspect: `created_at`, `invited_by_user_id`, `expires_at` preservados; solo `status`+`updated_at` cambiaron
+  - **T114** ✅ UI snapshot before/after cancel: button visible solo en row pending
+- [x] 11. Update QA doc — T107-T114 ✅ + T111b nuevo + G24/G25 closed + G26 nuevo agregado al glosario
+- [x] 12. Update sub-plan checkboxes ✅ + commit atómico HEREDOC
+- [x] 13. Reporte de cierre — al user en reply final
 
 ## Riesgos
 

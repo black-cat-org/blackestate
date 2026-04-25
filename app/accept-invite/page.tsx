@@ -3,6 +3,7 @@ import { isRedirectError } from "next/dist/client/components/redirect-error"
 import Link from "next/link"
 import { getSupabaseServerClient } from "@/lib/supabase/server"
 import { acceptInvitationAction } from "@/features/shared/presentation/invitation-actions"
+import { getDisplayMessage } from "@/lib/errors/invitation-errors"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -35,7 +36,10 @@ export default async function AcceptInvitePage({ searchParams }: Props) {
     await acceptInvitationAction(token)
   } catch (error) {
     if (isRedirectError(error)) throw error
-    errorMessage = error instanceof Error ? error.message : "Error processing invitation"
+    // Server already translated the throw via withInvitationActionBoundary.
+    // getDisplayMessage extracts it without raw `.message` access (G24
+    // defence-in-depth — ESLint blocks direct `error.message` in UI files).
+    errorMessage = getDisplayMessage(error, "No se pudo procesar la invitación.")
   }
 
   if (!errorMessage) {

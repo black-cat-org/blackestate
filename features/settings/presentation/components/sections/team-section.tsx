@@ -25,6 +25,7 @@ import { toast } from "sonner"
 import { MoreHorizontal, UserPlus, Shield, ShieldAlert, UserX, XCircle, Loader2 } from "lucide-react"
 import { updateMemberRoleAction, removeMemberAction } from "@/features/shared/presentation/member-actions"
 import { sendInvitationAction, cancelInvitationAction } from "@/features/shared/presentation/invitation-actions"
+import { getDisplayMessage } from "@/lib/errors/invitation-errors"
 import type { TeamMember, TeamSeatInfo } from "@/features/shared/domain/member.entity"
 import type { PendingInvitation, InvitableRole } from "@/features/shared/domain/invitation.entity"
 
@@ -152,8 +153,11 @@ function InviteForm({
         toast.success(`Invitación enviada a ${email}`)
         onInviteSent(inv)
         setEmail("")
-      } catch {
-        toast.error("Error al enviar la invitación")
+      } catch (err) {
+        // Server boundary already translated to ES neutral copy via
+        // withInvitationActionBoundary. getDisplayMessage extracts it
+        // without raw `.message` access (G24 defence-in-depth).
+        toast.error(getDisplayMessage(err, "Error al enviar la invitación."))
       }
     })
   }
@@ -315,8 +319,8 @@ function InvitationRow({
         await cancelInvitationAction(invitation.id)
         onCancelled(invitation.id)
         toast.success("Invitación cancelada")
-      } catch {
-        toast.error("Error al cancelar la invitación")
+      } catch (err) {
+        toast.error(getDisplayMessage(err, "Error al cancelar la invitación."))
       }
     })
   }

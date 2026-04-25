@@ -1,6 +1,7 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
+import { isRedirectError } from "next/dist/client/components/redirect-error"
 import { getSessionContext } from "@/features/shared/infrastructure/session-context"
 import { getSupabaseServerClient } from "@/lib/supabase/server"
 import { DrizzleInvitationRepository } from "@/features/shared/infrastructure/drizzle-invitation.repository"
@@ -10,6 +11,7 @@ import { cancelInvitationUseCase } from "@/features/shared/application/cancel-in
 import { listInvitationsUseCase } from "@/features/shared/application/list-invitations.use-case"
 import { listMyPendingInvitationsUseCase } from "@/features/shared/application/list-my-pending-invitations.use-case"
 import { rejectInvitationUseCase } from "@/features/shared/application/reject-invitation.use-case"
+import { InvitationDomainError, sanitizeInvitationError } from "@/lib/errors/invitation-errors"
 import type {
   IncomingInvitation,
   PendingInvitation,
@@ -27,6 +29,31 @@ async function refreshJwt(): Promise<void> {
 }
 
 /**
+ * Wrap a server-action body so any thrown error is translated into a
+ * user-facing ES message before crossing the React serialization boundary.
+ *
+ * Why a wrapper instead of inline try/catch in every action:
+ * - Single chokepoint where Drizzle / pg / framework errors are sanitised.
+ *   The raw `Failed query: update "invitation" set ... params: <PII>` text
+ *   that leaked into the UI (G24) is intercepted here, not in 6 different
+ *   actions where one missed catch reopens the leak.
+ * - Re-throws Next.js redirect signals untouched — those are control flow,
+ *   not errors. (None of the current invitation actions redirect, but the
+ *   guard is cheap and future-proofs callers that do.)
+ * - Preserves the original throwable as `cause` so server logs keep the
+ *   full stack trace for debugging while the client only sees the
+ *   sanitised message.
+ */
+async function withInvitationActionBoundary<T>(fn: () => Promise<T>): Promise<T> {
+  try {
+    return await fn()
+  } catch (error) {
+    if (isRedirectError(error)) throw error
+    throw new Error(sanitizeInvitationError(error), { cause: error })
+  }
+}
+
+/**
  * Create an invitation row. Invitations are strictly for users who already
  * have a Black Estate account — the use case rejects unknown emails via the
  * `check_user_exists_by_email` RPC. No email is sent; the invitee sees the
@@ -35,24 +62,26 @@ async function refreshJwt(): Promise<void> {
  * y Notificaciones), not here.
  */
 export async function sendInvitationAction(input: SendInvitationDTO): Promise<PendingInvitation> {
-  const ctx = await getSessionContext()
-  // Use the JWT email claim directly instead of round-tripping to
-  // supabase.auth.getUser(): the JWT is already canonical for RLS, and
-  // falling back to "" on a missing user previously let a phone / anonymous
-  // caller bypass the self-invite check inside the use case.
-  if (!ctx.email) {
-    throw new Error("Cannot send invitation: caller session has no email claim")
-  }
+  return withInvitationActionBoundary(async () => {
+    const ctx = await getSessionContext()
+    // Use the JWT email claim directly instead of round-tripping to
+    // supabase.auth.getUser(): the JWT is already canonical for RLS, and
+    // falling back to "" on a missing user previously let a phone / anonymous
+    // caller bypass the self-invite check inside the use case.
+    if (!ctx.email) {
+      throw new InvitationDomainError("caller_session_no_email")
+    }
 
-  const { invitation } = await sendInvitationUseCase(ctx, repo, input, ctx.email)
+    const { invitation } = await sendInvitationUseCase(ctx, repo, input, ctx.email)
 
-  revalidatePath("/dashboard/settings")
-  return {
-    id: invitation.id,
-    email: invitation.email,
-    role: invitation.role,
-    expiresAt: invitation.expiresAt,
-  }
+    revalidatePath("/dashboard/settings")
+    return {
+      id: invitation.id,
+      email: invitation.email,
+      role: invitation.role,
+      expiresAt: invitation.expiresAt,
+    }
+  })
 }
 
 /**
@@ -65,21 +94,27 @@ export async function sendInvitationAction(input: SendInvitationDTO): Promise<Pe
 export async function acceptInvitationAction(
   invToken: string,
 ): Promise<{ organizationId: string }> {
-  const result = await acceptInvitationUseCase(repo, invToken)
-  await refreshJwt()
-  revalidatePath("/dashboard")
-  return result
+  return withInvitationActionBoundary(async () => {
+    const result = await acceptInvitationUseCase(repo, invToken)
+    await refreshJwt()
+    revalidatePath("/dashboard")
+    return result
+  })
 }
 
 export async function cancelInvitationAction(invitationId: string): Promise<void> {
-  const ctx = await getSessionContext()
-  await cancelInvitationUseCase(ctx, repo, invitationId)
-  revalidatePath("/dashboard/settings")
+  return withInvitationActionBoundary(async () => {
+    const ctx = await getSessionContext()
+    await cancelInvitationUseCase(ctx, repo, invitationId)
+    revalidatePath("/dashboard/settings")
+  })
 }
 
 export async function listInvitationsAction(): Promise<PendingInvitation[]> {
-  const ctx = await getSessionContext()
-  return listInvitationsUseCase(ctx, repo)
+  return withInvitationActionBoundary(async () => {
+    const ctx = await getSessionContext()
+    return listInvitationsUseCase(ctx, repo)
+  })
 }
 
 /**
@@ -87,8 +122,10 @@ export async function listInvitationsAction(): Promise<PendingInvitation[]> {
  * "Invitaciones pendientes" panel and the sidebar unread badge.
  */
 export async function listMyPendingInvitationsAction(): Promise<IncomingInvitation[]> {
-  const ctx = await getSessionContext()
-  return listMyPendingInvitationsUseCase(ctx, repo)
+  return withInvitationActionBoundary(async () => {
+    const ctx = await getSessionContext()
+    return listMyPendingInvitationsUseCase(ctx, repo)
+  })
 }
 
 /**
@@ -96,10 +133,12 @@ export async function listMyPendingInvitationsAction(): Promise<IncomingInvitati
  * to avoid exposing invitation ids on the invitee surface.
  */
 export async function rejectInvitationAction(token: string): Promise<void> {
-  const ctx = await getSessionContext()
-  await rejectInvitationUseCase(ctx, repo, token)
-  // Use "layout" so the sidebar badge count (computed in dashboard/layout.tsx)
-  // re-fetches. "page" alone would only revalidate /dashboard and the badge
-  // would keep the stale count until the next full navigation.
-  revalidatePath("/dashboard", "layout")
+  return withInvitationActionBoundary(async () => {
+    const ctx = await getSessionContext()
+    await rejectInvitationUseCase(ctx, repo, token)
+    // Use "layout" so the sidebar badge count (computed in dashboard/layout.tsx)
+    // re-fetches. "page" alone would only revalidate /dashboard and the badge
+    // would keep the stale count until the next full navigation.
+    revalidatePath("/dashboard", "layout")
+  })
 }

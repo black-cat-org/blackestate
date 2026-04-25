@@ -1,3 +1,4 @@
+import { InvitationDomainError } from "@/lib/errors/invitation-errors"
 import type { SessionContext } from "@/features/shared/domain/session-context"
 import type { Invitation, SendInvitationDTO } from "@/features/shared/domain/invitation.entity"
 import type { IInvitationRepository } from "@/features/shared/domain/invitation.repository"
@@ -11,15 +12,15 @@ export async function sendInvitationUseCase(
   callerEmail: string,
 ): Promise<{ invitation: Invitation; token: string }> {
   if (ctx.role !== "owner" && ctx.role !== "admin") {
-    throw new Error("Only owner or admin can send invitations")
+    throw new InvitationDomainError("caller_role_insufficient")
   }
 
   if (ctx.role === "admin" && data.role === "admin") {
-    throw new Error("Only the owner can invite administrators")
+    throw new InvitationDomainError("admin_cannot_invite_admin")
   }
 
   if (callerEmail.toLowerCase() === data.email.toLowerCase()) {
-    throw new Error("Cannot invite yourself")
+    throw new InvitationDomainError("self_invite")
   }
 
   // Invitations are for users who already exist in Black Estate. Onboarding
@@ -28,23 +29,17 @@ export async function sendInvitationUseCase(
   // invitation rows that can never be accepted.
   const exists = await repo.userExists(data.email)
   if (!exists) {
-    // Matches the other English-sentence error messages thrown from this
-    // use case (e.g. "Cannot invite yourself"). The presentation layer
-    // surfaces these directly; when a translation dictionary lands, this
-    // string moves there alongside the others.
-    throw new Error("Invited email is not registered in Black Estate")
+    throw new InvitationDomainError("email_not_registered")
   }
 
   const hasPending = await repo.hasPendingForEmail(ctx, data.email)
   if (hasPending) {
-    throw new Error("A pending invitation already exists for this email")
+    throw new InvitationDomainError("pending_already_exists")
   }
 
   const { maxSeats, currentMembers } = await repo.getOrgSeatInfo(ctx)
   if (currentMembers >= maxSeats) {
-    throw new Error(
-      `Organization seat limit reached (${maxSeats}). Upgrade the plan to invite more members.`,
-    )
+    throw new InvitationDomainError("seat_limit_reached")
   }
 
   const token = crypto.randomUUID()

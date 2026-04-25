@@ -3,6 +3,7 @@ import { invitation, member, organization } from "@/lib/db/schema"
 import { getSupabaseServerClient } from "@/lib/supabase/server"
 import { withRLS } from "./rls"
 import { mapInvitationRowToEntity } from "./invitation.mapper"
+import { InvitationDomainError } from "@/lib/errors/invitation-errors"
 import type { SessionContext } from "@/features/shared/domain/session-context"
 import type {
   Invitation,
@@ -15,25 +16,25 @@ import type { IInvitationRepository } from "@/features/shared/domain/invitation.
 const INVITABLE_ROLES: readonly string[] = ["admin", "agent"]
 
 /**
- * Translate a Postgres error raised by `accept_invitation` into a domain
- * error. The RPC uses distinct `raise exception` tokens so the caller can
- * surface meaningful messages without parsing the raw text.
+ * Translate a Postgres error raised by `accept_invitation` into a typed
+ * domain error. The RPC uses distinct `raise exception` tokens so the
+ * caller can surface meaningful messages without parsing the raw text.
  */
-function translateAcceptError(message: string | undefined): Error {
+function translateAcceptError(message: string | undefined): InvitationDomainError {
   switch (message) {
     case "invitation_not_found":
-      return new Error("Invitation not found")
+      return new InvitationDomainError("accept_not_found")
     case "invitation_not_pending":
-      return new Error("Invitation has already been processed")
+      return new InvitationDomainError("accept_not_pending")
     case "invitation_expired":
-      return new Error("Invitation has expired")
+      return new InvitationDomainError("accept_expired")
     case "invitation_email_mismatch":
-      return new Error("This invitation belongs to a different email address")
+      return new InvitationDomainError("accept_email_mismatch")
     case "email_missing":
     case "not_authenticated":
-      return new Error("Not authenticated")
+      return new InvitationDomainError("accept_unauthenticated")
     default:
-      return new Error(message ?? "Failed to accept invitation")
+      return new InvitationDomainError("unknown")
   }
 }
 
@@ -49,7 +50,12 @@ export class DrizzleInvitationRepository implements IInvitationRepository {
     const { data, error } = await supabase.rpc("check_user_exists_by_email", {
       p_email: email,
     })
-    if (error) throw new Error(`Failed to verify user existence: ${error.message}`)
+    if (error) {
+      // Logged for diagnostics; surfaced to the caller as a generic domain
+      // error so the supabase-js error string never reaches the UI.
+      console.error("[invitation.repo] check_user_exists_by_email failed:", error)
+      throw new InvitationDomainError("unknown")
+    }
     return data === true
   }
 
@@ -218,7 +224,7 @@ export class DrizzleInvitationRepository implements IInvitationRepository {
     )
 
     if (result.length === 0) {
-      throw new Error("Invitation not found or cannot be cancelled")
+      throw new InvitationDomainError("not_found_or_cancelled")
     }
   }
 
@@ -242,7 +248,7 @@ export class DrizzleInvitationRepository implements IInvitationRepository {
    */
   async markRejected(ctx: SessionContext, token: string): Promise<void> {
     if (!ctx.email) {
-      throw new Error("Cannot reject invitation: caller session has no email claim")
+      throw new InvitationDomainError("caller_session_no_email")
     }
     const normalizedEmail = ctx.email.toLowerCase()
 
@@ -261,7 +267,7 @@ export class DrizzleInvitationRepository implements IInvitationRepository {
     )
 
     if (result.length === 0) {
-      throw new Error("Invitation not found or cannot be rejected")
+      throw new InvitationDomainError("not_found_or_rejected")
     }
   }
 
@@ -305,7 +311,8 @@ export class DrizzleInvitationRepository implements IInvitationRepository {
 
     if (error) throw translateAcceptError(error.message)
     if (typeof data !== "string") {
-      throw new Error("accept_invitation RPC returned an unexpected payload")
+      console.error("[invitation.repo] accept_invitation returned unexpected payload:", data)
+      throw new InvitationDomainError("unknown")
     }
     return { organizationId: data }
   }

@@ -8,6 +8,7 @@ import {
   acceptInvitationAction,
   rejectInvitationAction,
 } from "@/features/shared/presentation/invitation-actions"
+import { getDisplayMessage } from "@/lib/errors/invitation-errors"
 
 interface Props {
   token: string
@@ -36,7 +37,11 @@ export function PendingInvitationActions({ token, organizationName }: Props) {
         await acceptInvitationAction(token)
         router.refresh()
       } catch (err) {
-        setError(err instanceof Error ? err.message : "No se pudo aceptar la invitación")
+        // Server already translated the error into an ES neutral message
+        // via withInvitationActionBoundary; getDisplayMessage extracts it
+        // safely (ESLint rule forbids touching `err.message` directly in
+        // UI files — see G24 defence-in-depth).
+        setError(getDisplayMessage(err, "No se pudo aceptar la invitación."))
         setAction(null)
       }
     })
@@ -50,7 +55,7 @@ export function PendingInvitationActions({ token, organizationName }: Props) {
         await rejectInvitationAction(token)
         router.refresh()
       } catch (err) {
-        setError(err instanceof Error ? err.message : "No se pudo rechazar la invitación")
+        setError(getDisplayMessage(err, "No se pudo rechazar la invitación."))
         setAction(null)
       }
     })
