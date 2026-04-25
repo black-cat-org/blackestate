@@ -30,7 +30,14 @@ export async function switchActiveOrgAction(newOrgId: string): Promise<void> {
   const ctx = await getSessionContext()
   await switchActiveOrgUseCase(ctx, repo, newOrgId)
   await refreshJwt()
-  revalidatePath("/dashboard")
+  // "layout" scope invalidates `/dashboard/layout.tsx` AND every nested
+  // page (`/dashboard/properties`, `/dashboard/leads`, etc.) so the
+  // full-page reload triggered by the client (window.location.reload()
+  // in components/org-switcher.tsx) hits cold server-component caches
+  // and refetches with the new active_org_id JWT claim. Without "layout"
+  // Next.js would only invalidate `/dashboard/page.tsx`; nested routes
+  // would serve the previous org's cached data on the post-reload GET.
+  revalidatePath("/dashboard", "layout")
 }
 
 export async function updateOrganizationAction(

@@ -1,6 +1,5 @@
 "use client"
 
-import { useRouter } from "next/navigation"
 import { useTransition } from "react"
 import { Building2, ChevronsUpDown, Check } from "lucide-react"
 import {
@@ -29,7 +28,6 @@ export interface OrgSwitcherProps {
 
 export function OrgSwitcher({ activeOrgId, organizations }: OrgSwitcherProps) {
   const { isMobile } = useSidebar()
-  const router = useRouter()
   const [isPending, startTransition] = useTransition()
 
   const activeOrg = organizations.find((o) => o.id === activeOrgId)
@@ -40,11 +38,31 @@ export function OrgSwitcher({ activeOrgId, organizations }: OrgSwitcherProps) {
     startTransition(async () => {
       try {
         await switchActiveOrgAction(orgId)
-        router.refresh()
-      } catch {
-        // Server Action threw (membership check failed, network, etc.)
-        // Transition ends, UI stays on current org — no crash.
-        router.refresh()
+      } catch (error) {
+        // `startTransition` swallows async throws — they neither reach a
+        // React error boundary nor surface as an unhandled promise
+        // rejection visible to the user. Log explicitly so the failure is
+        // captured in dev console and Sentry before the reload clears
+        // the page. The reload still fires (in `finally` below) so the
+        // user lands on a fresh dashboard; if the switch did persist
+        // server-side, the next render reflects the right org; if it
+        // failed entirely, they end up back on the previous org without
+        // a stuck UI.
+        console.error("[OrgSwitcher] switchActiveOrgAction failed:", error)
+      } finally {
+        // Full reload (G27): the action's revalidatePath('/dashboard',
+        // 'layout') correctly busts server-component caches, but this
+        // codebase has client-component pages (e.g. properties, leads)
+        // that fetch via useEffect on mount — they don't re-run on
+        // router.refresh() because their props don't change. A full
+        // reload guarantees every page on the dashboard refetches with
+        // the new active_org_id JWT claim, regardless of whether the
+        // page is a server or client component. The cost is a brief
+        // flash; org switching is a rare action so this is acceptable
+        // (matches Slack/GitHub workspace-switch UX).
+        if (typeof window !== "undefined") {
+          window.location.reload()
+        }
       }
     })
   }
