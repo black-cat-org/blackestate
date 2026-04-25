@@ -188,6 +188,19 @@ create policy "member_update_by_owner_admin" on public.member
 -- UPDATE path 2: self — only title. Role/org/user_id locked via post-check.
 -- A member cannot escalate their own role via direct UPDATE; WITH CHECK
 -- self-lookup compares the new row's immutable columns with pre-update values.
+--
+-- ⚠️  SUPERSEDED by migration 014 (initial recursion fix) and migration 015
+-- (review-driven enum-return upgrade). The `select FROM public.member m2`
+-- subqueries below carry the same anti-pattern that caused G25's 42P17
+-- recursion in invitation. Migrations 014→015 replace them with
+-- `public.get_member_current_role()` / `public.get_member_current_org_id()`
+-- SECURITY DEFINER helpers that bypass RLS.
+--
+-- 🚫 DO NOT re-run the block below in isolation after 014/015 have been
+-- applied — it would overwrite the live policy with the broken recursive
+-- body. The block is commented out so a fresh replay of 006 can no longer
+-- introduce the bug. The original SQL is preserved for historical context.
+/*
 create policy "member_update_self_title_only" on public.member
   for update to authenticated
   using (user_id = (select auth.uid()))
@@ -196,6 +209,7 @@ create policy "member_update_self_title_only" on public.member
     and role = (select m2.role from public.member m2 where m2.id = public.member.id)
     and organization_id = (select m2.organization_id from public.member m2 where m2.id = public.member.id)
   );
+*/
 
 
 -- ─── invitation ─────────────────────────────────────────────────────────
@@ -213,6 +227,7 @@ create policy "invitation_insert_by_owner_admin" on public.invitation
 -- UPDATE: WITH CHECK pins organization_id to its pre-update value via
 -- self-lookup (prevents migration across orgs) AND re-enforces the
 -- admin-or-invitee rule on the post-update row.
+--
 -- ⚠️  SUPERSEDED by migration 013_fix_invitation_update_policy_recursion.sql
 -- (2026-04-24): the self-lookup `select organization_id from invitation i2`
 -- triggered Postgres `42P17 infinite recursion detected in policy for
@@ -222,6 +237,12 @@ create policy "invitation_insert_by_owner_admin" on public.invitation
 -- `is_org_admin(NEW.organization_id)` in WITH CHECK — if an admin tries
 -- to migrate an invitation to a foreign org, the check fails because the
 -- caller is not admin of that org. See 013 for full rationale.
+--
+-- 🚫 DO NOT re-run the block below in isolation after 013 has been
+-- applied — it would overwrite the live policy with the broken recursive
+-- body. The block is commented out so a fresh replay of 006 can no longer
+-- introduce the bug. The original SQL is preserved for historical context.
+/*
 create policy "invitation_update_admin_or_invitee" on public.invitation
   for update to authenticated
   using (
@@ -235,6 +256,7 @@ create policy "invitation_update_admin_or_invitee" on public.invitation
       or lower(public.invitation.email) = lower((select auth.email()))
     )
   );
+*/
 
 
 -- ─── user_active_org ────────────────────────────────────────────────────
