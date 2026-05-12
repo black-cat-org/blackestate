@@ -48,6 +48,10 @@ Cada tarea debe tener una rama según el plan y un commit atómico.
    - Verificación cruzada contra Supabase real (DB queries, auth logs)
    
    **Informe de tests OBLIGATORIO.** Presentar tabla con cada test ejecutado, resultado (✅/❌/⏭️), y detalle si falla o se difiere. Sin tabla de tests = paso incompleto.
+   
+   **REGLA INVIOLABLE — orden interno de cualquier cambio de código:**
+   `implementar → code review → fixes → tests → confirmación del usuario antes de continuar`.
+   Esto aplica para CADA cambio sin importar el tamaño: refactors UI, ajustes de copy, optimizaciones menores, fixes de bugs detectados durante un test. JAMÁS saltar el code reviewer aunque parezca "obvio". JAMÁS hacer tests live antes del review (consume tiempo del usuario y enmascara issues que el reviewer detectaría). Después de los tests, esperar confirmación explícita antes de avanzar a docs / commit / siguiente sub-tarea.
 9. **Actualizar docs** — Plan del sub-plan (checkboxes ✅/⏭️, notas de implementación, decisiones, bugs encontrados) + CLAUDE.md si cambia arquitectura/infra/convenciones.
 10. **Commit atómico** — HEREDOC message que explica POR QUÉ, no solo qué. Playwright artifacts en gitignore.
 11. **Reporte de cierre** — Qué cambió, qué issues hubo, qué queda pendiente, qué necesita acción mía.
