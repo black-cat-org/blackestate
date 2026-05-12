@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useEffect, useState, useTransition } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -55,9 +55,27 @@ export function TeamSection({ data: initialData }: TeamSectionProps) {
   const [seatInfo, setSeatInfo] = useState(initialData.seatInfo)
   const { userRole } = initialData
 
+  // Re-sync local state when the parent server component re-renders with
+  // fresh data. Without this, after a `router.refresh()` triggered by an
+  // out-of-band event (e.g. realtime membership change broadcast), the
+  // server-fetched members/invitations/seatInfo would update upstream but
+  // this component would keep showing the stale values it captured at
+  // first mount. The deps reference the prop fields directly so React's
+  // Object.is comparison reflects parent re-fetches; setting state to the
+  // same content is cheap (React bails out of the render when JSX is
+  // structurally equal).
+  useEffect(() => {
+    setMembers(initialData.members)
+  }, [initialData.members])
+  useEffect(() => {
+    setInvitations(initialData.invitations)
+  }, [initialData.invitations])
+  useEffect(() => {
+    setSeatInfo(initialData.seatInfo)
+  }, [initialData.seatInfo])
+
   const canManage = userRole === "owner" || userRole === "admin"
   const canChangeRoles = userRole === "owner"
-  const seatsAvailable = seatInfo.maxSeats - seatInfo.currentMembers
 
   return (
     <div className="max-w-2xl space-y-6">
@@ -68,17 +86,25 @@ export function TeamSection({ data: initialData }: TeamSectionProps) {
             Gestiona los miembros de tu organización
           </p>
         </div>
-        <Badge variant="outline">
-          {seatInfo.currentMembers} de {seatInfo.maxSeats} asientos
-        </Badge>
+        {/* Seat counter is admin/owner-only — agents don't manage capacity. */}
+        {canManage && (
+          <Badge variant="outline">
+            {seatInfo.currentMembers} de {seatInfo.maxSeats} asientos
+          </Badge>
+        )}
       </div>
 
       <Separator />
 
       {canManage && (
         <InviteForm
-          seatsAvailable={seatsAvailable}
-          userRole={userRole}
+          seatsAvailable={seatInfo.maxSeats - seatInfo.currentMembers}
+          // `canManage` already restricts to "owner" | "admin", but
+          // TypeScript cannot narrow `userRole` through the boolean
+          // alias. The assertion documents the invariant the surrounding
+          // guard guarantees; InviteForm's prop type is the source of
+          // truth for what it accepts.
+          userRole={userRole as "owner" | "admin"}
           onInviteSent={(inv) => setInvitations((prev) => [...prev, inv])}
         />
       )}
@@ -131,7 +157,11 @@ function InviteForm({
   onInviteSent,
 }: {
   seatsAvailable: number
-  userRole: "owner" | "admin" | "agent"
+  // Narrowed to "owner" | "admin": this form is only rendered from
+  // inside a `canManage` block. The narrower type prevents future
+  // callers from mounting it for agents (who cannot invite at all) and
+  // documents the role-gating invariant in the type system.
+  userRole: "owner" | "admin"
   onInviteSent: (inv: PendingInvitation) => void
 }) {
   const [email, setEmail] = useState("")
