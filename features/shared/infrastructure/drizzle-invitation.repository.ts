@@ -22,18 +22,18 @@ const INVITABLE_ROLES: readonly string[] = ["admin", "agent"]
 function translateAcceptError(message: string | undefined): Error {
   switch (message) {
     case "invitation_not_found":
-      return new Error("Invitation not found")
+      return new Error("No encontramos esta invitación.")
     case "invitation_not_pending":
-      return new Error("Invitation has already been processed")
+      return new Error("Esta invitación ya fue procesada.")
     case "invitation_expired":
-      return new Error("Invitation has expired")
+      return new Error("Esta invitación expiró. Pide al administrador que te envíe una nueva.")
     case "invitation_email_mismatch":
-      return new Error("This invitation belongs to a different email address")
+      return new Error("Esta invitación es para otra dirección de email.")
     case "email_missing":
     case "not_authenticated":
-      return new Error("Not authenticated")
+      return new Error("Necesitas iniciar sesión para aceptar la invitación.")
     default:
-      return new Error(message ?? "Failed to accept invitation")
+      return new Error("No pudimos procesar la invitación. Intenta de nuevo.")
   }
 }
 
