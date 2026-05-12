@@ -33,7 +33,28 @@ export async function proxy(request: NextRequest) {
     return redirectPreservingCookies(response, url)
   }
 
-  if (startsWithAny(pathname, AUTH_ROUTES) && claims) {
+  // Authenticated but no active org. Happens after the user is removed
+  // from their last org (the JWT hook's orphan defense nulls the claim,
+  // and `soft_delete_member_with_active_org_reset` deletes their
+  // `user_active_org` row). Without this redirect the dashboard pages
+  // server-error on `getSessionContext()`, leaving a blank screen — see
+  // sub-plan 2026-05-11-realtime-membership-revocation.
+  //
+  // Route through `/auth/sign-out-removed` instead of straight to
+  // `/sign-in` so the still-valid session cookie is dropped server-side
+  // first. Without the sign-out hop the user kept a live but unusable
+  // session: any return to `/dashboard` re-tripped this same redirect
+  // (zombie session loop), and there was no way to recover without
+  // manually clearing cookies. The hop route is best-effort — even a
+  // signOut failure ends with the user on `/sign-in?reason=removed`.
+  if (startsWithAny(pathname, PROTECTED_PREFIXES) && claims && !claims.active_org_id) {
+    const url = request.nextUrl.clone()
+    url.pathname = "/auth/sign-out-removed"
+    url.search = ""
+    return redirectPreservingCookies(response, url)
+  }
+
+  if (startsWithAny(pathname, AUTH_ROUTES) && claims && claims.active_org_id) {
     const url = request.nextUrl.clone()
     url.pathname = "/dashboard"
     url.search = ""

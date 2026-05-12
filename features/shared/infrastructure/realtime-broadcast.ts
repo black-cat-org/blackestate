@@ -1,5 +1,5 @@
 import "server-only"
-import { getSupabaseAdmin } from "@/lib/supabase/server"
+import { requireSupabaseEnv } from "@/lib/supabase/env"
 
 /**
  * Channel topic for the per-user membership event stream. Mirrors the RLS
@@ -25,13 +25,20 @@ export interface MembershipChangePayload {
  * Broadcast a membership change event to a single user's private channel
  * via Supabase Realtime.
  *
- * Uses the service-role admin client so the INSERT into `realtime.messages`
- * bypasses RLS — the only RLS we enforce on this table is the SELECT
- * policy that decides who can subscribe (own user only). The broadcast is
- * best-effort: if Realtime is unreachable we log and return without
- * throwing, because the security gap (T071) is closed by the DB-layer
+ * Uses the Realtime HTTP REST endpoint (`POST /realtime/v1/api/broadcast`)
+ * with the service_role key. We intentionally do NOT use the
+ * `supabase.channel(topic).send(...)` JS API here: that path is meant
+ * for client connections and silently falls back to the REST API
+ * **without** the `private: true` flag — broadcasts then land on the
+ * public topic while the subscriber listens to the private topic, and
+ * the message is lost without any error. The REST endpoint accepts the
+ * `private` flag explicitly, which is required for the message to reach
+ * subscribers that joined the channel with `{ private: true }`.
+ *
+ * Best-effort: if Realtime is unreachable we log and return without
+ * throwing. The security gap (T071) is closed by the DB-layer
  * `is_org_member()` check (drizzle/sql/017a) regardless of whether the
- * client receives the push notification. The push only improves UX.
+ * client receives this push. The push only improves UX.
  *
  * Caller responsibility: the action that mutates membership must finish
  * the DB write before invoking this so the client's `refreshSession()`
@@ -42,16 +49,35 @@ export async function broadcastMembershipChange(
   payload: MembershipChangePayload,
 ): Promise<void> {
   try {
-    const admin = getSupabaseAdmin()
-    const channel = admin.channel(membershipChannelTopic(userId))
-    await channel.send({
-      type: "broadcast",
-      event: "membership_changed",
-      payload,
+    const supabaseUrl = requireSupabaseEnv("SUPABASE_URL")
+    const serviceKey = requireSupabaseEnv("SUPABASE_SERVICE_ROLE_KEY")
+
+    const response = await fetch(`${supabaseUrl}/realtime/v1/api/broadcast`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: serviceKey,
+        Authorization: `Bearer ${serviceKey}`,
+      },
+      body: JSON.stringify({
+        messages: [
+          {
+            topic: membershipChannelTopic(userId),
+            event: "membership_changed",
+            payload,
+            private: true,
+          },
+        ],
+      }),
     })
-    // The admin client opens an ephemeral channel per call; remove it so
-    // the connection does not leak between requests.
-    await admin.removeChannel(channel)
+
+    if (!response.ok) {
+      const body = await response.text()
+      console.warn(
+        `[realtime] membershipChange broadcast non-2xx (userId=${userId}, type=${payload.type}, status=${response.status})`,
+        body,
+      )
+    }
   } catch (error) {
     console.warn(
       `[realtime] membershipChange broadcast failed (userId=${userId}, type=${payload.type})`,

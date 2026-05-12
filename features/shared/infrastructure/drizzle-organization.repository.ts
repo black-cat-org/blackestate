@@ -96,7 +96,21 @@ export class DrizzleOrganizationRepository implements IOrganizationRepository {
             isNull(organization.deletedAt),
           ),
         )
-        .orderBy(organization.createdAt),
+        // Order by membership age (oldest first), not org age. The
+        // user's mental model is "the orgs I joined, in order of when I
+        // joined them". An invitee who joined an old org last belongs
+        // at the bottom of their own list, not at the top.
+        //
+        // This ordering is also load-bearing for
+        // `realtime-membership-refresher`: when a user is removed from
+        // their active org, the refresher picks `remaining[0]` as the
+        // fallback. The server-side RPC
+        // `soft_delete_member_with_active_org_reset` (drizzle/sql/022)
+        // picks the user's oldest active membership for the same role.
+        // Aligning the orderings here means the refresher's `fallback`
+        // matches the RPC's pick in the common case, letting the
+        // listener skip the redundant `switchActiveOrgAction`.
+        .orderBy(member.createdAt),
     )
 
     return rows.map((row) => ({
