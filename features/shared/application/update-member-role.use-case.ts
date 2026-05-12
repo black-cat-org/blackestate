@@ -1,12 +1,19 @@
 import type { SessionContext } from "@/features/shared/domain/session-context"
 import type { IMemberRepository } from "@/features/shared/domain/member.repository"
 
+export interface MemberRoleChangeResult {
+  /** auth.users.id of the member whose role was changed. */
+  targetUserId: string
+  /** Role assigned (echoed for downstream notification payloads). */
+  newRole: "admin" | "agent"
+}
+
 export async function updateMemberRoleUseCase(
   ctx: SessionContext,
   repo: IMemberRepository,
   memberId: string,
   newRole: "admin" | "agent",
-): Promise<void> {
+): Promise<MemberRoleChangeResult> {
   if (ctx.role !== "owner") {
     throw new Error("Solo el propietario puede cambiar roles")
   }
@@ -23,4 +30,6 @@ export async function updateMemberRoleUseCase(
   }
 
   await repo.updateRole(ctx, memberId, newRole)
+
+  return { targetUserId: target.userId, newRole }
 }

@@ -1,11 +1,16 @@
 import type { SessionContext } from "@/features/shared/domain/session-context"
 import type { IMemberRepository } from "@/features/shared/domain/member.repository"
 
+export interface MemberRemovalResult {
+  /** auth.users.id of the member that was removed. */
+  targetUserId: string
+}
+
 export async function removeMemberUseCase(
   ctx: SessionContext,
   repo: IMemberRepository,
   memberId: string,
-): Promise<void> {
+): Promise<MemberRemovalResult> {
   if (ctx.role === "agent") {
     throw new Error("No tienes permisos para remover miembros")
   }
@@ -26,4 +31,6 @@ export async function removeMemberUseCase(
   }
 
   await repo.softDelete(ctx, memberId)
+
+  return { targetUserId: target.userId }
 }

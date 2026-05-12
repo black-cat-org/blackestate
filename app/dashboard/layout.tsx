@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation"
 import { AppSidebar } from "@/components/app-sidebar"
+import { RealtimeMembershipRefresher } from "@/components/realtime-membership-refresher"
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 import { getAuthState } from "@/features/shared/infrastructure/session-context"
 import { getUserOrganizationsAction } from "@/features/shared/presentation/organization-actions"
@@ -53,6 +54,7 @@ export default async function DashboardLayout({
 
   return (
     <SidebarProvider>
+      <RealtimeMembershipRefresher userId={ctx.userId} />
       <AppSidebar
         user={user}
         orgSwitcher={{ activeOrgId: ctx.orgId, organizations }}
