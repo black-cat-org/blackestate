@@ -4,8 +4,8 @@ import type { IPropertyRepository } from "@/features/properties/domain/property.
 import type { Property, PropertyFormData } from "@/features/properties/domain/property.entity"
 import type { SessionContext } from "@/features/shared/domain/session-context"
 import { withRLS } from "@/features/shared/infrastructure/rls"
+import { withAnon } from "@/features/shared/infrastructure/anon-rls"
 import { properties } from "@/lib/db/schema"
-import { db } from "@/lib/db"
 import {
   mapRowToEntity,
   mapFormDataToInsert,
@@ -108,21 +108,35 @@ export class DrizzlePropertyRepository implements IPropertyRepository {
   }
 
   async findPublicById(id: string): Promise<Property | undefined> {
-    const rows = await db
-      .select()
-      .from(properties)
-      .where(
-        and(
-          eq(properties.id, id),
-          eq(properties.status, "active"),
-          isNull(properties.deletedAt),
-        ),
-      )
-      .limit(1)
+    // Public landing flow — runs as the `anon` role so the request is
+    // subject to `properties_select_public` (017b), which only exposes
+    // active, non-deleted rows. The `eq(status, 'active')` and
+    // `isNull(deletedAt)` filters here are redundant with the policy but
+    // kept for explicit intent and for performance (lets the planner
+    // narrow before evaluating the policy predicate).
+    const rows = await withAnon((tx) =>
+      tx
+        .select()
+        .from(properties)
+        .where(
+          and(
+            eq(properties.id, id),
+            eq(properties.status, "active"),
+            isNull(properties.deletedAt),
+          ),
+        )
+        .limit(1),
+    )
 
     if (!rows[0]) return undefined
 
     const property = mapRowToEntity(rows[0])
+    // Strip the agent's auth.users.id from the public payload — it is
+    // not needed by the landing UI and exposing internal user
+    // identifiers to anonymous visitors fails data minimization. The
+    // anon RLS policy can't column-filter, so masking happens here at
+    // the mapper level.
+    property.createdByUserId = ""
     if (property.hideExactLocation) {
       property.address.lat = undefined
       property.address.lng = undefined

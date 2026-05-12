@@ -8,10 +8,3 @@ export async function trackVisitUseCase(
   const repo = new DrizzleLeadRepository()
   return repo.trackVisit(propertyId, source)
 }
-
-export async function getVisitsByPropertyUseCase(
-  propertyId: string,
-): Promise<PropertyVisit[]> {
-  const repo = new DrizzleLeadRepository()
-  return repo.getVisitsByProperty(propertyId)
-}

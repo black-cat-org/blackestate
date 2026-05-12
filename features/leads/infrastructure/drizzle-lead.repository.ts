@@ -1,4 +1,4 @@
-import { eq, and, isNull, asc, sql } from "drizzle-orm"
+import { eq, and, isNull, asc } from "drizzle-orm"
 
 import type { ILeadRepository, CreateLeadDTO } from "@/features/leads/domain/lead.repository"
 import type {
@@ -11,8 +11,8 @@ import type {
 } from "@/features/leads/domain/lead.entity"
 import type { SessionContext } from "@/features/shared/domain/session-context"
 import { withRLS } from "@/features/shared/infrastructure/rls"
+import { withAnon } from "@/features/shared/infrastructure/anon-rls"
 import { leads, leadPropertyQueue, properties, analyticsEvents } from "@/lib/db/schema"
-import { db } from "@/lib/db"
 import {
   mapLeadRowToEntity,
   mapLeadRowWithTitleToEntity,
@@ -356,57 +356,54 @@ export class DrizzleLeadRepository implements ILeadRepository {
     propertyId: string,
     source: string | null,
   ): Promise<PropertyVisit> {
-    // Visits are public (from landing pages) — no RLS needed.
-    // We use analyticsEvents with eventType "property_visit".
-    // We need the organizationId from the property.
-    const propertyRows = await db
-      .select({
-        organizationId: properties.organizationId,
-      })
-      .from(properties)
-      .where(eq(properties.id, propertyId))
-      .limit(1)
+    // Public landing flow — runs as the `anon` role inside a single
+    // transaction so both the property lookup and the visit insert are
+    // RLS-checked against:
+    //   - properties_select_public  (only active, non-deleted properties
+    //     are visible to anon, so a removed/draft property silently 404s)
+    //   - analytics_events_insert_public_visit  (anon can only insert
+    //     event_type='property_visit')
+    //
+    // The id and createdAt are generated client-side instead of relying
+    // on `.returning()`. The reason: `RETURNING` in Postgres requires the
+    // caller to also pass a SELECT policy check on the inserted row, and
+    // we deliberately do NOT grant anon any SELECT on `analytics_events`
+    // (visit counts would leak to the public). Generating the id here
+    // sidesteps the SELECT-via-RETURNING dependency without weakening
+    // the contract.
+    const id = crypto.randomUUID()
+    const timestamp = new Date()
 
-    if (propertyRows.length === 0) {
-      throw new Error("Property not found")
-    }
+    await withAnon(async (tx) => {
+      const propertyRows = await tx
+        .select({ organizationId: properties.organizationId })
+        .from(properties)
+        .where(eq(properties.id, propertyId))
+        .limit(1)
 
-    const rows = await db
-      .insert(analyticsEvents)
-      .values({
+      if (propertyRows.length === 0) {
+        throw new Error("Property not found")
+      }
+
+      await tx.insert(analyticsEvents).values({
+        id,
         organizationId: propertyRows[0].organizationId,
         eventType: "property_visit",
         metadata: { propertyId, source },
+        createdAt: timestamp,
       })
-      .returning()
+    })
 
     return {
-      id: rows[0].id,
+      id,
       propertyId,
       source: source ?? undefined,
-      timestamp: rows[0].createdAt.toISOString(),
+      timestamp: timestamp.toISOString(),
     }
   }
 
-  async getVisitsByProperty(propertyId: string): Promise<PropertyVisit[]> {
-    const rows = await db
-      .select()
-      .from(analyticsEvents)
-      .where(
-        and(
-          eq(analyticsEvents.eventType, "property_visit"),
-          sql`${analyticsEvents.metadata} @> ${JSON.stringify({ propertyId })}::jsonb`,
-        ),
-      )
-
-    return rows.map((r) => {
-      const meta = r.metadata as Record<string, unknown>
-      return {
-        id: r.id,
-        propertyId,
-        source: (meta?.source as string) ?? undefined,
-        timestamp: r.createdAt.toISOString(),
-      }
-    })
-  }
+  // `getVisitsByProperty` was removed 2026-05-11 — it had no callers and the
+  // old implementation went around RLS via `db` direct (postgres bypass).
+  // Reimplement under `withRLS` when a real dashboard analytics feature
+  // needs it; the policy contract should match the caller's role.
 }

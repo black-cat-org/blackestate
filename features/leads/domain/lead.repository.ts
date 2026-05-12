@@ -34,7 +34,6 @@ export interface ILeadRepository {
   // Catalog tracking
   getCatalogTracking(ctx: SessionContext, leadId: string): Promise<CatalogTracking>
 
-  // Visits (public — no auth)
+  // Visits (public landing — runs as `anon` Postgres role inside the impl)
   trackVisit(propertyId: string, source: string | null): Promise<PropertyVisit>
-  getVisitsByProperty(propertyId: string): Promise<PropertyVisit[]>
 }
