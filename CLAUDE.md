@@ -275,8 +275,14 @@ export async function createPropertyAction(formData: PropertyFormData): Promise<
 
 ### ⚠️ RLS: Critical Rules
 
-- **EVERY user query** must go through `withRLS(ctx, (tx) => ...)`. NEVER use `db` directly for user data — all multitenancy tables have `FORCE RLS`, so even the `postgres` superuser gets zero rows without the session config.
-- `db` direct (no RLS) only for: Inngest background jobs cross-org, public queries (landing pages), and bootstrapping helpers that explicitly need to bypass scope.
+**Strict zero-trust: every domain query is RLS-checked at the DB.** Trusting JWT claims alone is forbidden. The `withRLS` / `withAnon` wrappers are the only legitimate callers of the raw `db` pool — every other piece of code must go through one of them so a policy is always evaluated.
+
+- **EVERY authenticated query** through `withRLS(ctx, (tx) => ...)`. Switches the role to `authenticated` and injects the JWT claims (`sub`, `active_org_id`, `org_role`, `is_super_admin`, `email`).
+- **EVERY anon (public landing) query** through `withAnon((tx) => ...)`. Switches the role to `anon` and runs against the explicit anon policies (e.g. `properties_select_public`, `analytics_events_insert_public_visit` in `drizzle/sql/017b`). NEVER use `db` direct from a public route.
+- **Domain RLS includes membership check.** All domain-table policies (`drizzle/sql/017a`) verify `public.is_org_member(organization_id)` in addition to matching `organization_id` against the JWT's `active_org_id` claim. A user removed from an org is blocked at the DB even if their JWT still carries the stale claim (T071 fix).
+- **Postgres role bypasses RLS** (`rolbypassrls=true` overrides FORCE RLS — Postgres semantics, not a Supabase quirk). The DATABASE_URL connects as `postgres`, so any `db.query(...)` outside `withRLS`/`withAnon` runs cross-org with no policy evaluation. Treat such usage as a security incident unless explicitly justified in this file.
+- **Documented exceptions to "always go through withRLS/withAnon":** the `withRLS` (`features/shared/infrastructure/rls.ts`) and `withAnon` (`features/shared/infrastructure/anon-rls.ts`) wrappers themselves call `db.transaction(...)` to open the tx where they switch roles via `set_config`. That is the only acceptable bypass — any new exception must be added to this list with justification.
+- **Admin client (`getSupabaseAdmin()`)** is reserved for cross-org auth-system operations (e.g. `inviteUserByEmail`, `deleteUser`, future Inngest background jobs). NEVER for queries against domain tables.
 - No hard DELETE. Soft delete = `UPDATE SET deleted_at = now()`. No GRANT DELETE on any table.
 - `created_by_user_id` is NOT NULL on: properties, leads, appointments, ai_contents, lead_property_queue.
 - Agent can only UPDATE own records (`created_by_user_id = sub`). Owner/admin can UPDATE anything in their org.
