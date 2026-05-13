@@ -415,12 +415,30 @@ Listado de env vars actuales en `.env.local` (ver `.env.template`). Algunas son 
 | `DIRECT_URL` | Drizzle direct connection (migrations) | Server-only | Activa |
 | `GOOGLE_CLIENT_ID` | OAuth Google (configurado en Supabase Dashboard → Auth Providers) | Server-only | Activa |
 | `GOOGLE_CLIENT_SECRET` | OAuth Google secret (configurado en Supabase Dashboard) | Server-only | Activa |
+| `EMAIL_FROM` | Sender envelope para emails custom — `"Black Estate <noreply@…>"` | Server-only | **Nueva (mailing Fase 1)** |
+| `SMTP_HOST` | Mailtrap sandbox host (dev) — Fase 2 lo reemplaza por Resend SDK | Server-only | **Nueva (mailing Fase 1)** |
+| `SMTP_PORT` | Mailtrap sandbox port (2525) — Fase 2 lo retira | Server-only | **Nueva (mailing Fase 1)** |
+| `SMTP_USER` | Mailtrap sandbox user — Fase 2 lo retira | Server-only | **Nueva (mailing Fase 1)** |
+| `SMTP_PASS` | Mailtrap sandbox password — Fase 2 lo retira | Server-only | **Nueva (mailing Fase 1)** |
 | `BONEYARD_SESSION_TOKEN` | Dev tool — skeletons gen | Server-only | Dev only |
 
 **Reglas:**
 - `NEXT_PUBLIC_*` siempre se expone al browser — nunca meter secrets ahí.
 - `SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_URL` tienen mismo valor — redundancia intencional (el browser no accede a env vars sin prefix público).
 - Rotación de keys: `sb_secret_...` se rota desde Dashboard → Settings → API Keys sin downtime (múltiples keys activas a la vez).
+- `SMTP_*` + `EMAIL_FROM` se acceden vía `requireEmailEnv()` (`lib/email/env.ts`) con accesos literales — mismo patrón que `requireSupabaseEnv()`. En Fase 2 del mailing plan los `SMTP_*` se reemplazan por `RESEND_API_KEY`; `EMAIL_FROM` permanece (cambia el dominio del sender, no la var).
+
+## Mailing
+
+Custom transactional emails (invitations, future feature emails) viajan a través de `lib/email/` — un módulo opinado, transport-agnostic:
+
+- **Transport actual (Fase 1):** nodemailer + Mailtrap sandbox (dev). Sin dominio propio aún → solo dev/staging.
+- **Transport futuro (Fase 2):** Resend SDK + dominio propio (`blackestate.app`). El `sendEmail` API permanece igual — único punto de cambio: `lib/email/transport.ts`.
+- **Auth emails** (signup verification, password recovery, email change) hoy salen por la SMTP built-in de Supabase Auth con Custom SMTP apuntando a Mailtrap. Fase 2 los migra al módulo vía Send Email Hook (`POST /api/auth/send-email-hook`).
+- **Render:** React Email primitives en `lib/email/components/` (BrandLayout, EmailButton, InfoSection, Footer) + tokens (`tokens.ts`). Inline styles, fontFamily explícito para fallback Outlook.
+- **Templates per-feature:** viven bajo `features/*/infrastructure/email/` (ej. `features/shared/infrastructure/email/invitation-email.tsx`).
+- **Dispatch contract:** server actions encolan email en `after()` post-action (best-effort D-8). Si SMTP falla, la mutación queda persistida y el admin puede reenviar.
+- **Plan completo:** `docs/plans/2026-05-12-mailing-architecture.md`.
 
 ## Key Decisions
 

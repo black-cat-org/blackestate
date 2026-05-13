@@ -110,31 +110,63 @@
 - [x] Resolver `orgName` (vía `DrizzleOrganizationRepository.findById(ctx, ctx.orgId)` — RLS-honrado)
 - [x] Construir `acceptUrl` con `NEXT_PUBLIC_APP_URL` + `/accept-invite?inv=${token}` (memoria G37: param `?inv=` ✅)
 - [x] Llamar `sendEmail` DESPUÉS de `sendInvitationUseCase` exitoso. Best-effort vía `after()` — la action retorna primero, el SMTP roundtrip ocurre después. Si falla, log + invitation queda OK (admin puede reenviar)
-- [ ] Anotar TODO/FUTURO en código: "cuando exista resend, swap transport en lib/email/transport.ts" — postergado, la migración a Resend es Fase 2 entera, no un TODO inline
+- [⏭️] Anotar TODO/FUTURO en código: deferido — la migración a Resend es Fase 2 completa de este plan, no un TODO inline
 
 #### 1.5 Env vars y .env.template
 
 - [x] Actualizar `.env.template` con las 5 vars EMAIL_*/SMTP_*
 - [x] Confirmar usuario que `.env.local` ya las tiene cargadas
-- [ ] Documentar en CLAUDE.md sección Environment Variables las nuevas vars
+- [x] Documentar en CLAUDE.md sección Environment Variables las nuevas vars
 
 #### 1.6 Tests Fase 1
 
-- [ ] tsc + eslint + build clean
-- [ ] Code review feature-dev:code-reviewer (módulo + primitives + template + wiring)
-- [ ] Smoke E2E manual: enviar invitación real desde dev → ver en Mailtrap sandbox
-- [ ] Verificar render HTML vs Gmail/Outlook (cliente preview en Mailtrap)
-- [ ] Tabla de tests obligatoria
+- [x] tsc + eslint + build clean
+- [x] Code review feature-dev:code-reviewer (módulo + primitives + template + wiring) — 3 rondas, todos los issues resueltos
+- [x] Smoke E2E manual: enviar invitación real desde dev → ver en Mailtrap sandbox — usuario confirmó render OK
+- [x] Verificar render HTML vs Gmail/Outlook (cliente preview en Mailtrap) — usuario validó visualmente
+- [x] Tabla de tests obligatoria — ver sección 1.6.1 más abajo
+
+##### 1.6.1 Tabla de tests E2E (Playwright + smoke manual)
+
+| # | Test | Resultado | Detalle |
+|---|---|---|---|
+| #1 | Render "Invitaciones rechazadas y expiradas" panel | ✅ | 2 rows con email + role badge + status badge + acciones |
+| #2 | Reenviar dialog texto | ✅ | "Vas a enviar una nueva invitación a {email}. La invitación anterior será eliminada." |
+| #3 | Eliminar archived (soft-cancel) | ✅ | DeleteConfirmDialog → row eliminada de archived |
+| #4 | Cancel pending dialog (nuevo) | ✅ | "¿Cancelar invitación?" — antes era click directo sin dialog |
+| #5 | Tooltips icon-buttons | ✅ | Cancelar / Reenviar / Eliminar visibles en hover |
+| #6.1 | Pre-validation member dup | ✅ | Toast "Esta persona ya es miembro del equipo" — sin POST |
+| #6.2 | Pre-validation pending dup (InviteForm) | ✅ | Toast "Ya existe una invitación pendiente para esta persona" — sin POST |
+| #6.3 | Pre-validation pending dup (Reenviar archived) | ✅ | Toast same — sin abrir dialog, sin POST |
+| #7 | Friendly dates conector | ✅ | "Rechazada ayer" + "Rechazada el 24 de abril de 2026" — sin "el el" |
+| smoke | Invitación real → email a Mailtrap | ✅ | Usuario confirmó render UI excelente + link `?inv=` funcional |
+| smoke | Acceptance via /accept-invite con token válido | ✅ | Card "Aceptar / Rechazar" renderiza, accept exitoso |
+| smoke | /accept-invite con token inválido/expirado | ✅ | Card "Invitación no disponible" fallback |
+| review | Code reviewer ronda 1 (invitation flow + archived) | ✅ | 3 issues — fixados |
+| review | Code reviewer ronda 2 (tooltips + cancel-pending + dup) | ✅ | 3 issues — fixados |
+| review | Code reviewer ronda 3 (resend expired + badge size) | ✅ | 2 issues minor (comentarios stale) — fixados |
+| review | Code reviewer ronda 4 (resend pre-validation) | ✅ | 2 issues important — fixados (mid-flight recheck + anyPending guard) |
 
 #### 1.7 Docs Fase 1
 
-- [ ] Marcar Fase 1 ✅ en este plan
-- [ ] Actualizar CLAUDE.md sección Environment Variables
-- [ ] Anotar G37 cerrado (invite link usa `?inv=`)
+- [x] Marcar Fase 1 ✅ en este plan
+- [x] Actualizar CLAUDE.md sección Environment Variables — incluye los 5 vars + nueva sección "Mailing"
+- [x] Anotar G37 cerrado (invite link usa `?inv=`) — confirmado en `buildAcceptUrl` en `invitation-actions.ts`
 
-#### 1.8 Bloqueos para Fase 1
+#### 1.8 Notas de implementación (post-Fase 1)
 
-Ninguno. Mailtrap dev funciona sin dominio propio.
+Decisiones adicionales que emergieron durante la ejecución y que conviene anotar para futuras sesiones:
+
+- **Archived invitations panel (rejected + expired)** se restauró como parte de esta Fase aunque originalmente era trabajo separado. Vive en `team-section.tsx` con su DTO `ArchivedInvitation` en `invitation.entity.ts` y query `findArchivedByOrgId` que deriva "expired" desde `(status='pending' AND expiresAt < now())` (no hay cron que persista `expired` — se puede agregar en futuro sin tocar el código del cliente).
+- **`resendInvitationAction`** valida via `resendInvitationUseCase` (read-only) → `sendInvitationUseCase` (crea nuevo) → `markCancelled(oldId)` en try/catch best-effort (no aborta acción si falla archivar). Acepta rejected, expired persistido, y pending past expiry — todos archivables.
+- **Pre-validation client-side**: tanto `InviteForm` como `ArchivedInvitationRow.handleResend(Click|)` chequean miembros + pending invitations antes de llamar backend. Server-side `hasPendingForEmail` sigue siendo authoritative (defense in depth).
+- **`InvitationSummary` DTO** ahora incluye `expiresAt` para que el use case `resendInvitationUseCase` pueda calcular archivabilidad sobre estado RAW DB (no DTO derivado).
+- **`/accept-invite`** se refactorizó al patrón confirmation-page (no auto-accept) por bug "revalidatePath during render" + footgun de auto-accept en link previews.
+- **`getInviteeAuthIdentity`** se introdujo (vs `getSessionContext`) para flows invitee-side donde el caller puede no tener `active_org_id` aún. Substituye `INVITEE_ORG_PLACEHOLDER` (nil UUID) — las RLS policies invitee-side filtran por `auth.email()`, no por org.
+
+#### 1.9 Bloqueos para Fase 1
+
+Ninguno. Mailtrap dev funciona sin dominio propio. **Fase 1 ✅ completada 2026-05-13.**
 
 ---
 
