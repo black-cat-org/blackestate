@@ -18,7 +18,7 @@ import type {
 } from "@/features/settings/domain/settings.entity"
 import type { BotConfig } from "@/features/bot/domain/bot.entity"
 import type { TeamMember, TeamSeatInfo } from "@/features/shared/domain/member.entity"
-import type { PendingInvitation } from "@/features/shared/domain/invitation.entity"
+import type { ArchivedInvitation, PendingInvitation } from "@/features/shared/domain/invitation.entity"
 
 interface SettingsLayoutProps {
   business: BusinessSettings
@@ -29,6 +29,7 @@ interface SettingsLayoutProps {
   team: {
     members: TeamMember[]
     invitations: PendingInvitation[]
+    archivedInvitations: ArchivedInvitation[]
     seatInfo: TeamSeatInfo
     userRole: "owner" | "admin" | "agent"
   }

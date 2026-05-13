@@ -22,14 +22,37 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { toast } from "sonner"
-import { MoreHorizontal, UserPlus, Shield, ShieldAlert, UserX, XCircle, Loader2 } from "lucide-react"
+import { MoreHorizontal, UserPlus, Send, Shield, ShieldAlert, Trash2, UserX, XCircle, Loader2 } from "lucide-react"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import { RoleBadge, type RoleBadgeTone } from "@/components/ui/role-badge"
 import { formatFriendlyDate } from "@/lib/utils/relative-time"
 import { updateMemberRoleAction, removeMemberAction } from "@/features/shared/presentation/member-actions"
-import { sendInvitationAction, cancelInvitationAction } from "@/features/shared/presentation/invitation-actions"
+import {
+  sendInvitationAction,
+  cancelInvitationAction,
+  resendInvitationAction,
+  deleteArchivedInvitationAction,
+} from "@/features/shared/presentation/invitation-actions"
 import type { TeamMember, TeamSeatInfo } from "@/features/shared/domain/member.entity"
-import type { PendingInvitation, InvitableRole } from "@/features/shared/domain/invitation.entity"
+import type {
+  ArchivedInvitation,
+  PendingInvitation,
+  InvitableRole,
+} from "@/features/shared/domain/invitation.entity"
 
 const ROLE_LABELS: Record<string, string> = {
   owner: "Propietario",
@@ -53,6 +76,7 @@ interface TeamSectionProps {
   data: {
     members: TeamMember[]
     invitations: PendingInvitation[]
+    archivedInvitations: ArchivedInvitation[]
     seatInfo: TeamSeatInfo
     userRole: "owner" | "admin" | "agent"
   }
@@ -61,6 +85,9 @@ interface TeamSectionProps {
 export function TeamSection({ data: initialData }: TeamSectionProps) {
   const [members, setMembers] = useState(initialData.members)
   const [invitations, setInvitations] = useState(initialData.invitations)
+  const [archivedInvitations, setArchivedInvitations] = useState(
+    initialData.archivedInvitations,
+  )
   const [seatInfo, setSeatInfo] = useState(initialData.seatInfo)
   const { userRole } = initialData
 
@@ -79,6 +106,9 @@ export function TeamSection({ data: initialData }: TeamSectionProps) {
   useEffect(() => {
     setInvitations(initialData.invitations)
   }, [initialData.invitations])
+  useEffect(() => {
+    setArchivedInvitations(initialData.archivedInvitations)
+  }, [initialData.archivedInvitations])
   useEffect(() => {
     setSeatInfo(initialData.seatInfo)
   }, [initialData.seatInfo])
@@ -114,6 +144,8 @@ export function TeamSection({ data: initialData }: TeamSectionProps) {
           // guard guarantees; InviteForm's prop type is the source of
           // truth for what it accepts.
           userRole={userRole as "owner" | "admin"}
+          members={members}
+          pendingInvitations={invitations}
           onInviteSent={(inv) => setInvitations((prev) => [...prev, inv])}
         />
       )}
@@ -156,6 +188,32 @@ export function TeamSection({ data: initialData }: TeamSectionProps) {
           </div>
         </>
       )}
+
+      {canManage && archivedInvitations.length > 0 && (
+        <>
+          <Separator />
+          <div className="space-y-3">
+            <h4 className="text-sm font-medium">Invitaciones rechazadas y expiradas</h4>
+            {archivedInvitations.map((inv) => (
+              <ArchivedInvitationRow
+                key={inv.id}
+                invitation={inv}
+                onResent={(oldId, fresh) => {
+                  // The resend action archives the old rejected row +
+                  // creates a fresh pending one. Reflect both sides
+                  // optimistically so the UI stays in sync without
+                  // waiting for the next server refresh.
+                  setArchivedInvitations((prev) => prev.filter((x) => x.id !== oldId))
+                  setInvitations((prev) => [...prev, fresh])
+                }}
+                onDeleted={(id) =>
+                  setArchivedInvitations((prev) => prev.filter((x) => x.id !== id))
+                }
+              />
+            ))}
+          </div>
+        </>
+      )}
     </div>
   )
 }
@@ -163,6 +221,8 @@ export function TeamSection({ data: initialData }: TeamSectionProps) {
 function InviteForm({
   seatsAvailable,
   userRole,
+  members,
+  pendingInvitations,
   onInviteSent,
 }: {
   seatsAvailable: number
@@ -171,6 +231,15 @@ function InviteForm({
   // callers from mounting it for agents (who cannot invite at all) and
   // documents the role-gating invariant in the type system.
   userRole: "owner" | "admin"
+  // Members + pending invitations are passed in so the form can detect
+  // the duplicate-target cases CLIENT-side and skip the backend round
+  // trip. The server action (`sendInvitationUseCase` → `hasPendingForEmail`
+  // + `member` unique constraint) is still authoritative — this is UX
+  // optimisation, not a security boundary. Stale local state (e.g. a
+  // realtime rejection that hasn't arrived yet) would simply fall back
+  // to the server-side error.
+  members: TeamMember[]
+  pendingInvitations: PendingInvitation[]
   onInviteSent: (inv: PendingInvitation) => void
 }) {
   const [email, setEmail] = useState("")
@@ -182,6 +251,22 @@ function InviteForm({
 
     if (seatsAvailable <= 0) {
       toast.error("No hay asientos disponibles. Mejora tu plan para invitar más miembros.")
+      return
+    }
+
+    // Pre-validation: compare against members + pending invitations using
+    // normalised emails (trim + lowercase) — invitations are stored
+    // lowercase by the repository, and members.email comes from auth
+    // which is also lowercased by Supabase. Matching either case
+    // short-circuits before any backend call so the user sees a
+    // specific reason instead of the generic "Error al enviar".
+    const normalized = email.trim().toLowerCase()
+    if (members.some((m) => m.email.toLowerCase() === normalized)) {
+      toast.error("Esta persona ya es miembro del equipo")
+      return
+    }
+    if (pendingInvitations.some((inv) => inv.email.toLowerCase() === normalized)) {
+      toast.error("Ya existe una invitación pendiente para esta dirección")
       return
     }
 
@@ -201,31 +286,31 @@ function InviteForm({
     <form onSubmit={handleInvite}>
       <Label htmlFor="invite-email">Invitar miembro</Label>
       <div className="mt-1.5 flex items-center gap-3">
-      <Input
-        id="invite-email"
-        type="email"
-        placeholder="email@ejemplo.com"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        required
-        disabled={isPending}
-        className="flex-1"
-      />
-      <div className="w-36">
-        <Select value={role} onValueChange={(v) => setRole(v as InvitableRole)}>
-          <SelectTrigger id="invite-role" disabled={isPending}>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {userRole === "owner" && <SelectItem value="admin">Administrador</SelectItem>}
-            <SelectItem value="agent">Agente</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-      <Button type="submit" disabled={isPending} size="sm">
-        {isPending ? <Loader2 className="animate-spin" /> : <UserPlus className="size-4" />}
-        <span className="ml-1.5 hidden sm:inline">Invitar</span>
-      </Button>
+        <Input
+          id="invite-email"
+          type="email"
+          placeholder="email@ejemplo.com"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+          disabled={isPending}
+          className="flex-1"
+        />
+        <div className="w-36">
+          <Select value={role} onValueChange={(v) => setRole(v as InvitableRole)}>
+            <SelectTrigger id="invite-role" disabled={isPending}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {userRole === "owner" && <SelectItem value="admin">Administrador</SelectItem>}
+              <SelectItem value="agent">Agente</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <Button type="submit" disabled={isPending} size="sm">
+          {isPending ? <Loader2 className="size-4 animate-spin" /> : <UserPlus className="size-4" />}
+          <span className="ml-1.5 hidden sm:inline">Invitar</span>
+        </Button>
       </div>
     </form>
   )
@@ -372,6 +457,7 @@ function InvitationRow({
   onCancelled: (id: string) => void
 }) {
   const [isPending, startTransition] = useTransition()
+  const [confirmCancelOpen, setConfirmCancelOpen] = useState(false)
 
   const expiresDate = new Date(invitation.expiresAt)
   const isExpired = expiresDate < new Date()
@@ -380,6 +466,7 @@ function InvitationRow({
     startTransition(async () => {
       try {
         await cancelInvitationAction(invitation.id)
+        setConfirmCancelOpen(false)
         onCancelled(invitation.id)
         toast.success("Invitación cancelada")
       } catch {
@@ -397,15 +484,7 @@ function InvitationRow({
         <div className="flex items-center gap-2">
           <span className="truncate text-sm">{invitation.email}</span>
           <RoleBadge tone="member">{ROLE_LABELS[invitation.role]}</RoleBadge>
-          {isExpired && (
-            // Reuses the Badge primitive directly (not RoleBadge):
-            // `Expirada` is a transient pending-state warning, not a
-            // role/status equivalent — `secondary` keeps it visually
-            // distinct from role tones.
-            <Badge variant="secondary" className="shrink-0 text-xs">
-              Expirada
-            </Badge>
-          )}
+          {isExpired && <RoleBadge tone="expired">Expirada</RoleBadge>}
         </div>
         <p className="text-xs text-muted-foreground">
           {isExpired
@@ -414,16 +493,230 @@ function InvitationRow({
         </p>
       </div>
       {canManage && (
-        <Button
-          variant="ghost"
-          size="icon"
-          className="size-8 text-muted-foreground hover:text-destructive"
-          onClick={handleCancel}
-          disabled={isPending}
-        >
-          {isPending ? <Loader2 className="size-4 animate-spin" /> : <XCircle className="size-4" />}
-        </Button>
+        <>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-8 text-muted-foreground hover:text-destructive"
+                  onClick={() => setConfirmCancelOpen(true)}
+                  disabled={isPending}
+                  aria-label="Cancelar invitación"
+                >
+                  {isPending ? <Loader2 className="size-4 animate-spin" /> : <XCircle className="size-4" />}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Cancelar invitación</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          <DeleteConfirmDialog
+            open={confirmCancelOpen}
+            onOpenChange={setConfirmCancelOpen}
+            title="¿Cancelar invitación?"
+            description={
+              <>
+                Vas a cancelar la invitación enviada a <strong>{invitation.email}</strong>.
+                La persona ya no podrá aceptarla.
+              </>
+            }
+            onConfirm={handleCancel}
+            confirming={isPending}
+            confirmLabel="Cancelar invitación"
+            confirmingLabel="Cancelando…"
+            cancelLabel="Volver"
+          />
+        </>
       )}
+    </div>
+  )
+}
+
+/**
+ * Row for the "Invitaciones rechazadas y expiradas" panel. Mirrors the
+ * InvitationRow layout (icon + email + role badge + status badge + actions)
+ * but with two action buttons: Reenviar (rejected only) and Eliminar.
+ *
+ * `onResent` returns the new pending invitation so the parent can lift it
+ * out of "archived" and into the "pendientes" list optimistically. Both
+ * destructive actions are gated behind confirmation dialogs (Reenviar:
+ * AlertDialog because it sends an email on confirm; Eliminar:
+ * DeleteConfirmDialog to match the pattern used for removing a member).
+ */
+function ArchivedInvitationRow({
+  invitation,
+  onResent,
+  onDeleted,
+}: {
+  invitation: ArchivedInvitation
+  onResent: (oldId: string, fresh: PendingInvitation) => void
+  onDeleted: (id: string) => void
+}) {
+  // Two separate transitions so the in-flight state of each mutation
+  // only disables / spins its own button. A single shared transition
+  // would make the Reenviar button appear loading while Eliminar is
+  // running (and vice-versa), confusing the user about which action is
+  // actually in progress.
+  const [isResendPending, startResendTransition] = useTransition()
+  const [isDeletePending, startDeleteTransition] = useTransition()
+  const [confirmResendOpen, setConfirmResendOpen] = useState(false)
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
+
+  const isRejected = invitation.status === "rejected"
+  // Either mutation in flight disables BOTH buttons (you can still see
+  // which is running via its own spinner). Prevents stacking a delete
+  // on top of a resend mid-flight.
+  const anyPending = isResendPending || isDeletePending
+
+  const handleResend = () => {
+    startResendTransition(async () => {
+      try {
+        const fresh = await resendInvitationAction(invitation.id)
+        toast.success(`Invitación reenviada a ${invitation.email}`)
+        setConfirmResendOpen(false)
+        onResent(invitation.id, fresh)
+      } catch {
+        toast.error("Error al reenviar la invitación")
+      }
+    })
+  }
+
+  const handleDelete = () => {
+    startDeleteTransition(async () => {
+      try {
+        await deleteArchivedInvitationAction(invitation.id)
+        setConfirmDeleteOpen(false)
+        onDeleted(invitation.id)
+        toast.success("Invitación eliminada")
+      } catch {
+        toast.error("Error al eliminar la invitación")
+      }
+    })
+  }
+
+  return (
+    <div className="flex items-center gap-3 rounded-md border border-dashed p-3">
+      <div className="flex size-9 items-center justify-center rounded-full bg-muted">
+        <UserPlus className="size-4 text-muted-foreground" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2">
+          <span className="truncate text-sm">{invitation.email}</span>
+          <RoleBadge tone="member">{ROLE_LABELS[invitation.role]}</RoleBadge>
+          {/*
+            Status badge: rejected uses the destructive (red) tone to
+            signal an active decline by the invitee; expired uses the
+            secondary (grey) tone to mark a passive timeout. Both share
+            the same RoleBadge shape so they read as the same kind of
+            status pill — only the colour distinguishes intent.
+          */}
+          {isRejected ? (
+            <RoleBadge tone="rejected">Rechazada</RoleBadge>
+          ) : (
+            <RoleBadge tone="expired">Expirada</RoleBadge>
+          )}
+        </div>
+        <p className="text-xs text-muted-foreground">
+          {isRejected
+            ? `Rechazada ${formatFriendlyDate(invitation.createdAt)}`
+            : `Expiró ${formatFriendlyDate(invitation.expiresAt)}`}
+        </p>
+      </div>
+      <TooltipProvider>
+        {/*
+          Reenviar is available for BOTH rejected and expired archived
+          rows: rejected = admin tries again after a decline; expired =
+          admin renews after a timeout (the more common case). The
+          server-side `resendInvitationUseCase` validates the row is
+          archivable (rejected / expired / pending+past-expiry) — the
+          UI just exposes the button consistently.
+        */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-8 text-muted-foreground hover:text-foreground"
+              onClick={() => setConfirmResendOpen(true)}
+              disabled={anyPending}
+              aria-label="Reenviar invitación"
+            >
+              {isResendPending ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Reenviar invitación</TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-8 text-muted-foreground hover:text-destructive"
+              onClick={() => setConfirmDeleteOpen(true)}
+              disabled={anyPending}
+              aria-label="Eliminar invitación"
+            >
+              {isDeletePending ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Eliminar invitación</TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+
+      {/*
+        Resend uses the generic Dialog primitive (not DeleteConfirmDialog)
+        because it is a *constructive* action — confirming sends a fresh
+        email and creates a new pending invitation. DeleteConfirmDialog
+        renders a red `destructive` button which would be the wrong
+        affordance here. Block dismissal while the mutation is in flight
+        so the user cannot orphan the request state.
+      */}
+      <Dialog open={confirmResendOpen} onOpenChange={setConfirmResendOpen}>
+        <DialogContent
+          showCloseButton={!isResendPending}
+          onEscapeKeyDown={(e) => isResendPending && e.preventDefault()}
+          onInteractOutside={(e) => isResendPending && e.preventDefault()}
+        >
+          <DialogHeader>
+            <DialogTitle>¿Reenviar invitación?</DialogTitle>
+            <DialogDescription>
+              Vas a enviar una nueva invitación a <strong>{invitation.email}</strong>.
+              La invitación anterior será eliminada.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setConfirmResendOpen(false)}
+              disabled={isResendPending}
+            >
+              Cancelar
+            </Button>
+            <Button type="button" onClick={handleResend} disabled={isResendPending}>
+              {isResendPending ? "Reenviando…" : "Reenviar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <DeleteConfirmDialog
+        open={confirmDeleteOpen}
+        onOpenChange={setConfirmDeleteOpen}
+        title="¿Eliminar invitación?"
+        description={
+          <>
+            Vas a eliminar la invitación enviada a <strong>{invitation.email}</strong>.
+            Si más adelante quieres volver a invitar a esta persona, podrás hacerlo desde
+            el formulario de arriba.
+          </>
+        }
+        onConfirm={handleDelete}
+        confirming={isDeletePending}
+        confirmLabel="Eliminar"
+        confirmingLabel="Eliminando…"
+      />
     </div>
   )
 }
