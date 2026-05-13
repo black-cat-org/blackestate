@@ -97,7 +97,7 @@
 
 #### 1.3 Template de invitación
 
-- [ ] `features/shared/infrastructure/email/invitation-email.tsx`:
+- [x] `features/shared/infrastructure/email/invitation-email.tsx`:
   - Props: `{ inviterName, inviterEmail, orgName, role, acceptUrl, expiresAtIso }`
   - Subject builder export aparte: `invitationSubject({ inviterName, orgName })` → `"${inviterName} te invitó a unirte a ${orgName} en Black Estate"`
   - Body: BrandLayout + heading "Te invitaron a un equipo" + InfoSection con texto explicativo + Button "Aceptar invitación" → acceptUrl + fallback "O copia este enlace:" con el URL plano + Footer con disclaimer de seguridad ("Si no reconoces esta invitación o prefieres no aceptarla, simplemente ignora este mensaje. No se realizará ninguna acción.")
@@ -105,17 +105,17 @@
 
 #### 1.4 Wiring en `sendInvitationAction`
 
-- [ ] Importar `sendEmail` + template + subject builder
-- [ ] Resolver `inviterName` (del `member` actual, o `auth.users.user_metadata.full_name` si vacío, fallback al email del inviter)
-- [ ] Resolver `orgName` (vía `getOrganizationByIdUseCase` que ya existe)
-- [ ] Construir `acceptUrl` con `NEXT_PUBLIC_APP_URL` + `/accept-invite?inv=${token}` (memoria G37: param `?inv=` no `?token=`)
-- [ ] Llamar `sendEmail` DESPUÉS de `sendInvitationUseCase` exitoso. Best-effort: si falla, log + retorna invitation OK (admin puede reenviar)
-- [ ] Anotar TODO/FUTURO en código: "cuando exista resend, swap transport en lib/email/transport.ts"
+- [x] Importar `sendEmail` + template + subject builder
+- [x] Resolver `inviterName` (del JWT claim `user_name` via `ctx.userName`, fallback al email local-part). Helper `resolveInviterName`
+- [x] Resolver `orgName` (vía `DrizzleOrganizationRepository.findById(ctx, ctx.orgId)` — RLS-honrado)
+- [x] Construir `acceptUrl` con `NEXT_PUBLIC_APP_URL` + `/accept-invite?inv=${token}` (memoria G37: param `?inv=` ✅)
+- [x] Llamar `sendEmail` DESPUÉS de `sendInvitationUseCase` exitoso. Best-effort vía `after()` — la action retorna primero, el SMTP roundtrip ocurre después. Si falla, log + invitation queda OK (admin puede reenviar)
+- [ ] Anotar TODO/FUTURO en código: "cuando exista resend, swap transport en lib/email/transport.ts" — postergado, la migración a Resend es Fase 2 entera, no un TODO inline
 
 #### 1.5 Env vars y .env.template
 
-- [ ] Actualizar `.env.template` con las 5 vars EMAIL_*/SMTP_*
-- [ ] Confirmar usuario que `.env.local` ya las tiene cargadas (usuario dijo "ya está configurado")
+- [x] Actualizar `.env.template` con las 5 vars EMAIL_*/SMTP_*
+- [x] Confirmar usuario que `.env.local` ya las tiene cargadas
 - [ ] Documentar en CLAUDE.md sección Environment Variables las nuevas vars
 
 #### 1.6 Tests Fase 1
