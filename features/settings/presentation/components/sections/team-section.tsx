@@ -23,6 +23,9 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { toast } from "sonner"
 import { MoreHorizontal, UserPlus, Shield, ShieldAlert, UserX, XCircle, Loader2 } from "lucide-react"
+import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog"
+import { RoleBadge, type RoleBadgeTone } from "@/components/ui/role-badge"
+import { formatFriendlyDate } from "@/lib/utils/relative-time"
 import { updateMemberRoleAction, removeMemberAction } from "@/features/shared/presentation/member-actions"
 import { sendInvitationAction, cancelInvitationAction } from "@/features/shared/presentation/invitation-actions"
 import type { TeamMember, TeamSeatInfo } from "@/features/shared/domain/member.entity"
@@ -34,10 +37,16 @@ const ROLE_LABELS: Record<string, string> = {
   agent: "Agente",
 }
 
-const ROLE_VARIANTS: Record<string, "default" | "secondary" | "outline"> = {
-  owner: "default",
-  admin: "secondary",
-  agent: "outline",
+/**
+ * Visual tone mapping for the RoleBadge. Owner gets the filled primary
+ * preset (special, unique role); admin and agent share the outline
+ * "member" preset because in the UI hierarchy they are peer team
+ * members the owner manages.
+ */
+const ROLE_TONE: Record<string, RoleBadgeTone> = {
+  owner: "owner",
+  admin: "member",
+  agent: "member",
 }
 
 interface TeamSectionProps {
@@ -238,6 +247,7 @@ function MemberRow({
   onRemoved: (id: string) => void
 }) {
   const [isPending, startTransition] = useTransition()
+  const [confirmRemoveOpen, setConfirmRemoveOpen] = useState(false)
 
   const initials = (member.name ?? member.email)
     .split(" ")
@@ -264,13 +274,17 @@ function MemberRow({
     })
   }
 
-  const handleRemove = () => {
+  const confirmRemove = () => {
+    // Wrap the actual removal in startTransition so the dropdown
+    // spinner state still reflects the in-flight server action. The
+    // dialog closes onConfirm via DeleteConfirmDialog's API.
     startTransition(async () => {
       const result = await removeMemberAction(member.id)
       if (result.error) {
         toast.error(result.error)
         return
       }
+      setConfirmRemoveOpen(false)
       onRemoved(member.id)
       toast.success("Miembro removido")
     })
@@ -283,11 +297,9 @@ function MemberRow({
         <AvatarFallback className="text-xs">{initials}</AvatarFallback>
       </Avatar>
       <div className="min-w-0 flex-1">
-        <div className="flex items-baseline gap-2">
+        <div className="flex items-center gap-2">
           <span className="truncate text-sm font-medium">{member.name ?? member.email}</span>
-          <Badge variant={ROLE_VARIANTS[member.role]} className="shrink-0 text-[10px] px-1.5 py-0 leading-normal">
-            {ROLE_LABELS[member.role]}
-          </Badge>
+          <RoleBadge tone={ROLE_TONE[member.role]}>{ROLE_LABELS[member.role]}</RoleBadge>
         </div>
         <p className="truncate text-xs text-muted-foreground">{member.email}</p>
       </div>
@@ -314,13 +326,38 @@ function MemberRow({
             {canChangeRoles && (member.role === "agent" || member.role === "admin") && (
               <DropdownMenuSeparator />
             )}
-            <DropdownMenuItem onClick={handleRemove} className="text-destructive">
+            <DropdownMenuItem
+              onSelect={(e) => {
+                // Prevent the dropdown from auto-closing before our
+                // dialog mounts; manually open the confirm dialog so the
+                // remove action is always behind an explicit Yes/No.
+                e.preventDefault()
+                setConfirmRemoveOpen(true)
+              }}
+              className="text-destructive"
+            >
               <UserX className="mr-2 size-4" />
               Remover del equipo
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       )}
+      <DeleteConfirmDialog
+        open={confirmRemoveOpen}
+        onOpenChange={setConfirmRemoveOpen}
+        title="¿Remover del equipo?"
+        description={
+          <>
+            Vas a remover a <strong>{member.name ?? member.email}</strong> de la organización.
+            Perderá el acceso inmediatamente y será desconectado en tiempo real.
+            Esta acción no se puede deshacer.
+          </>
+        }
+        onConfirm={confirmRemove}
+        confirming={isPending}
+        confirmLabel="Remover"
+        confirmingLabel="Removiendo…"
+      />
     </div>
   )
 }
@@ -359,19 +396,21 @@ function InvitationRow({
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <span className="truncate text-sm">{invitation.email}</span>
-          <Badge variant="outline" className="shrink-0 text-[10px] px-1.5 py-0">
-            {ROLE_LABELS[invitation.role]}
-          </Badge>
+          <RoleBadge tone="member">{ROLE_LABELS[invitation.role]}</RoleBadge>
           {isExpired && (
-            <Badge variant="destructive" className="shrink-0 text-xs">
+            // Reuses the Badge primitive directly (not RoleBadge):
+            // `Expirada` is a transient pending-state warning, not a
+            // role/status equivalent — `secondary` keeps it visually
+            // distinct from role tones.
+            <Badge variant="secondary" className="shrink-0 text-xs">
               Expirada
             </Badge>
           )}
         </div>
         <p className="text-xs text-muted-foreground">
           {isExpired
-            ? `Expiró el ${expiresDate.toLocaleDateString("es-BO")}`
-            : `Expira el ${expiresDate.toLocaleDateString("es-BO")}`}
+            ? `Expiró ${formatFriendlyDate(invitation.expiresAt)}`
+            : `Vence ${formatFriendlyDate(invitation.expiresAt)}`}
         </p>
       </div>
       {canManage && (

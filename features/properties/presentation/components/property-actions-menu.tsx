@@ -15,6 +15,7 @@ import {
   DropdownMenuSubTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
+import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog"
 import { STATUS_TRANSITIONS } from "@/lib/constants/property"
 import { updatePropertyAction, duplicatePropertyAction, deletePropertyAction } from "@/features/properties/presentation/actions"
 import { toast } from "sonner"
@@ -24,6 +25,8 @@ import type { Property } from "@/features/properties/domain/property.entity"
 export function PropertyActionsMenu({ property }: { property: Property }) {
   const router = useRouter()
   const [shareOpen, setShareOpen] = useState(false)
+  const [deleteOpen, setDeleteOpen] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const transitions = STATUS_TRANSITIONS[property.status]
 
   const handleStatusChange = async (newStatus: Property["status"]) => {
@@ -47,71 +50,83 @@ export function PropertyActionsMenu({ property }: { property: Property }) {
   }
 
   const handleDelete = async () => {
+    setDeleting(true)
     try {
       await deletePropertyAction(property.id)
+      setDeleteOpen(false)
       toast.success("Propiedad eliminada")
       router.refresh()
     } catch {
       toast.error("Error al eliminar")
+    } finally {
+      setDeleting(false)
     }
   }
 
   return (
     <>
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" className="size-8">
-          <MoreHorizontal className="size-4" />
-          <span className="sr-only">Acciones</span>
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuItem asChild>
-          <Link href={`/dashboard/properties/${property.id}`}>
-            <Eye className="text-muted-foreground" />
-            Ver detalle
-          </Link>
-        </DropdownMenuItem>
-        <DropdownMenuItem asChild>
-          <Link href={`/dashboard/properties/${property.id}/edit`}>
-            <Pencil className="text-muted-foreground" />
-            Editar
-          </Link>
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={handleDuplicate}>
-          <Copy className="text-muted-foreground" />
-          Duplicar
-        </DropdownMenuItem>
-        {property.status === "active" && (
-          <DropdownMenuItem onClick={() => setShareOpen(true)}>
-            <Share2 className="text-muted-foreground" />
-            Compartir
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="icon" className="size-8">
+            <MoreHorizontal className="size-4" />
+            <span className="sr-only">Acciones</span>
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem asChild>
+            <Link href={`/dashboard/properties/${property.id}`}>
+              <Eye className="text-muted-foreground" />
+              Ver detalle
+            </Link>
           </DropdownMenuItem>
-        )}
-        {transitions.length > 0 && (
-          <DropdownMenuSub>
-            <DropdownMenuSubTrigger>Cambiar estado</DropdownMenuSubTrigger>
-            <DropdownMenuSubContent>
-              {transitions.map((t) => (
-                <DropdownMenuItem key={t.status} onClick={() => handleStatusChange(t.status)}>
-                  {t.label}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuSubContent>
-          </DropdownMenuSub>
-        )}
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={handleDelete} className="text-destructive">
-          <Trash2 className="text-muted-foreground" />
-          Eliminar
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
-    <ShareLinksDialog
-      property={property}
-      open={shareOpen}
-      onOpenChange={setShareOpen}
-    />
+          <DropdownMenuItem asChild>
+            <Link href={`/dashboard/properties/${property.id}/edit`}>
+              <Pencil className="text-muted-foreground" />
+              Editar
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={handleDuplicate}>
+            <Copy className="text-muted-foreground" />
+            Duplicar
+          </DropdownMenuItem>
+          {property.status === "active" && (
+            <DropdownMenuItem onClick={() => setShareOpen(true)}>
+              <Share2 className="text-muted-foreground" />
+              Compartir
+            </DropdownMenuItem>
+          )}
+          {transitions.length > 0 && (
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger>Cambiar estado</DropdownMenuSubTrigger>
+              <DropdownMenuSubContent>
+                {transitions.map((t) => (
+                  <DropdownMenuItem key={t.status} onClick={() => handleStatusChange(t.status)}>
+                    {t.label}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+          )}
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={() => setDeleteOpen(true)} className="text-destructive">
+            <Trash2 className="text-muted-foreground" />
+            Eliminar
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <ShareLinksDialog
+        property={property}
+        open={shareOpen}
+        onOpenChange={setShareOpen}
+      />
+      <DeleteConfirmDialog
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        title="Eliminar propiedad"
+        description={`¿Seguro que quieres eliminar "${property.title}"? Podrás restaurarla desde la papelera.`}
+        onConfirm={handleDelete}
+        confirming={deleting}
+      />
     </>
   )
 }
