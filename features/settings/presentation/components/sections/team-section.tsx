@@ -198,6 +198,7 @@ export function TeamSection({ data: initialData }: TeamSectionProps) {
               <ArchivedInvitationRow
                 key={inv.id}
                 invitation={inv}
+                pendingInvitations={invitations}
                 onResent={(oldId, fresh) => {
                   // The resend action archives the old rejected row +
                   // creates a fresh pending one. Reflect both sides
@@ -266,7 +267,7 @@ function InviteForm({
       return
     }
     if (pendingInvitations.some((inv) => inv.email.toLowerCase() === normalized)) {
-      toast.error("Ya existe una invitación pendiente para esta dirección")
+      toast.error("Ya existe una invitación pendiente para esta persona")
       return
     }
 
@@ -546,10 +547,17 @@ function InvitationRow({
  */
 function ArchivedInvitationRow({
   invitation,
+  pendingInvitations,
   onResent,
   onDeleted,
 }: {
   invitation: ArchivedInvitation
+  // Passed in so Reenviar can detect the "already pending" conflict
+  // client-side and short-circuit with a specific toast instead of
+  // dispatching the action and surfacing a generic backend error. The
+  // backend `sendInvitationUseCase` keeps its own `hasPendingForEmail`
+  // check (defense in depth) — this prop only powers the UX hint.
+  pendingInvitations: PendingInvitation[]
   onResent: (oldId: string, fresh: PendingInvitation) => void
   onDeleted: (id: string) => void
 }) {
@@ -569,7 +577,49 @@ function ArchivedInvitationRow({
   // on top of a resend mid-flight.
   const anyPending = isResendPending || isDeletePending
 
+  /**
+   * Detect whether the archived row's email already has an active
+   * pending invitation. The backend `sendInvitationUseCase` would
+   * reject this with `hasPendingForEmail` and surface a generic
+   * error — better to short-circuit client-side with a specific toast.
+   *
+   * The invitation `email` is stored lowercased by the repository;
+   * normalise both sides to be defensive against a stray mixed-case
+   * row that slipped past the writer.
+   */
+  const hasActivePendingForEmail = () => {
+    const normalized = invitation.email.toLowerCase()
+    return pendingInvitations.some((p) => p.email.toLowerCase() === normalized)
+  }
+
+  /**
+   * Click handler for the Reenviar button. Guards both against a
+   * concurrent in-flight mutation (defensive — the button is already
+   * `disabled={anyPending}`, but a programmatic trigger could bypass
+   * the UI) and the duplicate-pending case. Only opens the dialog when
+   * both checks pass.
+   */
+  const handleResendClick = () => {
+    if (anyPending) return
+    if (hasActivePendingForEmail()) {
+      toast.error("Ya existe una invitación pendiente para esta persona")
+      return
+    }
+    setConfirmResendOpen(true)
+  }
+
   const handleResend = () => {
+    // Re-check at confirm time: a realtime event or another browser tab
+    // could have added a pending invitation for this email while the
+    // dialog was open. Without this guard the action would dispatch and
+    // the backend's `hasPendingForEmail` throw would surface as the
+    // generic "Error al reenviar" toast — the same vague message the
+    // pre-check was added to eliminate.
+    if (hasActivePendingForEmail()) {
+      toast.error("Ya existe una invitación pendiente para esta persona")
+      setConfirmResendOpen(false)
+      return
+    }
     startResendTransition(async () => {
       try {
         const fresh = await resendInvitationAction(invitation.id)
@@ -638,7 +688,7 @@ function ArchivedInvitationRow({
               variant="ghost"
               size="icon"
               className="size-8 text-muted-foreground hover:text-foreground"
-              onClick={() => setConfirmResendOpen(true)}
+              onClick={handleResendClick}
               disabled={anyPending}
               aria-label="Reenviar invitación"
             >
