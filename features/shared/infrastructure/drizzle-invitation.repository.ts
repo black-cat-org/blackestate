@@ -1,10 +1,11 @@
-import { eq, and, sql, gt, inArray } from "drizzle-orm"
+import { eq, and, sql, gt, lt, inArray, or, desc } from "drizzle-orm"
 import { invitation, member, organization } from "@/lib/db/schema"
 import { getSupabaseServerClient } from "@/lib/supabase/server"
 import { withRLS } from "./rls"
 import { mapInvitationRowToEntity } from "./invitation.mapper"
 import type { SessionContext } from "@/features/shared/domain/session-context"
 import type {
+  ArchivedInvitation,
   Invitation,
   PendingInvitation,
   IncomingInvitation,
@@ -119,6 +120,78 @@ export class DrizzleInvitationRepository implements IInvitationRepository {
       }))
   }
 
+  /**
+   * List archived invitations for the caller's active org: rows the
+   * invitee rejected (`status='rejected'`) plus rows that timed out
+   * (`status='pending' AND expiresAt < now()`). Persisted `cancelled`
+   * and `accepted` rows are intentionally excluded.
+   *
+   * The `expired` status is derived in code, not stored: there is no
+   * background job that updates `pending` → `expired` in the DB, so the
+   * mapper computes it from the row's stored status and `expiresAt`.
+   * Sorted newest-first so the admin sees the most recent activity at
+   * the top of the panel.
+   *
+   * RLS: authorised by `invitation_select_admin_or_invitee` (admin
+   * branch). The use case guards on `ctx.role` so agents never reach
+   * this query.
+   */
+  async findArchivedByOrgId(ctx: SessionContext): Promise<ArchivedInvitation[]> {
+    const rows = await withRLS(ctx, (tx) =>
+      tx
+        .select({
+          id: invitation.id,
+          email: invitation.email,
+          role: invitation.role,
+          status: invitation.status,
+          expiresAt: invitation.expiresAt,
+          createdAt: invitation.createdAt,
+        })
+        .from(invitation)
+        .where(
+          and(
+            eq(invitation.organizationId, ctx.orgId),
+            or(
+              eq(invitation.status, "rejected"),
+              // Persisted `expired` rows (future migration with a cron
+              // job that flips `pending` → `expired` server-side). Today
+              // the enum value exists but nothing in the codebase writes
+              // it; including it here future-proofs the query so any
+              // such migration is picked up automatically without a
+              // matching code change. The doc comment on the repository
+              // interface explicitly advertises this coverage.
+              eq(invitation.status, "expired"),
+              // Derived expiry: `pending` rows past `expiresAt`. The
+              // mapper translates this to `status='expired'` for the UI.
+              and(
+                eq(invitation.status, "pending"),
+                lt(invitation.expiresAt, new Date()),
+              ),
+            ),
+          ),
+        )
+        .orderBy(desc(invitation.createdAt)),
+    )
+
+    return rows
+      .filter((r) => INVITABLE_ROLES.includes(r.role))
+      .map((r) => ({
+        id: r.id,
+        email: r.email,
+        role: r.role as InvitableRole,
+        // Map persisted `rejected` and `expired` 1:1; derive `expired`
+        // for `pending` rows that passed the `expiresAt < now()`
+        // predicate above. The UI-facing union narrows to the two
+        // archival states the panel knows how to render.
+        status:
+          r.status === "rejected" || r.status === "expired"
+            ? r.status
+            : "expired",
+        expiresAt: r.expiresAt.toISOString(),
+        createdAt: r.createdAt.toISOString(),
+      }))
+  }
+
   async hasPendingForEmail(ctx: SessionContext, email: string): Promise<boolean> {
     const rows = await withRLS(ctx, (tx) =>
       tx
@@ -203,10 +276,14 @@ export class DrizzleInvitationRepository implements IInvitationRepository {
    * `invitation_update_admin_or_invitee`.
    */
   async markCancelled(ctx: SessionContext, invitationId: string): Promise<void> {
-    // Extended to status IN ('pending', 'rejected'): pending rows are
-    // retracted by the admin, rejected rows are discarded after the
-    // invitee declined. Accepted/cancelled/expired are terminal and
-    // intentionally not cancellable.
+    // Cancellable statuses: pending rows are retracted by the admin,
+    // rejected rows are discarded after the invitee declined, and
+    // expired rows are cleaned up by the admin from the archived
+    // panel. `pending` here also covers the "derived expired" case
+    // (status='pending' + expiresAt<now()) since no cron flips them
+    // server-side. Accepted/cancelled are terminal: an accepted
+    // invitee is already a member (use member removal instead); a
+    // cancelled row is the tombstone of an earlier retraction.
     const result = await withRLS(ctx, (tx) =>
       tx
         .update(invitation)
@@ -215,7 +292,7 @@ export class DrizzleInvitationRepository implements IInvitationRepository {
           and(
             eq(invitation.id, invitationId),
             eq(invitation.organizationId, ctx.orgId),
-            inArray(invitation.status, ["pending", "rejected"]),
+            inArray(invitation.status, ["pending", "rejected", "expired"]),
           ),
         )
         .returning({ id: invitation.id }),
@@ -243,6 +320,7 @@ export class DrizzleInvitationRepository implements IInvitationRepository {
           email: invitation.email,
           role: invitation.role,
           status: invitation.status,
+          expiresAt: invitation.expiresAt,
         })
         .from(invitation)
         .where(
@@ -259,6 +337,7 @@ export class DrizzleInvitationRepository implements IInvitationRepository {
           email: rows[0].email,
           role: rows[0].role as InvitableRole,
           status: rows[0].status,
+          expiresAt: rows[0].expiresAt.toISOString(),
         }
       : undefined
   }

@@ -9,26 +9,34 @@ export interface ResendInvitationTarget {
 }
 
 /**
- * Validate that a rejected invitation can be resent, returning the
- * data the action layer needs to dispatch a fresh invitation. This
- * use case is **read-only**: it does NOT cancel the old row.
+ * Validate that an archived invitation (rejected, expired, or pending
+ * past its expiry) can be re-issued, returning the data the action
+ * layer needs to dispatch a fresh invitation. This use case is
+ * **read-only**: it does NOT cancel the old row.
  *
  * Order matters for the resend flow's failure mode: the action first
  * creates the new invitation via `sendInvitationUseCase`, then (only
- * on success) cancels the old rejected row. If we cancelled here, a
- * subsequent failure in `sendInvitationUseCase` (seat limit hit, user
- * deleted between read and create, etc.) would leave the admin with
- * the rejected row permanently gone and no replacement — the resend
- * would silently destroy the original invitation. Keeping the cancel
- * in the action's success path preserves the rejected row when the
- * new send fails.
+ * on success) cancels the old row. If we cancelled here, a subsequent
+ * failure in `sendInvitationUseCase` (seat limit hit, user deleted
+ * between read and create, etc.) would leave the admin with the
+ * archived row permanently gone and no replacement. Keeping the
+ * cancel in the action's success path preserves the original row when
+ * the new send fails.
  *
- * Only the org's owner / admin may resend (same authorisation
- * envelope as send-invitation). Only `rejected` invitations are
- * resendable — `pending` rows are still actionable by the invitee
- * and should not be silently replaced; `accepted` rows mean the user
- * is already a member; `cancelled` / `expired` rows are archived and
- * the admin should issue a brand-new invitation rather than "resend".
+ * Resendable statuses (the same archival surface the admin sees in
+ * the "Invitaciones rechazadas y expiradas" panel):
+ *   - `rejected`: invitee actively declined; admin can try again.
+ *   - `expired`: stored expiry status (future cron migration).
+ *   - `pending` AND past expiry: same UX outcome as `expired`, just
+ *     not yet flipped by a cron. Authorisation reads the raw DB
+ *     state, not the UI's derived "expired" status.
+ *
+ * Non-resendable statuses:
+ *   - `pending` (still in date): the invitee can still accept;
+ *     replacing it silently would break their flow.
+ *   - `accepted`: the user is already a member; resend has no meaning.
+ *   - `cancelled`: tombstone of an earlier retraction. To re-invite,
+ *     the admin should use the regular Invitar form.
  */
 export async function resendInvitationUseCase(
   ctx: SessionContext,
@@ -43,8 +51,15 @@ export async function resendInvitationUseCase(
   if (!invitation) {
     throw new Error("invitation_not_found")
   }
-  if (invitation.status !== "rejected") {
-    throw new Error("invitation_not_rejected")
+
+  const isArchivable =
+    invitation.status === "rejected" ||
+    invitation.status === "expired" ||
+    (invitation.status === "pending" &&
+      new Date(invitation.expiresAt) < new Date())
+
+  if (!isArchivable) {
+    throw new Error("invitation_not_archivable")
   }
 
   return { oldInvitationId: invitationId, email: invitation.email, role: invitation.role }

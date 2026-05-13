@@ -12,14 +12,17 @@ import { sendInvitationUseCase } from "@/features/shared/application/send-invita
 import { acceptInvitationUseCase } from "@/features/shared/application/accept-invitation.use-case"
 import { cancelInvitationUseCase } from "@/features/shared/application/cancel-invitation.use-case"
 import { listInvitationsUseCase } from "@/features/shared/application/list-invitations.use-case"
+import { listArchivedInvitationsUseCase } from "@/features/shared/application/list-archived-invitations.use-case"
 import { listMyPendingInvitationsUseCase } from "@/features/shared/application/list-my-pending-invitations.use-case"
 import { rejectInvitationUseCase } from "@/features/shared/application/reject-invitation.use-case"
+import { resendInvitationUseCase } from "@/features/shared/application/resend-invitation.use-case"
 import { sendEmail } from "@/lib/email"
 import {
   InvitationEmail,
   invitationEmailSubject,
 } from "@/features/shared/infrastructure/email/invitation-email"
 import type {
+  ArchivedInvitation,
   IncomingInvitation,
   PendingInvitation,
   SendInvitationDTO,
@@ -226,6 +229,161 @@ export async function cancelInvitationAction(invitationId: string): Promise<void
 export async function listInvitationsAction(): Promise<PendingInvitation[]> {
   const ctx = await getSessionContext()
   return listInvitationsUseCase(ctx, repo)
+}
+
+/**
+ * List rejected + expired invitations for the caller's active org. Powers
+ * the "Invitaciones rechazadas y expiradas" panel in
+ * `/dashboard/settings` → Equipo. Owner/admin only; agents get an empty
+ * list (the use case enforces the role guard).
+ */
+export async function listArchivedInvitationsAction(): Promise<ArchivedInvitation[]> {
+  const ctx = await getSessionContext()
+  return listArchivedInvitationsUseCase(ctx, repo)
+}
+
+/**
+ * Resend a previously archived invitation (rejected or expired — the
+ * latter includes both persisted `expired` rows and `pending` rows past
+ * their `expiresAt`). Orchestrates a three-step sequence designed to
+ * never leave the admin with the original row gone and no replacement:
+ *
+ *   1. `resendInvitationUseCase` validates the old row exists, is
+ *      archivable (rejected / expired / pending-past-expiry), and the
+ *      caller is owner/admin. Read-only — does NOT mutate the row.
+ *   2. `sendInvitationUseCase` creates a brand-new invitation row with a
+ *      fresh token + fresh `expiresAt`, going through every guard the
+ *      regular invite flow runs (seat limit, user-exists check, no
+ *      duplicate active member, no duplicate pending invite). The old
+ *      row's `expiresAt > now()` is already false (or the row is
+ *      rejected), so the duplicate-pending guard cleanly passes.
+ *   3. Only AFTER step 2 succeeds, mark the old archived row as
+ *      `cancelled` so it disappears from the archived list. If we
+ *      cancelled before sending, a step-2 failure (seat limit hit, user
+ *      deleted, etc.) would silently destroy the original row.
+ *
+ * Email delivery is queued in `after()` so the action's response is not
+ * blocked by SMTP. The same best-effort contract as `sendInvitationAction`
+ * applies: if email send fails, the row is still saved and the admin can
+ * resend; the invitee can also see the invitation via the in-app panel.
+ */
+export async function resendInvitationAction(invitationId: string): Promise<PendingInvitation> {
+  const ctx = await getSessionContext()
+  if (!ctx.email) {
+    throw new Error("Cannot resend invitation: caller session has no email claim")
+  }
+
+  // Step 1: validate the old row is archivable (rejected / expired /
+  // pending-past-expiry) + extract email/role for the new send.
+  // Read-only — no mutation of the old row yet.
+  const { oldInvitationId, email, role } = await resendInvitationUseCase(
+    ctx,
+    repo,
+    invitationId,
+  )
+
+  // Step 2: create the new invitation. Throws if seat limit / user
+  // missing / duplicate. The old rejected row remains intact so the
+  // admin can retry if this step fails (no destructive side effect).
+  const { invitation, token } = await sendInvitationUseCase(
+    ctx,
+    repo,
+    { email, role },
+    ctx.email,
+  )
+
+  // Step 3: archive the old row. Only reached if step 2 returned
+  // a persisted invitation. Wrapped in best-effort try/catch so a failure
+  // here does NOT abort the action: the new invitation is already
+  // persisted, and propagating this error would (a) leave the UI's
+  // optimistic update path unreached, (b) keep the confirmation dialog
+  // open with a generic error toast, and (c) skip `revalidatePath` —
+  // resulting in a dangling new pending row invisible to the admin until
+  // a hard refresh. By absorbing the error and logging it, the user sees
+  // a successful resend; on the next render the rejected row may still
+  // appear (along with the new pending one), which `revalidatePath`
+  // reconciles. An operator can retry the delete from the UI.
+  try {
+    await repo.markCancelled(ctx, oldInvitationId)
+  } catch (err) {
+    console.warn(
+      "[invitation-actions] resend: failed to archive old rejected row",
+      err,
+      { oldInvitationId, newInvitationId: invitation.id },
+    )
+  }
+
+  // Resolve org metadata for the email body. Pulled here for the same
+  // reason as in sendInvitationAction: a stable snapshot for the
+  // deferred email render.
+  const organization = await orgRepo.findById(ctx, ctx.orgId)
+  const inviterName = resolveInviterName(ctx.userName, ctx.email)
+
+  after(async () => {
+    if (!organization) {
+      console.error(
+        "[invitation-actions] cannot send resend email: org not found",
+        { orgId: ctx.orgId, invitationId: invitation.id },
+      )
+      return
+    }
+    try {
+      const result = await sendEmail({
+        to: invitation.email,
+        subject: invitationEmailSubject({
+          inviterName,
+          organizationName: organization.name,
+        }),
+        react: createElement(InvitationEmail, {
+          inviterName,
+          organizationName: organization.name,
+          role: invitation.role,
+          acceptUrl: buildAcceptUrl(token),
+          expiresAtIso: invitation.expiresAt,
+        }),
+      })
+      if (!result.success) {
+        console.error(
+          "[invitation-actions] resend email send failed:",
+          result.error.message,
+          { invitationId: invitation.id, to: invitation.email },
+        )
+      }
+    } catch (err) {
+      console.error(
+        "[invitation-actions] resend email runtime error (config or url):",
+        err,
+        { invitationId: invitation.id, to: invitation.email },
+      )
+    }
+  })
+
+  revalidatePath("/dashboard/settings")
+  return {
+    id: invitation.id,
+    email: invitation.email,
+    role: invitation.role,
+    expiresAt: invitation.expiresAt,
+  }
+}
+
+/**
+ * Delete an archived invitation (rejected or pending-expired) from the
+ * admin's view. Implemented as a soft-cancel (`status = 'cancelled'`) so
+ * the audit trail survives — no hard DELETE is allowed on the
+ * `invitation` table by policy.
+ *
+ * Reuses `cancelInvitationUseCase` / `markCancelled` which already
+ * permits cancelling `pending` (covers pending-expired rows since
+ * "expired" is derived, not stored) and `rejected`. Out-of-the-box safe
+ * against double-delete: the underlying UPDATE filters by status, so a
+ * second call against the same id returns no rows and throws
+ * "not found", which the UI can surface as a stale-state error.
+ */
+export async function deleteArchivedInvitationAction(invitationId: string): Promise<void> {
+  const ctx = await getSessionContext()
+  await cancelInvitationUseCase(ctx, repo, invitationId)
+  revalidatePath("/dashboard/settings")
 }
 
 /**
