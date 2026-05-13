@@ -46,7 +46,15 @@ export function PropertyCard({ property, kitStatus }: PropertyCardProps) {
         </div>
       </Link>
       <CardHeader className="pb-2">
-        <div className="flex items-start justify-between gap-2">
+        {/*
+         * `min-w-0` on this flex row is required because CardHeader is a
+         * grid container — grid items default to `min-width: auto`, which
+         * lets the inner flex grow to its content's intrinsic width
+         * (title + kebab) and overflow the card. Setting `min-w-0` lets
+         * the flex collapse so the `min-w-0 flex-1` title column can
+         * shrink and the `truncate` on the title actually takes effect.
+         */}
+        <div className="flex min-w-0 items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
             <p className="text-lg font-bold">{formatPrice(property.price)}</p>
             <Link
