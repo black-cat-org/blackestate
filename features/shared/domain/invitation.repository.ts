@@ -1,10 +1,25 @@
 import type {
   Invitation,
+  InvitationStatus,
   PendingInvitation,
   IncomingInvitation,
   InvitableRole,
 } from "./invitation.entity"
 import type { SessionContext } from "./session-context"
+
+/**
+ * Narrow projection of an invitation row scoped to fields the
+ * Presentation layer is allowed to consume. Notably omits `token`:
+ * the token is the secret that authorises invitation acceptance, and
+ * surfacing it to a Server Action that does not need to forward it
+ * is unnecessary exposure.
+ */
+export interface InvitationSummary {
+  id: string
+  email: string
+  role: InvitableRole
+  status: InvitationStatus
+}
 
 export interface IInvitationRepository {
   /**
@@ -27,6 +42,23 @@ export interface IInvitationRepository {
     },
   ): Promise<Invitation>
   findPendingByOrgId(ctx: SessionContext): Promise<PendingInvitation[]>
+  /**
+   * Fetch a narrow projection (id, email, role, status) of an
+   * invitation scoped to the caller's org. Returns the
+   * `InvitationSummary` DTO instead of the full `Invitation` entity
+   * so the secret `token` field never reaches the Server Action.
+   */
+  findByIdForOrg(
+    ctx: SessionContext,
+    invitationId: string,
+  ): Promise<InvitationSummary | undefined>
+  /**
+   * Look up a single pending invitation by its token, joined with the
+   * inviting org. Returns `undefined` when the token does not exist,
+   * does not match the caller's email, is no longer pending, or has
+   * expired. Powers the `/accept-invite?inv=<token>` confirmation page.
+   */
+  findByToken(ctx: SessionContext, token: string): Promise<IncomingInvitation | undefined>
   hasPendingForEmail(ctx: SessionContext, email: string): Promise<boolean>
   /**
    * List invitations the caller has pending inbox-side (email matches the

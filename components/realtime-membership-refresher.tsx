@@ -132,6 +132,33 @@ export function RealtimeMembershipRefresher({ userId }: RealtimeMembershipRefres
           }
 
           // type === "removed"
+          // Short-circuit when the refreshed JWT confirms the user has no
+          // remaining active org: `getUserOrganizationsAction` calls
+          // `getSessionContext()` internally, which throws when
+          // `active_org_id` is null — that throw would be swallowed by
+          // the outer catch and the dialog would never surface. The
+          // refresh's own outcome is sufficient evidence: if the refresh
+          // succeeded and minted a JWT with `active_org_id = null`, the
+          // user definitively has no remaining memberships and goes
+          // straight to the no-fallback path. Only when the refresh
+          // succeeded but returned a non-null active_org_id (i.e. the
+          // user has another org) do we fetch the org list to render the
+          // fallback name. When the refresh itself failed (transient),
+          // we still attempt the lookup — better to surface the dialog
+          // than to silently sign the user out on a network blip.
+          if (!refreshResult.error && refreshedActiveOrgId === null) {
+            postAcknowledge.current = async () => {
+              await supabase.auth.signOut()
+              router.replace("/sign-in?reason=removed")
+            }
+            setVariant({
+              type: "removed_no_fallback",
+              organizationName: event.organizationName,
+            })
+            handlingRef.current = false
+            return
+          }
+
           // Decide the post-ack action up front so the dialog copy
           // accurately reflects what will happen on click.
           const remaining = await getUserOrganizationsAction()

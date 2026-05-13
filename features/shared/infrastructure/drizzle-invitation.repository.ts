@@ -1,4 +1,4 @@
-import { eq, and, sql, gt } from "drizzle-orm"
+import { eq, and, sql, gt, inArray } from "drizzle-orm"
 import { invitation, member, organization } from "@/lib/db/schema"
 import { getSupabaseServerClient } from "@/lib/supabase/server"
 import { withRLS } from "./rls"
@@ -10,7 +10,7 @@ import type {
   IncomingInvitation,
   InvitableRole,
 } from "@/features/shared/domain/invitation.entity"
-import type { IInvitationRepository } from "@/features/shared/domain/invitation.repository"
+import type { IInvitationRepository, InvitationSummary } from "@/features/shared/domain/invitation.repository"
 
 const INVITABLE_ROLES: readonly string[] = ["admin", "agent"]
 
@@ -203,6 +203,10 @@ export class DrizzleInvitationRepository implements IInvitationRepository {
    * `invitation_update_admin_or_invitee`.
    */
   async markCancelled(ctx: SessionContext, invitationId: string): Promise<void> {
+    // Extended to status IN ('pending', 'rejected'): pending rows are
+    // retracted by the admin, rejected rows are discarded after the
+    // invitee declined. Accepted/cancelled/expired are terminal and
+    // intentionally not cancellable.
     const result = await withRLS(ctx, (tx) =>
       tx
         .update(invitation)
@@ -211,7 +215,7 @@ export class DrizzleInvitationRepository implements IInvitationRepository {
           and(
             eq(invitation.id, invitationId),
             eq(invitation.organizationId, ctx.orgId),
-            eq(invitation.status, "pending"),
+            inArray(invitation.status, ["pending", "rejected"]),
           ),
         )
         .returning({ id: invitation.id }),
@@ -219,6 +223,101 @@ export class DrizzleInvitationRepository implements IInvitationRepository {
 
     if (result.length === 0) {
       throw new Error("Invitation not found or cannot be cancelled")
+    }
+  }
+
+  /**
+   * Narrow projection (id, email, role, status) of an invitation scoped
+   * to the caller's org. Used by the resend flow which only needs those
+   * four fields. Returning the full Invitation entity would leak the
+   * secret `token` to the Presentation layer unnecessarily.
+   */
+  async findByIdForOrg(
+    ctx: SessionContext,
+    invitationId: string,
+  ): Promise<InvitationSummary | undefined> {
+    const rows = await withRLS(ctx, (tx) =>
+      tx
+        .select({
+          id: invitation.id,
+          email: invitation.email,
+          role: invitation.role,
+          status: invitation.status,
+        })
+        .from(invitation)
+        .where(
+          and(
+            eq(invitation.id, invitationId),
+            eq(invitation.organizationId, ctx.orgId),
+          ),
+        )
+        .limit(1),
+    )
+    return rows[0]
+      ? {
+          id: rows[0].id,
+          email: rows[0].email,
+          role: rows[0].role as InvitableRole,
+          status: rows[0].status,
+        }
+      : undefined
+  }
+
+  /**
+   * Look up a single pending invitation by its token, joined with the
+   * inviting org. Filters: status=pending, email matches caller's JWT
+   * claim, not expired. Returns undefined for any of those failing —
+   * the four conditions the accept RPC also enforces. Same RLS chain
+   * as findMyPending.
+   */
+  async findByToken(
+    ctx: SessionContext,
+    token: string,
+  ): Promise<IncomingInvitation | undefined> {
+    const callerEmail = ctx.email
+    if (callerEmail === null) return undefined
+    // Normalize to lowercase to match the stored value: invitations are
+    // inserted lowercase (see `create()` line 72) but `ctx.email` comes
+    // straight from the JWT, which can carry mixed case (Google OAuth in
+    // particular). Without normalization a valid pending invitation
+    // returns `undefined` and the accept-invite page renders "not found".
+    // Mirrors the existing pattern in findMyPending / hasPendingForEmail.
+    const normalizedEmail = callerEmail.toLowerCase()
+    const rows = await withRLS(ctx, (tx) =>
+      tx
+        .select({
+          id: invitation.id,
+          role: invitation.role,
+          token: invitation.token,
+          expiresAt: invitation.expiresAt,
+          orgId: organization.id,
+          orgName: organization.name,
+          orgSlug: organization.slug,
+          orgLogoUrl: organization.logoUrl,
+        })
+        .from(invitation)
+        .innerJoin(organization, eq(invitation.organizationId, organization.id))
+        .where(
+          and(
+            eq(invitation.token, token),
+            eq(invitation.email, normalizedEmail),
+            eq(invitation.status, "pending"),
+            gt(invitation.expiresAt, new Date()),
+          ),
+        )
+        .limit(1),
+    )
+    if (rows.length === 0) return undefined
+    const row = rows[0]
+    return {
+      id: row.id,
+      token: row.token,
+      role: row.role as InvitableRole,
+      expiresAt: row.expiresAt.toISOString(),
+      organizationId: row.orgId,
+      organizationName: row.orgName,
+      organizationSlug: row.orgSlug,
+      organizationLogoUrl: row.orgLogoUrl ?? undefined,
     }
   }
 
