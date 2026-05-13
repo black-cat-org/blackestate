@@ -1,5 +1,7 @@
 # Sub-plan 13 — Mobile Skeleton (iOS + Android)
 
+> **Status:** ✅ Implementado (parte del cutover Supabase Auth 2026-04-17 + polish posteriores). Histórico de referencia — checkboxes individuales no se mantuvieron al día durante el cutover big-bang; ver master plan `00-master.md` para criterios de éxito validados.
+
 > **Depends on:** migración web completa (sub-plans 01-12)
 > **Unlocks:** mobile stream futuro
 
