@@ -1,5 +1,8 @@
 import type { BotActivityType, SentPropertyStatus, BotConfig } from "@/features/bot/domain/bot.entity"
-import type { AppointmentStatus } from "@/features/appointments/domain/appointment.entity"
+import type {
+  AppointmentStatus,
+  AppointmentOrigin,
+} from "@/features/appointments/domain/appointment.entity"
 
 export const BOT_ACTIVITY_LABELS: Record<BotActivityType, string> = {
   property_sent: "Propiedad enviada",
@@ -70,16 +73,32 @@ export const APPOINTMENT_STATUS_COLORS: Record<AppointmentStatus, string> = {
   cancelled: "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300",
 }
 
+export const APPOINTMENT_ORIGIN_LABELS: Record<AppointmentOrigin, string> = {
+  agent: "Agente",
+  bot: "Bot",
+}
+
+export const APPOINTMENT_ORIGIN_COLORS: Record<AppointmentOrigin, string> = {
+  agent: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300",
+  bot: "bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300",
+}
+
+// Transition order is rendered left-to-right: secondary/destructive on the
+// left, primary on the right. This mirrors the standard dialog button
+// convention ("Cancelar | Confirmar") so muscle memory transfers from
+// modal dialogs to the inline action row.
 export const APPOINTMENT_STATUS_TRANSITIONS: Record<AppointmentStatus, { status: AppointmentStatus; label: string }[]> = {
   requested: [
-    { status: "confirmed", label: "Confirmar" },
     { status: "cancelled", label: "Cancelar" },
+    { status: "confirmed", label: "Confirmar" },
   ],
   confirmed: [
     { status: "cancelled", label: "Cancelar" },
   ],
   completed: [],
-  cancelled: [],
+  cancelled: [
+    { status: "confirmed", label: "Reactivar" },
+  ],
 }
 
 export const DAYS_OF_WEEK = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"] as const
@@ -95,7 +114,7 @@ export const DEFAULT_BOT_CONFIG: BotConfig = {
     saturday: { enabled: true, startTime: "09:00", endTime: "13:00" },
     sunday: { enabled: false, startTime: "09:00", endTime: "13:00" },
   },
-  welcomeMessage: "¡Hola {nombre}! 👋 Soy el asistente virtual de {agente}. Vi que te interesa la propiedad \"{propiedad}\". Te envío toda la información disponible. ¿Tenés alguna consulta?",
+  welcomeMessage: "¡Hola {nombre}! 👋 Soy el asistente virtual de {agente}. Vi que te interesa la propiedad \"{propiedad}\". Te envío toda la información disponible. ¿Tienes alguna consulta?",
   appointmentDuration: 60,
   reminderHoursBefore: 2,
   notifications: {

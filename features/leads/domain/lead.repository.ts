@@ -22,6 +22,8 @@ export interface ILeadRepository {
   create(ctx: SessionContext, data: CreateLeadDTO): Promise<Lead>
   update(ctx: SessionContext, id: string, data: Partial<Lead>): Promise<Lead>
   softDelete(ctx: SessionContext, id: string): Promise<void>
+  findAllDeleted(ctx: SessionContext): Promise<Lead[]>
+  restore(ctx: SessionContext, id: string): Promise<Lead>
 
   // Queue operations
   getQueueStatus(ctx: SessionContext, leadId: string): Promise<QueueStatus>

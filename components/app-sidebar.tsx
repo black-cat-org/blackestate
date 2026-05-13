@@ -12,6 +12,7 @@ import {
   MessageSquare,
   Send,
   Settings2,
+  Trash2,
   Users,
 } from "lucide-react"
 
@@ -46,6 +47,7 @@ const data = {
       ],
     },
     { title: "Configuración", url: "/dashboard/settings", icon: Settings2 },
+    { title: "Papelera", url: "/dashboard/trash", icon: Trash2 },
   ],
   navSecondary: [
     { title: "Soporte", url: "#", icon: LifeBuoy },

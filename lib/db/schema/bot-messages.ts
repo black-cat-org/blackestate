@@ -19,6 +19,9 @@ export const botMessages = pgTable("bot_messages", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
   deletedAt: timestamp("deleted_at", { withTimezone: true }),
+  deletedByUserId: uuid("deleted_by_user_id"),
+  deletedByUserName: text("deleted_by_user_name"),
+  deletedByUserEmail: text("deleted_by_user_email"),
 }, (t) => [
   index("bot_msg_conversation_id_idx").on(t.conversationId),
   index("bot_msg_org_id_idx").on(t.organizationId),

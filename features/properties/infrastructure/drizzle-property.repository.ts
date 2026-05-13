@@ -1,4 +1,4 @@
-import { eq, and, isNull } from "drizzle-orm"
+import { eq, and, isNull, isNotNull, desc } from "drizzle-orm"
 
 import type { IPropertyRepository } from "@/features/properties/domain/property.repository"
 import type { Property, PropertyFormData } from "@/features/properties/domain/property.entity"
@@ -6,6 +6,7 @@ import type { SessionContext } from "@/features/shared/domain/session-context"
 import { withRLS } from "@/features/shared/infrastructure/rls"
 import { properties } from "@/lib/db/schema"
 import { db } from "@/lib/db"
+import { PROPERTY_DUPLICATE_SUFFIX } from "@/lib/constants/property"
 import {
   mapRowToEntity,
   mapFormDataToInsert,
@@ -16,6 +17,27 @@ export class DrizzlePropertyRepository implements IPropertyRepository {
   async findAll(ctx: SessionContext): Promise<Property[]> {
     const rows = await withRLS(ctx, (tx) =>
       tx.select().from(properties).where(isNull(properties.deletedAt)),
+    )
+    return rows.map(mapRowToEntity)
+  }
+
+  async findAllActive(ctx: SessionContext): Promise<Property[]> {
+    const rows = await withRLS(ctx, (tx) =>
+      tx
+        .select()
+        .from(properties)
+        .where(and(isNull(properties.deletedAt), eq(properties.status, "active"))),
+    )
+    return rows.map(mapRowToEntity)
+  }
+
+  async findAllDeleted(ctx: SessionContext): Promise<Property[]> {
+    const rows = await withRLS(ctx, (tx) =>
+      tx
+        .select()
+        .from(properties)
+        .where(isNotNull(properties.deletedAt))
+        .orderBy(desc(properties.deletedAt)),
     )
     return rows.map(mapRowToEntity)
   }
@@ -61,16 +83,63 @@ export class DrizzlePropertyRepository implements IPropertyRepository {
   }
 
   async softDelete(ctx: SessionContext, id: string): Promise<void> {
+    // Super admin actions are out-of-org maintenance; recording the platform
+    // admin's identity in a tenant audit trail would mislead the org's
+    // operators. Leave the audit fields null in that case so the trash UI
+    // renders "Eliminado por el sistema" instead of pointing to a stranger.
+    const isSuperAdminAction = ctx.isSuperAdmin === true
     const rows = await withRLS(ctx, (tx) =>
       tx
         .update(properties)
-        .set({ deletedAt: new Date() })
-        .where(eq(properties.id, id))
+        .set({
+          deletedAt: new Date(),
+          deletedByUserId: isSuperAdminAction ? null : ctx.userId,
+          deletedByUserName: isSuperAdminAction ? null : ctx.userName,
+          deletedByUserEmail: isSuperAdminAction ? null : ctx.email,
+        })
+        .where(and(eq(properties.id, id), isNull(properties.deletedAt)))
         .returning({ id: properties.id }),
     )
     if (rows.length === 0) {
       throw new Error("Property not found or no permission")
     }
+  }
+
+  async restore(ctx: SessionContext, id: string): Promise<Property> {
+    return withRLS(ctx, async (tx) => {
+      const rows = await tx
+        .update(properties)
+        .set({
+          deletedAt: null,
+          deletedByUserId: null,
+          deletedByUserName: null,
+          deletedByUserEmail: null,
+        })
+        .where(and(eq(properties.id, id), isNotNull(properties.deletedAt)))
+        .returning()
+
+      if (rows.length > 0) return mapRowToEntity(rows[0])
+
+      // Disambiguate active row vs absent. We deliberately do not try to
+      // discriminate "row exists but caller has no permission" from "row
+      // does not exist": the SELECT runs under the same RLS, so an agent
+      // who lacks both `_select_org` (deleted_at IS NULL) and
+      // `_select_trash` (own row) visibility receives an empty rowset —
+      // returning PROPERTY_NOT_FOUND in that case is intentional, matches
+      // the standard security best practice of not leaking existence to
+      // unauthorized callers, and keeps the user-facing toast generic.
+      const existing = await tx
+        .select({ id: properties.id, deletedAt: properties.deletedAt })
+        .from(properties)
+        .where(eq(properties.id, id))
+        .limit(1)
+
+      if (existing.length === 0) throw new Error("PROPERTY_NOT_FOUND")
+      if (existing[0].deletedAt === null) throw new Error("PROPERTY_ALREADY_RESTORED")
+      // Reachable only when the caller can SELECT the deleted row but for
+      // some reason fails the UPDATE policy — defensive fallback.
+      throw new Error("PROPERTY_NO_PERMISSION")
+    })
   }
 
   async duplicate(ctx: SessionContext, id: string): Promise<Property> {
@@ -98,7 +167,7 @@ export class DrizzlePropertyRepository implements IPropertyRepository {
         .values({
           ...rest,
           createdByUserId: ctx.userId,
-          title: `${rest.title} (copy)`,
+          title: `${rest.title} ${PROPERTY_DUPLICATE_SUFFIX}`,
           status: "draft",
         })
         .returning()

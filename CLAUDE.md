@@ -275,8 +275,18 @@ export async function createPropertyAction(formData: PropertyFormData): Promise<
 
 ### ⚠️ RLS: Critical Rules
 
-- **EVERY user query** must go through `withRLS(ctx, (tx) => ...)`. NEVER use `db` directly for user data — all multitenancy tables have `FORCE RLS`, so even the `postgres` superuser gets zero rows without the session config.
-- `db` direct (no RLS) only for: Inngest background jobs cross-org, public queries (landing pages), and bootstrapping helpers that explicitly need to bypass scope.
+**Strict zero-trust: every domain query is RLS-checked at the DB.** Trusting JWT claims alone is forbidden. The `withRLS` / `withAnon` wrappers are the only legitimate callers of the raw `db` pool — every other piece of code must go through one of them so a policy is always evaluated.
+
+- **EVERY authenticated query** through `withRLS(ctx, (tx) => ...)`. Switches the role to `authenticated` and injects the JWT claims (`sub`, `active_org_id`, `org_role`, `is_super_admin`, `email`).
+- **EVERY anon (public landing) query** through `withAnon((tx) => ...)`. Switches the role to `anon` and runs against the explicit anon policies (e.g. `properties_select_public`, `analytics_events_insert_public_visit` in `drizzle/sql/017b`). NEVER use `db` direct from a public route.
+- **Domain RLS includes membership check.** All domain-table policies (`drizzle/sql/017a`) verify `public.is_org_member(organization_id)` in addition to matching `organization_id` against the JWT's `active_org_id` claim. A user removed from an org is blocked at the DB even if their JWT still carries the stale claim (T071 fix).
+- **Postgres role bypasses RLS** (`rolbypassrls=true` overrides FORCE RLS — Postgres semantics, not a Supabase quirk). The DATABASE_URL connects as `postgres`, so any `db.query(...)` outside `withRLS`/`withAnon` runs cross-org with no policy evaluation. Treat such usage as a security incident unless explicitly justified in this file.
+- **Documented exceptions to "always go through withRLS/withAnon":**
+  1. The `withRLS` (`features/shared/infrastructure/rls.ts`) and `withAnon` (`features/shared/infrastructure/anon-rls.ts`) wrappers themselves call `db.transaction(...)` to open the tx where they switch roles via `set_config`.
+  2. `DrizzleMemberRepository.softDeleteWithActiveOrgReset` calls the `soft_delete_member_with_active_org_reset` RPC via `supabase.rpc()` (PostgREST under the authenticated role) instead of `withRLS`. The RPC is `SECURITY DEFINER` because it must write to another user's `user_active_org` row, which RLS blocks for any non-self caller (the row's update policy requires `user_id = auth.uid()`). The RPC re-checks caller authorisation internally via `auth.uid()` + an inline locked `SELECT` against `public.member`, so SECURITY DEFINER widens cross-row write capability, not authorisation. See `drizzle/sql/023_soft_delete_member_rpc_active_org_semantics_v3.sql`.
+
+  Any new exception must be added to this list with justification.
+- **Admin client (`getSupabaseAdmin()`)** is reserved for cross-org auth-system operations (e.g. `inviteUserByEmail`, `deleteUser`, future Inngest background jobs). NEVER for queries against domain tables.
 - No hard DELETE. Soft delete = `UPDATE SET deleted_at = now()`. No GRANT DELETE on any table.
 - `created_by_user_id` is NOT NULL on: properties, leads, appointments, ai_contents, lead_property_queue.
 - Agent can only UPDATE own records (`created_by_user_id = sub`). Owner/admin can UPDATE anything in their org.
@@ -405,12 +415,30 @@ Listado de env vars actuales en `.env.local` (ver `.env.template`). Algunas son 
 | `DIRECT_URL` | Drizzle direct connection (migrations) | Server-only | Activa |
 | `GOOGLE_CLIENT_ID` | OAuth Google (configurado en Supabase Dashboard → Auth Providers) | Server-only | Activa |
 | `GOOGLE_CLIENT_SECRET` | OAuth Google secret (configurado en Supabase Dashboard) | Server-only | Activa |
+| `EMAIL_FROM` | Sender envelope para emails custom — `"Black Estate <noreply@…>"` | Server-only | **Nueva (mailing Fase 1)** |
+| `SMTP_HOST` | Mailtrap sandbox host (dev) — Fase 2 lo reemplaza por Resend SDK | Server-only | **Nueva (mailing Fase 1)** |
+| `SMTP_PORT` | Mailtrap sandbox port (2525) — Fase 2 lo retira | Server-only | **Nueva (mailing Fase 1)** |
+| `SMTP_USER` | Mailtrap sandbox user — Fase 2 lo retira | Server-only | **Nueva (mailing Fase 1)** |
+| `SMTP_PASS` | Mailtrap sandbox password — Fase 2 lo retira | Server-only | **Nueva (mailing Fase 1)** |
 | `BONEYARD_SESSION_TOKEN` | Dev tool — skeletons gen | Server-only | Dev only |
 
 **Reglas:**
 - `NEXT_PUBLIC_*` siempre se expone al browser — nunca meter secrets ahí.
 - `SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_URL` tienen mismo valor — redundancia intencional (el browser no accede a env vars sin prefix público).
 - Rotación de keys: `sb_secret_...` se rota desde Dashboard → Settings → API Keys sin downtime (múltiples keys activas a la vez).
+- `SMTP_*` + `EMAIL_FROM` se acceden vía `requireEmailEnv()` (`lib/email/env.ts`) con accesos literales — mismo patrón que `requireSupabaseEnv()`. En Fase 2 del mailing plan los `SMTP_*` se reemplazan por `RESEND_API_KEY`; `EMAIL_FROM` permanece (cambia el dominio del sender, no la var).
+
+## Mailing
+
+Custom transactional emails (invitations, future feature emails) viajan a través de `lib/email/` — un módulo opinado, transport-agnostic:
+
+- **Transport actual (Fase 1):** nodemailer + Mailtrap sandbox (dev). Sin dominio propio aún → solo dev/staging.
+- **Transport futuro (Fase 2):** Resend SDK + dominio propio (`blackestate.app`). El `sendEmail` API permanece igual — único punto de cambio: `lib/email/transport.ts`.
+- **Auth emails** (signup verification, password recovery, email change) hoy salen por la SMTP built-in de Supabase Auth con Custom SMTP apuntando a Mailtrap. Fase 2 los migra al módulo vía Send Email Hook (`POST /api/auth/send-email-hook`).
+- **Render:** React Email primitives en `lib/email/components/` (BrandLayout, EmailButton, InfoSection, Footer) + tokens (`tokens.ts`). Inline styles, fontFamily explícito para fallback Outlook.
+- **Templates per-feature:** viven bajo `features/*/infrastructure/email/` (ej. `features/shared/infrastructure/email/invitation-email.tsx`).
+- **Dispatch contract:** server actions encolan email en `after()` post-action (best-effort D-8). Si SMTP falla, la mutación queda persistida y el admin puede reenviar.
+- **Plan completo:** `docs/plans/2026-05-12-mailing-architecture.md`.
 
 ## Key Decisions
 

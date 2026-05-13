@@ -1,4 +1,4 @@
-import { eq, and, isNull, asc, sql } from "drizzle-orm"
+import { eq, and, isNull, isNotNull, asc, desc, sql } from "drizzle-orm"
 
 import type { ILeadRepository, CreateLeadDTO } from "@/features/leads/domain/lead.repository"
 import type {
@@ -14,7 +14,6 @@ import { withRLS } from "@/features/shared/infrastructure/rls"
 import { leads, leadPropertyQueue, properties, analyticsEvents } from "@/lib/db/schema"
 import { db } from "@/lib/db"
 import {
-  mapLeadRowToEntity,
   mapLeadRowWithTitleToEntity,
   mapCreateDTOToInsert,
   mapPartialEntityToUpdate,
@@ -109,20 +108,88 @@ export class DrizzleLeadRepository implements ILeadRepository {
     if (rows.length === 0) {
       throw new Error("Lead not found or no permission")
     }
-    return mapLeadRowToEntity(rows[0])
+    return mapLeadRowWithTitleToEntity(rows[0], data.propertyTitle)
   }
 
   async softDelete(ctx: SessionContext, id: string): Promise<void> {
+    // Super admin actions live outside any single org; recording the platform
+    // admin's identity in a tenant audit trail would mislead operators. Leave
+    // the audit fields null so the trash UI renders "Eliminado por el sistema".
+    const isSuperAdminAction = ctx.isSuperAdmin === true
     const rows = await withRLS(ctx, (tx) =>
       tx
         .update(leads)
-        .set({ deletedAt: new Date() })
-        .where(eq(leads.id, id))
+        .set({
+          deletedAt: new Date(),
+          deletedByUserId: isSuperAdminAction ? null : ctx.userId,
+          deletedByUserName: isSuperAdminAction ? null : ctx.userName,
+          deletedByUserEmail: isSuperAdminAction ? null : ctx.email,
+        })
+        .where(and(eq(leads.id, id), isNull(leads.deletedAt)))
         .returning({ id: leads.id }),
     )
     if (rows.length === 0) {
       throw new Error("Lead not found or no permission")
     }
+  }
+
+  async findAllDeleted(ctx: SessionContext): Promise<Lead[]> {
+    const rows = await withRLS(ctx, (tx) =>
+      tx
+        .select({ lead: leads, propertyTitle: properties.title })
+        .from(leads)
+        .leftJoin(properties, eq(leads.propertyId, properties.id))
+        .where(isNotNull(leads.deletedAt))
+        .orderBy(desc(leads.deletedAt)),
+    )
+    return rows.map((r) =>
+      mapLeadRowWithTitleToEntity(r.lead, r.propertyTitle ?? undefined),
+    )
+  }
+
+  async restore(ctx: SessionContext, id: string): Promise<Lead> {
+    return withRLS(ctx, async (tx) => {
+      const rows = await tx
+        .update(leads)
+        .set({
+          deletedAt: null,
+          deletedByUserId: null,
+          deletedByUserName: null,
+          deletedByUserEmail: null,
+        })
+        .where(and(eq(leads.id, id), isNotNull(leads.deletedAt)))
+        .returning()
+
+      if (rows.length > 0) {
+        const propertyRow = await tx
+          .select({ title: properties.title })
+          .from(properties)
+          .where(eq(properties.id, rows[0].propertyId))
+          .limit(1)
+        return mapLeadRowWithTitleToEntity(
+          rows[0],
+          propertyRow[0]?.title ?? undefined,
+        )
+      }
+
+      // Disambiguate active row vs absent. The SELECT runs under the same
+      // RLS, so a caller without `_select_org` (active) or `_select_trash`
+      // (own deleted) visibility receives an empty rowset — returning
+      // LEAD_NOT_FOUND in that case is intentional and matches the
+      // standard security best practice of not leaking existence to
+      // unauthorized callers.
+      const existing = await tx
+        .select({ id: leads.id, deletedAt: leads.deletedAt })
+        .from(leads)
+        .where(eq(leads.id, id))
+        .limit(1)
+
+      if (existing.length === 0) throw new Error("LEAD_NOT_FOUND")
+      if (existing[0].deletedAt === null) throw new Error("LEAD_ALREADY_RESTORED")
+      // Reachable only when the caller can SELECT the deleted row but for
+      // some reason fails the UPDATE policy — defensive fallback.
+      throw new Error("LEAD_NO_PERMISSION")
+    })
   }
 
   // ---------------------------------------------------------------------------

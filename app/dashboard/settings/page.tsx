@@ -16,11 +16,25 @@ import {
 } from "@/features/settings/presentation/actions"
 import { getBotConfigAction } from "@/features/bot/presentation/actions"
 import { listMembersAction, getSeatInfoAction } from "@/features/shared/presentation/member-actions"
-import { listInvitationsAction } from "@/features/shared/presentation/invitation-actions"
+import {
+  listInvitationsAction,
+  listArchivedInvitationsAction,
+} from "@/features/shared/presentation/invitation-actions"
 import { getSessionContext } from "@/features/shared/infrastructure/session-context"
 
 export default async function SettingsPage() {
-  const [business, notifications, integrations, plan, botConfig, members, invitations, seatInfo, ctx] = await Promise.all([
+  const [
+    business,
+    notifications,
+    integrations,
+    plan,
+    botConfig,
+    members,
+    invitations,
+    archivedInvitations,
+    seatInfo,
+    ctx,
+  ] = await Promise.all([
     getBusinessSettingsAction(),
     getNotificationPreferencesAction(),
     getIntegrationSettingsAction(),
@@ -28,6 +42,7 @@ export default async function SettingsPage() {
     getBotConfigAction(),
     listMembersAction(),
     listInvitationsAction(),
+    listArchivedInvitationsAction(),
     getSeatInfoAction(),
     getSessionContext(),
   ])
@@ -57,6 +72,7 @@ export default async function SettingsPage() {
           team={{
             members,
             invitations,
+            archivedInvitations,
             seatInfo,
             userRole: ctx.role,
           }}

@@ -65,6 +65,15 @@ export const properties = pgTable("properties", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
   deletedAt: timestamp("deleted_at", { withTimezone: true }),
+  // Audit fields populated by repository.softDelete (see 024_soft_delete_audit_columns.sql).
+  // The FK `deleted_by_user_id REFERENCES auth.users(id) ON DELETE SET NULL`
+  // is managed via SQL migration only — `auth.users` lives outside the
+  // public.* Drizzle schema scope, so .references() cannot express it. The
+  // pattern is repeated across every soft-delete domain table; this comment
+  // is the canonical reference.
+  deletedByUserId: uuid("deleted_by_user_id"),
+  deletedByUserName: text("deleted_by_user_name"),
+  deletedByUserEmail: text("deleted_by_user_email"),
 }, (t) => [
   index("properties_org_id_idx").on(t.organizationId),
   index("properties_status_idx").on(t.status),

@@ -196,7 +196,14 @@ export async function getHighlights(): Promise<string[]> {
     highlights.push(`Tu mejor fuente fue ${sourceNames[topSource[0]] || topSource[0]} con ${topSource[1]} leads`)
   }
 
-  const botAppointments = appointments.filter((a) => a.status === "confirmed" || a.status === "completed").length
+  // Highlight is specifically about appointments the BOT scheduled — must
+  // filter by origin or agent-created appointments inflate the count and
+  // the copy "El bot agendó N citas" becomes a lie. See
+  // docs/plans/analytics-appointments.md (analytics rule #1: queries that
+  // mean something different per origin must filter by origin explicitly).
+  const botAppointments = appointments.filter(
+    (a) => a.origin === "bot" && (a.status === "confirmed" || a.status === "completed"),
+  ).length
   if (botAppointments > 0) highlights.push(`El bot agendó ${botAppointments} cita${botAppointments > 1 ? "s" : ""} sin tu intervención`)
 
   const interestedCount = leads.filter((l) => l.status === "interested").length

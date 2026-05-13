@@ -43,3 +43,25 @@ export interface SendInvitationDTO {
   email: string
   role: InvitableRole
 }
+
+/**
+ * Invitation that didn't reach acceptance: either the invitee declined
+ * ("rejected") or the row's `expiresAt` passed while still in `pending`
+ * status ("expired"). The status field is *derived* by the repository —
+ * there is no background job that flips a `pending` row to `expired` in
+ * the DB, so callers should not assume `expired` is persisted. Persisted
+ * `cancelled` rows (admin-retracted) are intentionally excluded from this
+ * list: they were never "rejected by the invitee" and the admin already
+ * acknowledged them at cancellation time.
+ *
+ * Powers the "Invitaciones rechazadas y expiradas" panel in
+ * `/dashboard/settings` → Equipo. Owner/admin only.
+ */
+export interface ArchivedInvitation {
+  id: string
+  email: string
+  role: InvitableRole
+  status: "rejected" | "expired"
+  expiresAt: string
+  createdAt: string
+}

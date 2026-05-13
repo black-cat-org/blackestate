@@ -16,6 +16,9 @@ export const agentProfiles = pgTable("agent_profiles", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
   deletedAt: timestamp("deleted_at", { withTimezone: true }),
+  deletedByUserId: uuid("deleted_by_user_id"),
+  deletedByUserName: text("deleted_by_user_name"),
+  deletedByUserEmail: text("deleted_by_user_email"),
 }, (t) => [
   uniqueIndex("agent_profiles_user_org_idx").on(t.userId, t.organizationId),
 ]);

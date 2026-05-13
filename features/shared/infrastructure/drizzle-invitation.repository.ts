@@ -1,16 +1,17 @@
-import { eq, and, sql, gt } from "drizzle-orm"
+import { eq, and, sql, gt, lt, inArray, or, desc } from "drizzle-orm"
 import { invitation, member, organization } from "@/lib/db/schema"
 import { getSupabaseServerClient } from "@/lib/supabase/server"
 import { withRLS } from "./rls"
 import { mapInvitationRowToEntity } from "./invitation.mapper"
 import type { SessionContext } from "@/features/shared/domain/session-context"
 import type {
+  ArchivedInvitation,
   Invitation,
   PendingInvitation,
   IncomingInvitation,
   InvitableRole,
 } from "@/features/shared/domain/invitation.entity"
-import type { IInvitationRepository } from "@/features/shared/domain/invitation.repository"
+import type { IInvitationRepository, InvitationSummary } from "@/features/shared/domain/invitation.repository"
 
 const INVITABLE_ROLES: readonly string[] = ["admin", "agent"]
 
@@ -22,18 +23,18 @@ const INVITABLE_ROLES: readonly string[] = ["admin", "agent"]
 function translateAcceptError(message: string | undefined): Error {
   switch (message) {
     case "invitation_not_found":
-      return new Error("Invitation not found")
+      return new Error("No encontramos esta invitación.")
     case "invitation_not_pending":
-      return new Error("Invitation has already been processed")
+      return new Error("Esta invitación ya fue procesada.")
     case "invitation_expired":
-      return new Error("Invitation has expired")
+      return new Error("Esta invitación expiró. Pide al administrador que te envíe una nueva.")
     case "invitation_email_mismatch":
-      return new Error("This invitation belongs to a different email address")
+      return new Error("Esta invitación es para otra dirección de email.")
     case "email_missing":
     case "not_authenticated":
-      return new Error("Not authenticated")
+      return new Error("Necesitas iniciar sesión para aceptar la invitación.")
     default:
-      return new Error(message ?? "Failed to accept invitation")
+      return new Error("No pudimos procesar la invitación. Intenta de nuevo.")
   }
 }
 
@@ -116,6 +117,78 @@ export class DrizzleInvitationRepository implements IInvitationRepository {
         email: r.email,
         role: r.role as InvitableRole,
         expiresAt: r.expiresAt.toISOString(),
+      }))
+  }
+
+  /**
+   * List archived invitations for the caller's active org: rows the
+   * invitee rejected (`status='rejected'`) plus rows that timed out
+   * (`status='pending' AND expiresAt < now()`). Persisted `cancelled`
+   * and `accepted` rows are intentionally excluded.
+   *
+   * The `expired` status is derived in code, not stored: there is no
+   * background job that updates `pending` → `expired` in the DB, so the
+   * mapper computes it from the row's stored status and `expiresAt`.
+   * Sorted newest-first so the admin sees the most recent activity at
+   * the top of the panel.
+   *
+   * RLS: authorised by `invitation_select_admin_or_invitee` (admin
+   * branch). The use case guards on `ctx.role` so agents never reach
+   * this query.
+   */
+  async findArchivedByOrgId(ctx: SessionContext): Promise<ArchivedInvitation[]> {
+    const rows = await withRLS(ctx, (tx) =>
+      tx
+        .select({
+          id: invitation.id,
+          email: invitation.email,
+          role: invitation.role,
+          status: invitation.status,
+          expiresAt: invitation.expiresAt,
+          createdAt: invitation.createdAt,
+        })
+        .from(invitation)
+        .where(
+          and(
+            eq(invitation.organizationId, ctx.orgId),
+            or(
+              eq(invitation.status, "rejected"),
+              // Persisted `expired` rows (future migration with a cron
+              // job that flips `pending` → `expired` server-side). Today
+              // the enum value exists but nothing in the codebase writes
+              // it; including it here future-proofs the query so any
+              // such migration is picked up automatically without a
+              // matching code change. The doc comment on the repository
+              // interface explicitly advertises this coverage.
+              eq(invitation.status, "expired"),
+              // Derived expiry: `pending` rows past `expiresAt`. The
+              // mapper translates this to `status='expired'` for the UI.
+              and(
+                eq(invitation.status, "pending"),
+                lt(invitation.expiresAt, new Date()),
+              ),
+            ),
+          ),
+        )
+        .orderBy(desc(invitation.createdAt)),
+    )
+
+    return rows
+      .filter((r) => INVITABLE_ROLES.includes(r.role))
+      .map((r) => ({
+        id: r.id,
+        email: r.email,
+        role: r.role as InvitableRole,
+        // Map persisted `rejected` and `expired` 1:1; derive `expired`
+        // for `pending` rows that passed the `expiresAt < now()`
+        // predicate above. The UI-facing union narrows to the two
+        // archival states the panel knows how to render.
+        status:
+          r.status === "rejected" || r.status === "expired"
+            ? r.status
+            : "expired",
+        expiresAt: r.expiresAt.toISOString(),
+        createdAt: r.createdAt.toISOString(),
       }))
   }
 
@@ -203,6 +276,14 @@ export class DrizzleInvitationRepository implements IInvitationRepository {
    * `invitation_update_admin_or_invitee`.
    */
   async markCancelled(ctx: SessionContext, invitationId: string): Promise<void> {
+    // Cancellable statuses: pending rows are retracted by the admin,
+    // rejected rows are discarded after the invitee declined, and
+    // expired rows are cleaned up by the admin from the archived
+    // panel. `pending` here also covers the "derived expired" case
+    // (status='pending' + expiresAt<now()) since no cron flips them
+    // server-side. Accepted/cancelled are terminal: an accepted
+    // invitee is already a member (use member removal instead); a
+    // cancelled row is the tombstone of an earlier retraction.
     const result = await withRLS(ctx, (tx) =>
       tx
         .update(invitation)
@@ -211,7 +292,7 @@ export class DrizzleInvitationRepository implements IInvitationRepository {
           and(
             eq(invitation.id, invitationId),
             eq(invitation.organizationId, ctx.orgId),
-            eq(invitation.status, "pending"),
+            inArray(invitation.status, ["pending", "rejected", "expired"]),
           ),
         )
         .returning({ id: invitation.id }),
@@ -219,6 +300,103 @@ export class DrizzleInvitationRepository implements IInvitationRepository {
 
     if (result.length === 0) {
       throw new Error("Invitation not found or cannot be cancelled")
+    }
+  }
+
+  /**
+   * Narrow projection (id, email, role, status) of an invitation scoped
+   * to the caller's org. Used by the resend flow which only needs those
+   * four fields. Returning the full Invitation entity would leak the
+   * secret `token` to the Presentation layer unnecessarily.
+   */
+  async findByIdForOrg(
+    ctx: SessionContext,
+    invitationId: string,
+  ): Promise<InvitationSummary | undefined> {
+    const rows = await withRLS(ctx, (tx) =>
+      tx
+        .select({
+          id: invitation.id,
+          email: invitation.email,
+          role: invitation.role,
+          status: invitation.status,
+          expiresAt: invitation.expiresAt,
+        })
+        .from(invitation)
+        .where(
+          and(
+            eq(invitation.id, invitationId),
+            eq(invitation.organizationId, ctx.orgId),
+          ),
+        )
+        .limit(1),
+    )
+    return rows[0]
+      ? {
+          id: rows[0].id,
+          email: rows[0].email,
+          role: rows[0].role as InvitableRole,
+          status: rows[0].status,
+          expiresAt: rows[0].expiresAt.toISOString(),
+        }
+      : undefined
+  }
+
+  /**
+   * Look up a single pending invitation by its token, joined with the
+   * inviting org. Filters: status=pending, email matches caller's JWT
+   * claim, not expired. Returns undefined for any of those failing —
+   * the four conditions the accept RPC also enforces. Same RLS chain
+   * as findMyPending.
+   */
+  async findByToken(
+    ctx: SessionContext,
+    token: string,
+  ): Promise<IncomingInvitation | undefined> {
+    const callerEmail = ctx.email
+    if (callerEmail === null) return undefined
+    // Normalize to lowercase to match the stored value: invitations are
+    // inserted lowercase (see `create()` line 72) but `ctx.email` comes
+    // straight from the JWT, which can carry mixed case (Google OAuth in
+    // particular). Without normalization a valid pending invitation
+    // returns `undefined` and the accept-invite page renders "not found".
+    // Mirrors the existing pattern in findMyPending / hasPendingForEmail.
+    const normalizedEmail = callerEmail.toLowerCase()
+    const rows = await withRLS(ctx, (tx) =>
+      tx
+        .select({
+          id: invitation.id,
+          role: invitation.role,
+          token: invitation.token,
+          expiresAt: invitation.expiresAt,
+          orgId: organization.id,
+          orgName: organization.name,
+          orgSlug: organization.slug,
+          orgLogoUrl: organization.logoUrl,
+        })
+        .from(invitation)
+        .innerJoin(organization, eq(invitation.organizationId, organization.id))
+        .where(
+          and(
+            eq(invitation.token, token),
+            eq(invitation.email, normalizedEmail),
+            eq(invitation.status, "pending"),
+            gt(invitation.expiresAt, new Date()),
+          ),
+        )
+        .limit(1),
+    )
+    if (rows.length === 0) return undefined
+    const row = rows[0]
+    return {
+      id: row.id,
+      token: row.token,
+      role: row.role as InvitableRole,
+      expiresAt: row.expiresAt.toISOString(),
+      organizationId: row.orgId,
+      organizationName: row.orgName,
+      organizationSlug: row.orgSlug,
+      organizationLogoUrl: row.orgLogoUrl ?? undefined,
     }
   }
 

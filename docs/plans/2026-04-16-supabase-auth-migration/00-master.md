@@ -1,9 +1,12 @@
 # Migración Better Auth → Supabase Auth — Master Plan
 
-> **Estado:** Escrito, pendiente de ejecución.
+> **Estado:** ✅ **Completada** — migración cerrada en producción 2026-04-17. Toda la funcionalidad observable es equivalente a Better Auth con stack nativo Supabase. App funciona con Supabase Auth + multitenancy en `public.*` + RLS estricta zero-trust + custom JWT claims.
 > **Fecha creación:** 2026-04-16
+> **Fecha cierre:** 2026-04-17 (cutover) + 2026-05-12 (post-migration polish: realtime membership revocation, archived invitations panel)
 > **Autor del plan:** Claude (inventario + diseño)
-> **Ejecutor:** Claude en sesión(es) futura(s), bajo supervisión del usuario.
+> **Ejecutor:** Claude bajo supervisión del usuario (Gonzalo Pinell)
+>
+> **Nota:** Los sub-plans 01–14 son referencia histórica del diseño. Sus checkboxes individuales no se actualizaron uno a uno durante la ejecución big-bang del cutover; el estado real se valida por los criterios de éxito al final de este master (todos ✅).
 
 ## Goal
 

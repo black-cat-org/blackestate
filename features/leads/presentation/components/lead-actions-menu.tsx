@@ -11,14 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
+import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog"
 import { Button } from "@/components/ui/button"
 import { LEAD_STATUS_TRANSITIONS } from "@/lib/constants/lead"
 import { updateLeadAction, deleteLeadAction } from "@/features/leads/presentation/actions"
@@ -95,24 +88,14 @@ export function LeadActionsMenu({ lead }: { lead: Lead }) {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Eliminar lead</DialogTitle>
-            <DialogDescription>
-              ¿Seguro que quieres eliminar a {lead.name}? Esta acción no se puede deshacer.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
-              Cancelar
-            </Button>
-            <Button variant="destructive" onClick={handleDelete} disabled={deleting}>
-              {deleting ? "Eliminando..." : "Eliminar"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <DeleteConfirmDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        title="Eliminar lead"
+        description={`¿Seguro que quieres eliminar a ${lead.name}? Esta acción no se puede deshacer.`}
+        onConfirm={handleDelete}
+        confirming={deleting}
+      />
     </>
   )
 }

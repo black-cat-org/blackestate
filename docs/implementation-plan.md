@@ -3,10 +3,10 @@
 > Plan de ejecución granular para llevar Black Estate de frontend con datos mock a producto funcional con backend real.
 >
 > **Creado:** 2026-04-13
-> **Última actualización:** 2026-04-16
-> **Estado:** Capa 1 + Capa 2 mayor completadas. **Migración Better Auth → Supabase Auth EN CURSO.** Sub-plan 01 (schema multitenancy) ✅ done. Resto de fases (02-14) ver `docs/plans/2026-04-16-supabase-auth-migration/`. Plan `2026-04-15-profile-settings-modular-split.md` queda diferido hasta completar la migración auth (algunas decisiones cambian con el nuevo stack).
+> **Última actualización:** 2026-05-13
+> **Estado:** Capa 1 + Capa 2 mayor completadas. **Migración Better Auth → Supabase Auth ✅ completada 2026-04-17** (sub-plans 00–14 cerrados — ver `docs/plans/2026-04-16-supabase-auth-migration/`). Capa 4.3 (Email + invitations) Fase 1 ✅ completada 2026-05-13 (`docs/plans/2026-05-12-mailing-architecture.md`); Fase 2 (Resend + dominio) bloqueada por pre-requisitos del usuario. Plan `2026-04-15-profile-settings-modular-split.md` quedó obsoleto (superseded por la migración).
 
-## Migración Better Auth → Supabase Auth (en curso)
+## Migración Better Auth → Supabase Auth ✅ Completada
 
 | Sub-plan | Tema | Estado |
 |---|---|---|
@@ -35,36 +35,38 @@
 | 1 | Fundación (Auth + DB) | Ninguna | ✅ Completada |
 | 2 | Data Layer Real | Capa 1 | 🔄 En progreso (Clean Architecture done, RLS done, queries done. Pendiente: Storage, transfers, seed data, tests RLS) |
 | 3 | Lógica Asíncrona y AI | Capa 2 | ⬜ Pendiente |
-| 4 | Observabilidad y Notificaciones | Capa 3 | ⬜ Pendiente |
+| 4 | Observabilidad y Notificaciones | Capa 3 | 🔄 En progreso (4.3 Mailing Fase 1 ✅; 4.1 Sentry, 4.2 PostHog, 4.3 Fase 2, 4.4 Knock pendientes) |
 | 5 | Soporte y Marketing | Capa 4 | ⬜ Pendiente |
 
 ---
 
 ## Capa 1 — Fundación (sin esto nada más funciona)
 
-### 1.1 Better Auth — Autenticación, organizations y roles
+### 1.1 Supabase Auth — Autenticación, organizations y roles
+
+> **Histórico:** Esta sección originalmente describía Better Auth (decisión inicial). Tras la migración del 17/04/2026 (`docs/plans/2026-04-16-supabase-auth-migration/`), las tareas ✅ aquí reflejan el estado final con Supabase Auth + multitenancy custom en `public.*`. Las filas se reescribieron para reflejar la implementación actual.
 
 | # | Tarea | Detalle | Estado |
 |---|-------|---------|--------|
-| 1.1.1 | Instalar Better Auth | `npm install better-auth` | ✅ |
-| 1.1.2 | Configurar env vars | `BETTER_AUTH_SECRET` (32+ chars), `BETTER_AUTH_URL`, `DATABASE_URL` en `.env.local` | ✅ |
-| 1.1.3 | Crear instancia auth (server) | `lib/auth.ts` con `betterAuth()`, PostgreSQL adapter, email/password, Google OAuth, Apple OAuth | ✅ |
-| 1.1.4 | Crear cliente auth (client) | `lib/auth-client.ts` con `createAuthClient()` desde `better-auth/react` | ✅ |
-| 1.1.5 | Crear API route handler | `app/api/auth/[...all]/route.ts` con `toNextJsHandler(auth)` | ✅ |
-| 1.1.6 | Configurar proxy (Next.js 16) | `proxy.ts` en la raíz: proteger `/dashboard/*`, permitir `/`, `/p/*` como públicas | ✅ |
-| 1.1.7 | Agregar plugin `nextCookies` | Para que Server Actions puedan setear cookies de auth automáticamente | ✅ (incluido en 1.1.3) |
-| 1.1.8 | Agregar plugin `organization` | Con roles custom (`owner`, `admin`, `agent`), permissions, invitaciones, límite de miembros | ✅ (incluido en 1.1.3) |
-| 1.1.9 | Definir roles y permissions | Configurar los 3 roles con sus ~20 permissions según `docs/roles-and-permissions.md` | ✅ |
-| 1.1.10 | Generar/migrar tablas de auth | `npx auth migrate` para crear tablas `user`, `session`, `account`, `organization`, `member`, etc. | ✅ |
-| 1.1.11 | Configurar Google OAuth | Crear proyecto en Google Cloud Console, obtener client ID y secret | ✅ |
+| 1.1.1 | Configurar Supabase Auth | `@supabase/ssr` instalado. Clients en `lib/supabase/server.ts` (per-request cookie-aware) + `lib/supabase/client.ts` (browser singleton) + `lib/supabase/middleware.ts` (Edge Runtime safe) | ✅ |
+| 1.1.2 | Configurar env vars | `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `DATABASE_URL`, `DIRECT_URL`, `NEXT_PUBLIC_APP_URL`. Acceso vía `requireSupabaseEnv()` (literal-accesses para Turbopack/Webpack) | ✅ |
+| 1.1.3 | Configurar Supabase Auth (server) | Server client `getSupabaseServerClient()` (cookie-aware) + admin `getSupabaseAdmin()` (service_role singleton). Email/password + Google OAuth habilitados en Supabase Dashboard | ✅ |
+| 1.1.4 | Crear cliente auth (browser) | `lib/supabase/client.ts` con `createBrowserClient()` desde `@supabase/ssr` (singleton en `globalThis`) | ✅ |
+| 1.1.5 | Auth callback routes | `app/auth/callback/route.ts` (PKCE `exchangeCodeForSession`) + `app/auth/confirm/route.ts` (token_hash `verifyOtp` — fix Gmail pre-fetch) + `app/auth-code-error/page.tsx` | ✅ |
+| 1.1.6 | Configurar proxy (Next.js 16) | `proxy.ts` raíz: redirige unauthed `/dashboard/*` → `/sign-in?next=X`, redirige authed `/sign-in`/`/sign-up` → `/dashboard`. Refresca session via `updateSupabaseSession()` | ✅ |
+| 1.1.7 | Cookie management para Server Actions | `@supabase/ssr` maneja cookies HTTP-only nativamente para Server Components y Server Actions. Sin plugin extra. | ✅ |
+| 1.1.8 | Multitenancy en `public.*` | Tablas `organization`, `member`, `invitation`, `user_active_org`, `role_permissions` (drizzle/sql/001). Roles enum `owner`/`admin`/`agent`. Invitaciones + flujo email-based. | ✅ |
+| 1.1.9 | Definir roles y permissions | Enum `member_role` + tabla `role_permissions` (seed 57 rows). Función `authorize(action, resource)` SECURITY DEFINER (drizzle/sql/004). Detalle en `docs/roles-and-permissions.md` | ✅ |
+| 1.1.10 | Schema multitenancy creado | Tablas `auth.*` administradas por Supabase Auth (auto-creadas). `public.*` tablas multitenancy creadas con Drizzle Kit (drizzle/sql/001). | ✅ |
+| 1.1.11 | Configurar Google OAuth | Configurado en Supabase Dashboard → Auth Providers. Client ID + secret en env vars `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | ✅ |
 | 1.1.12 | Configurar Apple OAuth | Crear App ID en Apple Developer, obtener credentials | ⏭️ Diferido a producción |
-| 1.1.13 | Crear páginas de auth (UI) | `app/(auth)/sign-in/page.tsx` y `sign-up/page.tsx` con shadcn (formularios custom) | ✅ |
+| 1.1.13 | Crear páginas de auth (UI) | `app/(auth)/sign-in/page.tsx`, `sign-up/page.tsx`, `forgot-password/page.tsx`, `reset-password/page.tsx` con shadcn (formularios custom) | ✅ |
 | 1.1.14 | Crear componente UserButton | Componente con avatar, nombre, dropdown menu (perfil, settings, logout) | ✅ |
-| 1.1.15 | Crear componente OrgSwitcher | Componente para cambiar entre organizaciones | ✅ |
-| 1.1.16 | Hook: auto-crear org en sign-up | `hooks.after` in auth.ts: creates org via `auth.api.createOrganization` after sign-up/OAuth callback. Updates session DB row with `activeOrganizationId`. `session.create.before` hook sets org for sign-in. 3-layer defense: hook → databaseHook → ensureOrganization fallback. | ✅ (refactored) |
-| 1.1.17 | Test end-to-end de auth flow | Playwright E2E: sign-up → org created → dashboard loads (0 errors), sign-out → sign-in → dashboard loads, org isolation verified (RLS), session.activeOrganizationId verified in DB for all users. | ✅ |
+| 1.1.15 | Crear componente OrgSwitcher | Componente para cambiar entre organizaciones (actualiza `user_active_org` + refresca JWT con claim `active_org_id` reinyectado por hook `custom_access_token`) | ✅ |
+| 1.1.16 | Auto-crear org en sign-up | Trigger Postgres `handle_new_user()` (drizzle/sql/005) en `INSERT` sobre `auth.users` crea atomically `organization + member (owner) + user_active_org`. Slug race-safe via nested EXCEPTION. RPC `bootstrap_organization` (drizzle/sql/007) para orgs subsecuentes. | ✅ |
+| 1.1.17 | Test end-to-end de auth flow | Playwright E2E + smoke tests durante migración: sign-up → org auto-created → dashboard loads, sign-out → sign-in → dashboard, org isolation verified via RLS, multi-org switching verified. | ✅ |
 | 1.1.18 | Geolocalización en sessions | Enriquecer sessions con país, ciudad y dispositivo usando headers de Vercel (`x-vercel-ip-country`, etc.) | ⏭️ Diferido a producción |
-| 1.1.19 | Migrar IDs de auth a UUID | Migrar IDs base62 → UUID, configurar `generateId: () => crypto.randomUUID()` en Better Auth | ✅ |
+| 1.1.19 | UUIDs en auth | `auth.users.id` ya es UUID nativo en Supabase Auth. Tablas multitenancy en `public.*` usan UUIDs con `gen_random_uuid()` default. Migración text→uuid de 20 columnas dominio + 19 FKs nuevas hecha en drizzle/sql/007. | ✅ |
 
 ### 1.2 Supabase — Base de datos, storage y realtime
 
@@ -72,9 +74,9 @@
 |---|-------|---------|--------|
 | 1.2.1 | Crear cuenta en Supabase | Registrarse en supabase.com, crear proyecto "blackestate" | ✅ |
 | 1.2.2 | Obtener connection string | Copiar `DATABASE_URL` (pooled) del dashboard de Supabase | ✅ |
-| 1.2.3 | Configurar env vars | `DATABASE_URL` en `.env.local` (Better Auth se conecta directamente a Postgres) | ✅ |
-| 1.2.4 | Verificar conexión | Ejecutar `npx auth migrate` y confirmar que las tablas de auth se crean en Supabase | ✅ |
-| 1.2.5 | Configurar Storage | Crear buckets `property-media`, `avatars`, `brochures` (para Capa 2) | ⬜ |
+| 1.2.3 | Configurar env vars | `DATABASE_URL` + `DIRECT_URL` en `.env.local` (Drizzle se conecta vía `pg.Pool`; Supabase Auth administra el schema `auth.*` internamente) | ✅ |
+| 1.2.4 | Verificar conexión | Drizzle conecta vía `pg.Pool` (`lib/db/pool.ts`). Supabase Auth administra `auth.*` nativamente. Migraciones dominio aplicadas con `drizzle-kit migrate`. | ✅ |
+| 1.2.5 | Configurar Storage | Buckets creados: `property-media` (public 10MB images), `avatars` (public 2MB images), `brochures` (private 20MB PDF). Implementación completa en 2.3 (RLS + helpers + Server Actions). | ✅ |
 
 ---
 
@@ -85,10 +87,10 @@
 | # | Tarea | Detalle | Estado |
 |---|-------|---------|--------|
 | 2.1.1 | Configurar Drizzle ORM | `drizzle.config.ts`, `lib/db/pool.ts` (shared pool con globalThis guard), `lib/db/index.ts` (instancia Drizzle), `lib/db/schema/` (schemas). Scripts: `db:generate`, `db:migrate`, `db:check`. `db:push` bloqueado. | ✅ |
-| 2.1.2 | Extender tabla `organization` | Better Auth ya crea esta tabla. Campos adicionales vía `schema.additionalFields`: `plan`, `maxSeats`, `logoUrl` | ✅ (en auth.ts) |
-| 2.1.3 | Extender tabla `member` | Better Auth ya crea esta tabla. Campo adicional: `title` | ✅ (en auth.ts) |
+| 2.1.2 | Tabla `organization` | Creada manualmente en `public.*` (drizzle/sql/001 + schema `lib/db/schema/organization.ts`). Campos: `id`, `name`, `slug`, `plan` (enum), `maxSeats`, `logoUrl`, timestamps. RLS habilitada. | ✅ |
+| 2.1.3 | Tabla `member` | Creada en `public.*` (drizzle/sql/001 + schema `lib/db/schema/member.ts`). Campos: `userId` (FK auth.users), `organizationId`, `role` (enum), `title`, `joinedAt`, soft delete columns. Denormalización: `email`, `name`, `avatarUrl` para queries sin Admin API. | ✅ |
 | 2.1.4 | Diseñar tabla `properties` | 44 columnas: core, price (numeric 14,2), address (doublePrecision lat/lng), surface, features, amenities (text[]), media (text[]), timestamps + soft delete | ✅ |
-| 2.1.5 | Diseñar tabla `property_media` | Diferida — media se almacena como `photos text[]`, `blueprints text[]`, `video_url`, `virtual_tour_url` en `properties`. Tabla separada con metadata por archivo se crea cuando se implemente Supabase Storage (tarea 2.3) | ⏭️ Diferida |
+| 2.1.5 | Diseñar tabla `property_media` | Diferida permanente. Media vive como `photos text[]`, `blueprints text[]`, `video_url`, `virtual_tour_url` en `properties` + bytes en Storage bucket `property-media`. Sistema funciona sin tabla — CRUD + Storage + orphan cleanup OK. Normalizar a tabla con metadata per-file (caption, order, dimensions, alt text, uploader, tags) se justifica cuando AI auto-tagging (Capa 3.2), captions en landings públicas, o SEO con alt text se vuelvan requerimiento. Movido a IMP-10. | ⏭️ Diferida permanente |
 | 2.1.6 | Diseñar tabla `leads` | 16 columnas: contact info (email/phone nullable), source, status, preferences, timestamps + soft delete. FK → properties | ✅ |
 | 2.1.7 | Diseñar tabla `lead_property_queue` | 11 columnas: status, sort_order, timestamps + soft delete. FK → leads, properties | ✅ |
 | 2.1.8 | Diseñar tabla `appointments` | 14 columnas: starts_at/ends_at (timestamptz), status, notes, lifecycle timestamps + soft delete. FK → leads, properties | ✅ |
@@ -104,7 +106,7 @@
 
 **Arquitectura:**
 - Drizzle conecta con `postgres`/`service_role` pero SIEMPRE hace `SET LOCAL role = 'authenticated'` + claims via `withRLS()`.
-- `service_role` directo solo para: Better Auth internals e Inngest background jobs cross-org.
+- `service_role` directo solo para: operaciones admin Supabase Auth (`inviteUserByEmail`, `deleteUser`) e Inngest background jobs cross-org.
 - Todo request de usuario pasa por `withRLS()` — sin excepciones.
 - No existe hard delete. Solo soft delete (`UPDATE SET deleted_at`). Integridad referencial protegida.
 
@@ -130,11 +132,11 @@
 | 2.1.15.6 | Policies UPDATE | Owner/admin: todo. Agent: solo `created_by_user_id = sub`. Bot/config: solo owner/admin. Analytics: no UPDATE. | ✅ |
 | 2.1.15.7 | Bloquear DELETE | No existe policy DELETE ni GRANT DELETE. Soft delete = UPDATE. Integridad referencial protegida. | ✅ |
 | 2.1.15.8 | Crear `withRLS()` | `lib/db/rls.ts` — Transaction wrapper con `SET LOCAL role = 'authenticated'` + claims + `includeDeleted` flag. Build OK. | ✅ |
-| 2.1.15.9 | Crear `getSessionContext()` | `lib/db/session-context.ts` — Extrae userId, orgId, role de Better Auth + consulta `platform_admins`. Build OK. | ✅ |
-| 2.1.15.10 | Tests RLS | Verificar: agent no edita de otro, org isolation funciona, papelera respeta roles, super admin flag funciona. | ⬜ |
-| 2.1.15.15 | Partial indexes en `deleted_at` | `CREATE INDEX ... ON table(id) WHERE deleted_at IS NULL` en tablas de alto tráfico (properties, leads, appointments). Requiere SQL raw. | ⬜ |
-| 2.1.15.11 | Permiso `org:properties:assign` | Agregar a owner/admin en Better Auth permissions. Agent no puede transferir. | ⬜ |
-| 2.1.15.12 | Tabla `property_transfers` | Audit trail: `from_user_id`, `to_user_id`, `transferred_by_user_id`, `property_ids TEXT[]`, counts de cascade (leads, appointments, ai_contents, queue_items), `acknowledged_at`, `notes`, `created_at`. RLS: org isolation, SELECT para involucrados + owner/admin. | ⬜ |
+| 2.1.15.9 | Crear `getSessionContext()` | `features/shared/infrastructure/session-context.ts` — Lee JWT vía `supabase.auth.getClaims()` y extrae `userId` (`auth.uid()`), `orgId` (`active_org_id`), `role` (`org_role`), `isSuperAdmin`, `email`, `userName`. Helper `getInviteeAuthIdentity()` para flows invitee sin org activa. Build OK. | ✅ |
+| 2.1.15.10 | Tests RLS | Tests SQL + E2E ejecutados durante migración Supabase Auth (2026-04-17) y realtime membership revocation (2026-05-12): anon SELECT property activa OK, anon INSERT bloqueado, auth user válido 1/0/0, auth spoofed (T071) 0/0/0 bloqueado, multi-org switching, papelera role-aware en member. Super admin flag ⏭️ (no hay platform_admins activos aún). | ✅ |
+| 2.1.15.15 | Partial indexes en `deleted_at` | Partial indexes creados en 14 tablas (cobertura mayor que las 3 originales del plan). Tablas alto tráfico: `properties_active_org_idx`, `leads_active_org_idx`, `appointments_active_org_starts_idx` (incluye `starts_at` para agenda). Mirror indexes para papelera (`WHERE deleted_at IS NOT NULL`) en todas las tablas con soft delete. Verificado vía `pg_indexes`. | ✅ |
+| 2.1.15.11 | Permiso `org:properties:assign` | Permisos creados con nomenclatura `property.assign` + `lead.assign` (formato dot en vez de `org:properties:assign` del plan original — misma intención). Owner + admin tienen ambos. Agent bloqueado (no presente). Verificado en `role_permissions`. La función `authorize()` lee de esta tabla. | ✅ |
+| 2.1.15.12 | Tabla `property_transfers` | Schema creado en `lib/db/schema/property-transfers.ts` con audit trail (`fromUserId`, `toUserId`, `transferredByUserId`, `propertyIds`, counts cascade, `acknowledgedAt`, `notes`, timestamps) + RLS. Server actions + UI pendientes (ver 2.1.15.13-14 y 2.4). | ✅ (schema) |
 | 2.1.15.13 | `transferProperties()` | Server Action: bulk transfer N propiedades + cascade (leads, appointments, ai_contents, lead_property_queue). Actualiza `created_by_user_id` en todo. Crea registro en `property_transfers`. Todo en una transacción. Solo owner/admin. | ⬜ |
 | 2.1.15.14 | `previewTransfer()` | Server Action: dado N property IDs y agente destino, retorna resumen de todo lo que se va a transferir (counts) sin ejecutar. Para el dialog de confirmación. | ⬜ |
 
@@ -291,7 +293,7 @@ Flujo completo para que owner/admin transfiera propiedades (+ cascade) entre age
 | 2.3.6 | Image optimization | `next.config.ts` — added Supabase Storage hostname to `remotePatterns` for `next/image`. | ✅ |
 | 2.3.7 | Integrate with property form | `media-step.tsx` rewritten with `react-dropzone` (drag & drop, previews, delete). Files accumulated in memory during wizard, uploaded to Storage on submit. `property-form-wizard.tsx` handles upload flow: create property → upload files → update with URLs. Disabled state during submit. | ✅ |
 | 2.3.8 | Integrate with profile/settings | Avatar drag & drop in `profile-section.tsx` via `react-dropzone` (single file, 2MB, JPG/PNG/WEBP). Card-entera dropzone con click-to-pick + drop. Loading overlay, rejection toasts tipados (`file-too-large` / `file-invalid-type`). Sube a bucket `avatars` via `uploadAvatarAction`. ⚠️ Persistencia de URL diferida — actualmente solo guarda en `settings.service.ts` (memoria). Persistencia real en `user.image` + tabla `agent_profile` queda para split modular próximo. | ✅ (UI), ⏭️ (persistencia) |
-| 2.3.9 | Fix Storage 400 upload bug | Two root causes stacked: (1) `supabase-js` ignores `contentType` option when body is File/Blob — reads from the Blob's own `.type`; `File.type` is unreliable across the Server Action boundary. Fix: always re-wrap body in a `new Blob([await file.arrayBuffer()], { type })` with extension-derived MIME. (2) `SUPABASE_SERVICE_ROLE_KEY` in `.env.local` was the publishable key (`sb_publishable_...`) instead of the secret key — publishable doesn't bypass RLS. Fix: `assertSecretKey()` defensive guard rejects publishable keys and wrong-role JWTs with actionable error. Side improvements: `BUCKET_CONFIG` single source of truth, avatar orphan cleanup on replace, `cacheControl` headers, `extractStoragePath` shared util replacing duplicated regex, `import "server-only"` guards, env var validation on boot. | ✅ (code), ⬜ (user must replace key in `.env.local` with `sb_secret_...` from Supabase dashboard → Settings → API) |
+| 2.3.9 | Fix Storage 400 upload bug | Two root causes stacked: (1) `supabase-js` ignores `contentType` option when body is File/Blob — reads from the Blob's own `.type`; `File.type` is unreliable across the Server Action boundary. Fix: always re-wrap body in a `new Blob([await file.arrayBuffer()], { type })` with extension-derived MIME. (2) `SUPABASE_SERVICE_ROLE_KEY` in `.env.local` was the publishable key (`sb_publishable_...`) instead of the secret key — publishable doesn't bypass RLS. Fix: `assertSecretKey()` defensive guard rejects publishable keys and wrong-role JWTs with actionable error. Side improvements: `BUCKET_CONFIG` single source of truth, avatar orphan cleanup on replace, `cacheControl` headers, `extractStoragePath` shared util replacing duplicated regex, `import "server-only"` guards, env var validation on boot. **`.env.local` ya tiene `sb_secret_...` configurado (confirmado por usuario 2026-05-13).** | ✅ |
 
 ### 2.5 Split modular: profile / billing / integrations / notifications / settings
 
@@ -370,16 +372,21 @@ Split del módulo `features/settings/` actual (grab-bag herencia del MVP mock) e
 | 4.2.5 | Instrumentar eventos core | `property_created`, `lead_received`, `appointment_booked`, `deal_won`, etc. | ⬜ |
 | 4.2.6 | Feature flags | Configurar flags para gating por plan (`free`/`pro`/`enterprise`) | ⬜ |
 
-### 4.3 Resend + React Email — Emails transaccionales
+### 4.3 Mailing — Emails transaccionales
+
+> **Estado:** Fase 1 ✅ completada 2026-05-13. Fase 2 (Resend + dominio propio) bloqueada por pre-requisitos del usuario. Plan detallado: `docs/plans/2026-05-12-mailing-architecture.md`.
+>
+> **Arquitectura final** divergió del plan original — ahora es **transport-agnostic**: módulo `lib/email/` con React Email primitives + send() unificado; Fase 1 usa nodemailer + Mailtrap sandbox (dev), Fase 2 swap a Resend SDK (prod). Templates per-feature viven bajo `features/*/infrastructure/email/`.
 
 | # | Tarea | Detalle | Estado |
 |---|-------|---------|--------|
-| 4.3.1 | Crear cuenta en Resend | Registrarse en resend.com | ⬜ |
-| 4.3.2 | Verificar dominio | Configurar DKIM/SPF/DMARC para `mail.blackestate.com` | ⬜ |
-| 4.3.3 | Instalar dependencias | `resend`, `@react-email/components` | ⬜ |
-| 4.3.4 | Crear templates | `emails/welcome.tsx`, `emails/new-lead.tsx`, `emails/appointment-reminder.tsx`, `emails/weekly-report.tsx` | ⬜ |
-| 4.3.5 | Crear helper de envío | `lib/email/send.ts` con función wrapper | ⬜ |
-| 4.3.6 | Conectar con Inngest | Los envíos se disparan desde Inngest functions | ⬜ |
+| 4.3.1 | Crear cuenta en Resend | Registrarse en resend.com — pre-requisito Fase 2 | ⬜ |
+| 4.3.2 | Verificar dominio | Configurar DKIM/SPF/DMARC para dominio propio (ej. `blackestate.app`) — pre-requisito Fase 2 | ⬜ |
+| 4.3.3 | Instalar dependencias mailing | Fase 1: `nodemailer`, `@react-email/components`, `@react-email/render`, `dayjs` ✅. Fase 2: agregar `resend` SDK. | ✅ Fase 1 |
+| 4.3.4 | Crear templates email | invitation-email.tsx ✅ (Fase 1). Welcome/new-lead/appointment-reminder/weekly-report ⬜ (Capa 4.4 Knock workflows). Auth templates (signup, recovery, email-change) ⬜ (Fase 2 vía Send Email Hook). | ⏳ Parcial |
+| 4.3.5 | Módulo `lib/email/` | Módulo completo ✅: transport (nodemailer Fase 1 / Resend Fase 2), render (single-pass HTML + plain text), send (best-effort dispatch via `after()`), primitives (BrandLayout, EmailButton, InfoSection, Footer + tokens.ts). API `sendEmail({ to, subject, react })` permanece igual cuando se haga swap a Resend. | ✅ |
+| 4.3.6 | Conectar con Inngest | Background jobs para emails programados (weekly-report, reminders). Requiere Capa 3.1 Inngest. | ⬜ |
+| 4.3.7 | Send Email Hook (Supabase Auth) | Endpoint `app/api/auth/send-email-hook/route.ts` para que Supabase Auth ruteé emails de auth (signup verification, password recovery, email change) a través de nuestro módulo. Activar en Dashboard → Auth → Hooks. Fase 2 del plan mailing. | ⬜ |
 
 ### 4.4 Knock — Notificaciones multi-canal
 
@@ -435,12 +442,12 @@ Split del módulo `features/settings/` actual (grab-bag herencia del MVP mock) e
 - **Dentro de cada capa**, las tareas están ordenadas por dependencia técnica.
 - **Mock data no se borra inmediatamente.** Se mantiene como fallback durante la migración y se elimina al final de Capa 2.
 - **Los tipos existentes en `lib/types/`** son la fuente de verdad para diseñar el schema de DB.
-- **El modelo de multitenancy** es: Better Auth Organization = tenant. Un agente individual = org de 1 miembro. Una agencia = org con N miembros y roles (`owner`/`admin`/`agent`).
-- **Pricing/tier** se almacena en el campo `plan` de la tabla `organization` (campo adicional definido en Better Auth).
+- **El modelo de multitenancy** es: cada row en la tabla `public.organization` = tenant. Un agente individual = org de 1 miembro. Una agencia = org con N miembros y roles (`owner`/`admin`/`agent`). Membership en tabla `public.member` (FK a `auth.users` + denormalización email/name/avatar).
+- **Pricing/tier** se almacena en el campo `plan` de la tabla `public.organization` (enum `plan_tier`).
 - **Idioma del código:** Inglés estricto. Español SOLO para contenido visible al usuario final.
 - **Drizzle Kit:** NUNCA usar `drizzle-kit push`. Solo `db:generate` + `db:migrate`. Hook de protección configurado.
 - **Soft delete:** `deleted_at` nullable en toda tabla de dominio. Las queries deben filtrar `WHERE deleted_at IS NULL`.
-- **Pool compartido:** `lib/db/pool.ts` con guard `globalThis` — usado por Better Auth y Drizzle.
+- **Pool compartido:** `lib/db/pool.ts` con guard `globalThis` — usado por Drizzle. Supabase Auth administra el schema `auth.*` internamente sin compartir este pool (usa sus propios connections vía `@supabase/ssr`).
 
 ---
 
@@ -459,3 +466,4 @@ Ideas validated but deferred. Implement when the relevant feature is stable and 
 | IMP-7 | **Auditoría RLS bypass exhaustiva** ✅ 2026-04-22 | Revisión completa de `db` directo en `features/shared/infrastructure/`. Resultado: 15 bypasses eliminados. Org repo y invitation repo enrutados por `withRLS` para toda query user-side, y dos RPCs `SECURITY DEFINER` (`bootstrap_organization`, `accept_invitation`) para los dos únicos casos que legítimamente cruzan el boundary (first-org antes de que el JWT tenga `active_org_id`; aceptación antes de que el invitado sea miembro). Post-review fixes: restauración de member soft-deleted al aceptar invitación (restore vs `do nothing`), rollback tolerante a error en send, single-CTE snapshot en `getOrgSeatInfo`. Migraciones 007 + 008. Commits: 8bf3f2d, 6270c0c, 83d9797, + fixes. | — |
 | IMP-8 | **Reescribir flow de invitaciones a org** ✅ 2026-04-22 | `inviteUserByEmail` eliminado. SessionContext extendido con `email`, inyectado en claims de `withRLS` para que `auth.email()` funcione cross-query. Nueva RPC `check_user_exists_by_email` (SECURITY DEFINER, solo `authenticated`) para verificación pre-invite. Nueva policy `organization_select_via_pending_invitation` habilita JOIN invitación + org en side invitee. Métodos repo: `userExists`, `findMyPending`, `markRejected` (invitee-only via email predicate). Use cases: `list-my-pending-invitations`, `reject-invitation`. UI: panel dashboard + badge en sidebar. Email Resend diferido a Capa 4. Rama `feat/auth-migration-phase-10-invitation-flow`. Migraciones 009 + 010. Commits: 62d9daa, 55323b2, 35ab91d, 80c3347, 5b5277e, f3ccb2a. | — |
 | IMP-9 | Link de referidos | Invitar gente NUEVA a la app (no a la org). Link único por org/user. Diferente de IMP-8 (que es invitar usuarios existentes a una org). Implementar con sistema de referrals cuando haya volumen. | Capa 5 — Marketing |
+| IMP-10 | Tabla `property_media` con metadata per-file | Hoy media vive como `text[]` en `properties` + bytes en Storage. Funciona para CRUD básico. Falta: caption por foto, order persistente, dimensions (para evitar layout shift), alt text (SEO), uploader/uploadedAt (audit), tags (AI auto-tagging). Storage no se toca — solo cambia dónde vive el puntero a URL. Costo: refactor mapper + entity + UI + migración data. | Cuando AI auto-tagging (Capa 3.2), captions en landings públicas, o SEO con alt text se vuelvan requerimiento real |

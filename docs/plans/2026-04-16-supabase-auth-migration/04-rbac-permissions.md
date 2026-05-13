@@ -1,5 +1,7 @@
 # Sub-plan 04 — RBAC + authorize() function
 
+> **Status:** ✅ Implementado (parte del cutover Supabase Auth 2026-04-17 + polish posteriores). Histórico de referencia — checkboxes individuales no se mantuvieron al día durante el cutover big-bang; ver master plan `00-master.md` para criterios de éxito validados.
+
 > **Depends on:** 01, 03
 > **Unlocks:** 07, 09
 > **Status:** ✅ Completed — 2026-04-16

@@ -10,9 +10,10 @@ const COLUMNS: AppointmentStatus[] = ["requested", "confirmed", "completed", "ca
 interface AppointmentsKanbanProps {
   appointments: Appointment[]
   onUpdate: (id: string, updates: Partial<Appointment>) => void
+  onDelete: (id: string) => void
 }
 
-export function AppointmentsKanban({ appointments, onUpdate }: AppointmentsKanbanProps) {
+export function AppointmentsKanban({ appointments, onUpdate, onDelete }: AppointmentsKanbanProps) {
   const grouped = useMemo(() => {
     const map: Record<AppointmentStatus, Appointment[]> = {
       requested: [],
@@ -46,7 +47,12 @@ export function AppointmentsKanban({ appointments, onUpdate }: AppointmentsKanba
               </div>
             ) : (
               grouped[status].map((apt) => (
-                <AppointmentCard key={apt.id} appointment={apt} onUpdate={onUpdate} />
+                <AppointmentCard
+                  key={apt.id}
+                  appointment={apt}
+                  onUpdate={onUpdate}
+                  onDelete={onDelete}
+                />
               ))
             )}
           </div>

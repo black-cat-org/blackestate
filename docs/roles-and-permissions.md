@@ -3,7 +3,8 @@
 > Diseño del sistema de organizaciones, roles y permisos para Black Estate.
 >
 > **Creado:** 2026-04-13
-> **Estado:** Decisión cerrada. Listo para implementar.
+> **Última actualización:** 2026-05-13
+> **Estado:** ✅ Implementado. Decisión cerrada y migrada al stack actual (Supabase Auth + multitenancy custom en `public.*` tras la migración del 17/04/2026). Las referencias originales a Better Auth en este documento se reescribieron para reflejar el stack vigente.
 
 ---
 
@@ -13,8 +14,8 @@
 
 Todo usuario pertenece a al menos una organización. No existen "cuentas personales" fuera de una org.
 
-- **Auth provider:** Better Auth con Organization Plugin (open source).
-- **Auto-crear org al signup:** Via hook `afterCreate` en Better Auth.
+- **Auth provider:** Supabase Auth (identity + sessions); multitenancy custom en `public.*` (`organization`, `member`, `invitation`, `user_active_org`, `role_permissions`).
+- **Auto-crear org al signup:** Via trigger Postgres `handle_new_user()` que dispara en `INSERT` sobre `auth.users` y crea atomically `organization + member (owner) + user_active_org` (slug race-safe vía nested EXCEPTION).
 - **`organization_id` en todas las tablas de dominio:** `NOT NULL` siempre.
 - **El plan vive en la org**, nunca en el usuario.
 
@@ -36,7 +37,7 @@ Todo usuario pertenece a al menos una organización. No existen "cuentas persona
 ### Agente individual
 
 ```
-Signup → Better Auth auto-crea org (1 miembro) → plan = free → usa el producto solo
+Signup → trigger `handle_new_user()` auto-crea org (1 miembro) → plan = free → usa el producto solo
 Upgrade a Pro → más features, sigue solo
 ```
 
@@ -47,7 +48,7 @@ Upgrade a Pro → más features, sigue solo
 ### Dueño de agencia
 
 ```
-Signup → Better Auth auto-crea org (1 miembro) → upgrade a enterprise → invita agentes
+Signup → trigger `handle_new_user()` auto-crea org (1 miembro) → upgrade a enterprise → invita agentes
 ```
 
 - Rol: `owner` de la org de su agencia.
@@ -58,7 +59,7 @@ Signup → Better Auth auto-crea org (1 miembro) → upgrade a enterprise → in
 
 ```
 Recibe invitación por email → signup (o signin si ya existe) →
-se une a la org de la agencia → Better Auth también le crea su org personal auto
+se une a la org de la agencia vía RPC `accept_invitation(token)` → si signup nuevo, el trigger `handle_new_user()` también le crea su org personal en paralelo
 ```
 
 - Rol: `agent` en la org de la agencia.
@@ -76,7 +77,7 @@ Un mismo usuario puede pertenecer a **múltiples organizaciones** con **roles di
 | "Inmobiliaria Sur" | `agent` | Trabaja como agente para esta agencia |
 | "RE/MAX Bolivia" | `admin` | Administra esta franquicia |
 
-Better Auth maneja esto nativamente. El componente OrgSwitcher permite cambiar de org y la session activa siempre refleja la org seleccionada.
+El modelo multitenancy custom maneja esto: la tabla `member` admite N rows por user (un row por org), y `user_active_org` persiste qué org está activa. El componente `<OrgSwitcher />` actualiza `user_active_org`, refresca el JWT (claim `active_org_id` se re-inyecta vía hook `custom_access_token`), y los queries siguientes ven el contexto nuevo automáticamente.
 
 ---
 
@@ -117,7 +118,7 @@ CREATE TABLE organizations (
 
 ## 4. Roles
 
-Definidos como **custom roles en Better Auth Organization Plugin** (`lib/auth-permissions.ts`).
+Definidos como **enum `member_role`** + tabla `role_permissions` en `public.*`. Función `authorize(action, resource)` `SECURITY DEFINER` para chequear permisos. RLS policies leen `auth.jwt() ->> 'org_role'` para filtrar queries.
 
 | Role ID | Nombre visible | Descripción | Máximo por org |
 |---------------|---------------|-------------|----------------|
@@ -136,7 +137,7 @@ Definidos como **custom roles en Better Auth Organization Plugin** (`lib/auth-pe
 
 ## 5. Permisos
 
-### Permissions en Better Auth
+### Permissions en Supabase Auth + `role_permissions` table
 
 ```
 # Propiedades
@@ -246,7 +247,7 @@ FOR UPDATE USING (
   organization_id = (auth.jwt() ->> 'org_id')
   AND (
     -- Owner/Admin pueden editar cualquiera
-    role IN ('owner', 'admin') -- verificado via Better Auth session
+    role IN ('owner', 'admin') -- verificado via claim `org_role` del JWT (Supabase Auth)
     OR
     -- Agent solo puede editar las suyas
     (created_by_user_id = (auth.jwt() ->> 'sub')
@@ -336,9 +337,9 @@ Esta pregunta **no cambia la arquitectura** (ambos crean una org). Solo afecta:
 - Metadata de la org (`organizations.type = 'individual' | 'agency'`) para analytics internos.
 - Si elige agencia, se le muestra pricing de Enterprise inmediatamente.
 
-### Paso 3: Better Auth auto-crea org
+### Paso 3: Trigger `handle_new_user()` auto-crea org
 
-Invisible para el usuario. Un hook `afterCreate` en Better Auth crea la org y asigna rol `owner`.
+Invisible para el usuario. Un trigger Postgres en `auth.users INSERT` crea atomically la org + member (rol `owner`) + user_active_org. Slug race-safe vía nested EXCEPTION (si el slug está tomado, retry con sufijo numérico).
 
 ### Paso 4: Onboarding contextual
 

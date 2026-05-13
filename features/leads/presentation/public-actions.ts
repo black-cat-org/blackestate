@@ -1,13 +1,12 @@
 "use server"
 
-import {
-  trackVisitUseCase,
-  getVisitsByPropertyUseCase,
-} from "@/features/leads/application/track-visit.use-case"
+import { trackVisitUseCase } from "@/features/leads/application/track-visit.use-case"
 import type { PropertyVisit } from "@/features/leads/domain/lead.entity"
 
 // ---------------------------------------------------------------------------
-// Public actions (no auth required)
+// Public actions (no auth required) — execute via the `anon` Postgres role
+// inside the repository, subject to the policies in
+// drizzle/sql/017b_anon_public_policies.sql.
 // ---------------------------------------------------------------------------
 
 export async function trackVisitAction(
@@ -15,10 +14,4 @@ export async function trackVisitAction(
   source: string | null,
 ): Promise<PropertyVisit> {
   return trackVisitUseCase(propertyId, source)
-}
-
-export async function getVisitsByPropertyAction(
-  propertyId: string,
-): Promise<PropertyVisit[]> {
-  return getVisitsByPropertyUseCase(propertyId)
 }

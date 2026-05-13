@@ -57,6 +57,14 @@ export function mapRowToEntity(row: PropertyRow): Property {
     },
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
+    deletedAt: row.deletedAt ? row.deletedAt.toISOString() : undefined,
+    deletedBy: row.deletedByUserId
+      ? {
+          userId: row.deletedByUserId,
+          userName: row.deletedByUserName ?? undefined,
+          userEmail: row.deletedByUserEmail ?? undefined,
+        }
+      : undefined,
   }
 }
 
