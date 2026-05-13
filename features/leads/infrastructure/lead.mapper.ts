@@ -26,6 +26,14 @@ export function mapLeadRowToEntity(row: LeadRow): Lead {
     zoneOfInterest: row.zoneOfInterest ?? undefined,
     wantsOffers: row.wantsOffers,
     createdAt: row.createdAt.toISOString(),
+    deletedAt: row.deletedAt ? row.deletedAt.toISOString() : undefined,
+    deletedBy: row.deletedByUserId
+      ? {
+          userId: row.deletedByUserId,
+          userName: row.deletedByUserName ?? undefined,
+          userEmail: row.deletedByUserEmail ?? undefined,
+        }
+      : undefined,
   }
 }
 
@@ -77,17 +85,23 @@ export function mapPartialEntityToUpdate(
   const update: Record<string, unknown> = {}
 
   if (data.name !== undefined) update.name = data.name
-  if (data.phone !== undefined) update.phone = data.phone ?? null
-  if (data.email !== undefined) update.email = data.email ?? null
-  if (data.source !== undefined) update.source = data.source ?? null
+  if (data.propertyId !== undefined) update.propertyId = data.propertyId
   if (data.status !== undefined) update.status = data.status
-  if (data.message !== undefined) update.message = data.message ?? null
-  if (data.propertyTypeSought !== undefined)
-    update.propertyTypeSought = data.propertyTypeSought ?? null
-  if (data.budget !== undefined) update.budget = data.budget ?? null
-  if (data.zoneOfInterest !== undefined)
-    update.zoneOfInterest = data.zoneOfInterest ?? null
   if (data.wantsOffers !== undefined) update.wantsOffers = data.wantsOffers
+
+  // Optional/clearable fields use `'key' in data` so an explicit `undefined`
+  // sent from the form means "clear" (write null), and absence means
+  // "leave unchanged". Without this, agents could not unset a once-set value
+  // (e.g. correcting an incorrectly tagged source).
+  if ("phone" in data) update.phone = data.phone ?? null
+  if ("email" in data) update.email = data.email ?? null
+  if ("source" in data) update.source = data.source ?? null
+  if ("message" in data) update.message = data.message ?? null
+  if ("propertyTypeSought" in data)
+    update.propertyTypeSought = data.propertyTypeSought ?? null
+  if ("budget" in data) update.budget = data.budget ?? null
+  if ("zoneOfInterest" in data)
+    update.zoneOfInterest = data.zoneOfInterest ?? null
 
   return update
 }

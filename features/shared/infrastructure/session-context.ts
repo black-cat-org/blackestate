@@ -31,12 +31,19 @@ function toSessionContext(claims: Record<string, unknown>): SessionContext {
     )
   }
 
+  const rawMeta = claims.user_metadata as Record<string, unknown> | undefined
+
   return {
     userId: claims.sub,
     orgId,
     role,
     isSuperAdmin: claims.is_super_admin === true,
     email: typeof claims.email === "string" ? claims.email : null,
+    userName: typeof claims.user_name === "string" ? claims.user_name : null,
+    avatarUrl:
+      typeof rawMeta?.avatar_url === "string" && rawMeta.avatar_url
+        ? rawMeta.avatar_url
+        : undefined,
   }
 }
 

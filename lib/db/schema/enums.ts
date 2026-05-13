@@ -44,6 +44,10 @@ export const appointmentStatusEnum = pgEnum("appointment_status", [
   "requested", "confirmed", "completed", "cancelled",
 ]);
 
+export const appointmentOriginEnum = pgEnum("appointment_origin", [
+  "agent", "bot",
+]);
+
 // Bot
 export const conversationStatusEnum = pgEnum("conversation_status", [
   "active", "paused", "closed",

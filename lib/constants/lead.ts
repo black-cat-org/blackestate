@@ -1,4 +1,14 @@
-import type { LeadStatus } from "@/features/leads/domain/lead.entity"
+import type { LeadSource, LeadStatus } from "@/features/leads/domain/lead.entity"
+
+export const LEAD_SOURCE_LABELS: Record<LeadSource, string> = {
+  facebook: "Facebook",
+  instagram: "Instagram",
+  whatsapp: "WhatsApp",
+  tiktok: "TikTok",
+  google: "Google",
+  referral: "Referido",
+  direct: "Directo",
+}
 
 export const LEAD_STATUS_LABELS: Record<LeadStatus, string> = {
   new: "Nuevo",

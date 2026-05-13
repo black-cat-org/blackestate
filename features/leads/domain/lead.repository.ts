@@ -22,6 +22,8 @@ export interface ILeadRepository {
   create(ctx: SessionContext, data: CreateLeadDTO): Promise<Lead>
   update(ctx: SessionContext, id: string, data: Partial<Lead>): Promise<Lead>
   softDelete(ctx: SessionContext, id: string): Promise<void>
+  findAllDeleted(ctx: SessionContext): Promise<Lead[]>
+  restore(ctx: SessionContext, id: string): Promise<Lead>
 
   // Queue operations
   getQueueStatus(ctx: SessionContext, leadId: string): Promise<QueueStatus>
@@ -34,6 +36,7 @@ export interface ILeadRepository {
   // Catalog tracking
   getCatalogTracking(ctx: SessionContext, leadId: string): Promise<CatalogTracking>
 
-  // Visits (public landing — runs as `anon` Postgres role inside the impl)
+  // Visits (public — no auth)
   trackVisit(propertyId: string, source: string | null): Promise<PropertyVisit>
+  getVisitsByProperty(propertyId: string): Promise<PropertyVisit[]>
 }

@@ -8,6 +8,8 @@ import type {
   SurfaceUnit,
 } from "@/features/shared/domain/value-objects";
 
+export const PROPERTY_DUPLICATE_SUFFIX = "(copia)";
+
 export const PROPERTY_TYPE_LABELS: Record<PropertyType, string> = {
   house: "Casa",
   apartment: "Departamento",

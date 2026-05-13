@@ -161,6 +161,8 @@ export class DrizzleOrganizationRepository implements IOrganizationRepository {
       role: "owner",
       isSuperAdmin: ctx.isSuperAdmin,
       email: ctx.email,
+      userName: ctx.userName,
+      avatarUrl: ctx.avatarUrl,
     }
     const org = await this.findById(readCtx, newOrgId)
     if (!org) {

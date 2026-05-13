@@ -2,6 +2,17 @@ export type LeadStatus = "new" | "contacted" | "interested" | "won" | "lost" | "
 
 export type LeadSource = "facebook" | "instagram" | "whatsapp" | "tiktok" | "google" | "referral" | "direct"
 
+/**
+ * Lightweight projection of a Property used by lead presentation forms
+ * (create dialog + edit page) where only id + display title are needed.
+ * Lives in the lead domain because every lead must reference a property —
+ * the type is part of how leads compose with properties at the UI layer.
+ */
+export interface PropertyOption {
+  id: string
+  title: string
+}
+
 export interface Lead {
   id: string
   propertyId: string
@@ -17,6 +28,12 @@ export interface Lead {
   zoneOfInterest?: string
   wantsOffers: boolean
   createdAt: string
+  deletedAt?: string
+  deletedBy?: {
+    userId?: string
+    userName?: string
+    userEmail?: string
+  }
 }
 
 export interface LeadFilters {

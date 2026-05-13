@@ -7,6 +7,8 @@ import { getLeadsByPropertyUseCase } from "@/features/leads/application/get-lead
 import { createLeadUseCase } from "@/features/leads/application/create-lead.use-case"
 import { updateLeadUseCase } from "@/features/leads/application/update-lead.use-case"
 import { deleteLeadUseCase } from "@/features/leads/application/delete-lead.use-case"
+import { getDeletedLeadsUseCase } from "@/features/leads/application/get-deleted-leads.use-case"
+import { restoreLeadUseCase } from "@/features/leads/application/restore-lead.use-case"
 import {
   getQueueStatusUseCase,
   getPropertyQueueUseCase,
@@ -65,6 +67,16 @@ export async function updateLeadAction(
 export async function deleteLeadAction(id: string): Promise<void> {
   const ctx = await getSessionContext()
   return deleteLeadUseCase(ctx, id)
+}
+
+export async function getDeletedLeadsAction(): Promise<Lead[]> {
+  const ctx = await getSessionContext()
+  return getDeletedLeadsUseCase(ctx)
+}
+
+export async function restoreLeadAction(id: string): Promise<Lead> {
+  const ctx = await getSessionContext()
+  return restoreLeadUseCase(ctx, id)
 }
 
 export async function getQueueStatusAction(

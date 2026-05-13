@@ -1,5 +1,13 @@
 export type AppointmentStatus = "requested" | "confirmed" | "completed" | "cancelled"
 
+export type AppointmentOrigin = "agent" | "bot"
+
+export interface AppointmentDeletedBy {
+  userId?: string
+  userName?: string
+  userEmail?: string
+}
+
 export interface Appointment {
   id: string
   leadId: string
@@ -11,11 +19,14 @@ export interface Appointment {
   time: string
   endTime: string
   status: AppointmentStatus
+  origin: AppointmentOrigin
   notes?: string
   createdAt: string
   confirmedAt?: string
   completedAt?: string
   cancelledAt?: string
+  deletedAt?: string
+  deletedBy?: AppointmentDeletedBy
 }
 
 export interface CreateAppointmentDTO {
@@ -27,5 +38,13 @@ export interface CreateAppointmentDTO {
   date: string
   time: string
   endTime: string
+  origin: AppointmentOrigin
+  notes?: string
+}
+
+export interface UpdateAppointmentDTO {
+  date?: string
+  time?: string
+  endTime?: string
   notes?: string
 }

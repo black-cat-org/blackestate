@@ -59,6 +59,12 @@ export interface Property {
   media: MediaCollection
   createdAt: string
   updatedAt: string
+  deletedAt?: string
+  deletedBy?: {
+    userId?: string
+    userName?: string
+    userEmail?: string
+  }
 }
 
 export interface PropertyFormData {

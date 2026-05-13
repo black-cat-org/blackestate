@@ -12,6 +12,7 @@ import type { Appointment } from "@/features/appointments/domain/appointment.ent
 interface AppointmentsCalendarProps {
   appointments: Appointment[]
   onUpdate: (id: string, updates: Partial<Appointment>) => void
+  onDelete: (id: string) => void
 }
 
 const WEEKDAYS = ["Lu", "Ma", "Mi", "Ju", "Vi", "Sa", "Do"]
@@ -56,7 +57,7 @@ function formatSelectedDate(dateStr: string): string {
   return formatCalendarTime(dateStr + "T12:00:00")
 }
 
-export function AppointmentsCalendar({ appointments, onUpdate }: AppointmentsCalendarProps) {
+export function AppointmentsCalendar({ appointments, onUpdate, onDelete }: AppointmentsCalendarProps) {
   const today = new Date()
   const [year, setYear] = useState(today.getFullYear())
   const [month, setMonth] = useState(today.getMonth())
@@ -170,7 +171,12 @@ export function AppointmentsCalendar({ appointments, onUpdate }: AppointmentsCal
           ) : (
             <div className="space-y-2">
               {selectedAppointments.map((apt) => (
-                <AppointmentCard key={apt.id} appointment={apt} onUpdate={onUpdate} />
+                <AppointmentCard
+                  key={apt.id}
+                  appointment={apt}
+                  onUpdate={onUpdate}
+                  onDelete={onDelete}
+                />
               ))}
             </div>
           )}

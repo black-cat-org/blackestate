@@ -1,4 +1,4 @@
-import { eq, and, isNull, asc } from "drizzle-orm"
+import { eq, and, isNull, isNotNull, asc, desc, sql } from "drizzle-orm"
 
 import type { ILeadRepository, CreateLeadDTO } from "@/features/leads/domain/lead.repository"
 import type {
@@ -11,10 +11,9 @@ import type {
 } from "@/features/leads/domain/lead.entity"
 import type { SessionContext } from "@/features/shared/domain/session-context"
 import { withRLS } from "@/features/shared/infrastructure/rls"
-import { withAnon } from "@/features/shared/infrastructure/anon-rls"
 import { leads, leadPropertyQueue, properties, analyticsEvents } from "@/lib/db/schema"
+import { db } from "@/lib/db"
 import {
-  mapLeadRowToEntity,
   mapLeadRowWithTitleToEntity,
   mapCreateDTOToInsert,
   mapPartialEntityToUpdate,
@@ -109,20 +108,88 @@ export class DrizzleLeadRepository implements ILeadRepository {
     if (rows.length === 0) {
       throw new Error("Lead not found or no permission")
     }
-    return mapLeadRowToEntity(rows[0])
+    return mapLeadRowWithTitleToEntity(rows[0], data.propertyTitle)
   }
 
   async softDelete(ctx: SessionContext, id: string): Promise<void> {
+    // Super admin actions live outside any single org; recording the platform
+    // admin's identity in a tenant audit trail would mislead operators. Leave
+    // the audit fields null so the trash UI renders "Eliminado por el sistema".
+    const isSuperAdminAction = ctx.isSuperAdmin === true
     const rows = await withRLS(ctx, (tx) =>
       tx
         .update(leads)
-        .set({ deletedAt: new Date() })
-        .where(eq(leads.id, id))
+        .set({
+          deletedAt: new Date(),
+          deletedByUserId: isSuperAdminAction ? null : ctx.userId,
+          deletedByUserName: isSuperAdminAction ? null : ctx.userName,
+          deletedByUserEmail: isSuperAdminAction ? null : ctx.email,
+        })
+        .where(and(eq(leads.id, id), isNull(leads.deletedAt)))
         .returning({ id: leads.id }),
     )
     if (rows.length === 0) {
       throw new Error("Lead not found or no permission")
     }
+  }
+
+  async findAllDeleted(ctx: SessionContext): Promise<Lead[]> {
+    const rows = await withRLS(ctx, (tx) =>
+      tx
+        .select({ lead: leads, propertyTitle: properties.title })
+        .from(leads)
+        .leftJoin(properties, eq(leads.propertyId, properties.id))
+        .where(isNotNull(leads.deletedAt))
+        .orderBy(desc(leads.deletedAt)),
+    )
+    return rows.map((r) =>
+      mapLeadRowWithTitleToEntity(r.lead, r.propertyTitle ?? undefined),
+    )
+  }
+
+  async restore(ctx: SessionContext, id: string): Promise<Lead> {
+    return withRLS(ctx, async (tx) => {
+      const rows = await tx
+        .update(leads)
+        .set({
+          deletedAt: null,
+          deletedByUserId: null,
+          deletedByUserName: null,
+          deletedByUserEmail: null,
+        })
+        .where(and(eq(leads.id, id), isNotNull(leads.deletedAt)))
+        .returning()
+
+      if (rows.length > 0) {
+        const propertyRow = await tx
+          .select({ title: properties.title })
+          .from(properties)
+          .where(eq(properties.id, rows[0].propertyId))
+          .limit(1)
+        return mapLeadRowWithTitleToEntity(
+          rows[0],
+          propertyRow[0]?.title ?? undefined,
+        )
+      }
+
+      // Disambiguate active row vs absent. The SELECT runs under the same
+      // RLS, so a caller without `_select_org` (active) or `_select_trash`
+      // (own deleted) visibility receives an empty rowset — returning
+      // LEAD_NOT_FOUND in that case is intentional and matches the
+      // standard security best practice of not leaking existence to
+      // unauthorized callers.
+      const existing = await tx
+        .select({ id: leads.id, deletedAt: leads.deletedAt })
+        .from(leads)
+        .where(eq(leads.id, id))
+        .limit(1)
+
+      if (existing.length === 0) throw new Error("LEAD_NOT_FOUND")
+      if (existing[0].deletedAt === null) throw new Error("LEAD_ALREADY_RESTORED")
+      // Reachable only when the caller can SELECT the deleted row but for
+      // some reason fails the UPDATE policy — defensive fallback.
+      throw new Error("LEAD_NO_PERMISSION")
+    })
   }
 
   // ---------------------------------------------------------------------------
@@ -356,54 +423,57 @@ export class DrizzleLeadRepository implements ILeadRepository {
     propertyId: string,
     source: string | null,
   ): Promise<PropertyVisit> {
-    // Public landing flow — runs as the `anon` role inside a single
-    // transaction so both the property lookup and the visit insert are
-    // RLS-checked against:
-    //   - properties_select_public  (only active, non-deleted properties
-    //     are visible to anon, so a removed/draft property silently 404s)
-    //   - analytics_events_insert_public_visit  (anon can only insert
-    //     event_type='property_visit')
-    //
-    // The id and createdAt are generated client-side instead of relying
-    // on `.returning()`. The reason: `RETURNING` in Postgres requires the
-    // caller to also pass a SELECT policy check on the inserted row, and
-    // we deliberately do NOT grant anon any SELECT on `analytics_events`
-    // (visit counts would leak to the public). Generating the id here
-    // sidesteps the SELECT-via-RETURNING dependency without weakening
-    // the contract.
-    const id = crypto.randomUUID()
-    const timestamp = new Date()
+    // Visits are public (from landing pages) — no RLS needed.
+    // We use analyticsEvents with eventType "property_visit".
+    // We need the organizationId from the property.
+    const propertyRows = await db
+      .select({
+        organizationId: properties.organizationId,
+      })
+      .from(properties)
+      .where(eq(properties.id, propertyId))
+      .limit(1)
 
-    await withAnon(async (tx) => {
-      const propertyRows = await tx
-        .select({ organizationId: properties.organizationId })
-        .from(properties)
-        .where(eq(properties.id, propertyId))
-        .limit(1)
+    if (propertyRows.length === 0) {
+      throw new Error("Property not found")
+    }
 
-      if (propertyRows.length === 0) {
-        throw new Error("Property not found")
-      }
-
-      await tx.insert(analyticsEvents).values({
-        id,
+    const rows = await db
+      .insert(analyticsEvents)
+      .values({
         organizationId: propertyRows[0].organizationId,
         eventType: "property_visit",
         metadata: { propertyId, source },
-        createdAt: timestamp,
       })
-    })
+      .returning()
 
     return {
-      id,
+      id: rows[0].id,
       propertyId,
       source: source ?? undefined,
-      timestamp: timestamp.toISOString(),
+      timestamp: rows[0].createdAt.toISOString(),
     }
   }
 
-  // `getVisitsByProperty` was removed 2026-05-11 — it had no callers and the
-  // old implementation went around RLS via `db` direct (postgres bypass).
-  // Reimplement under `withRLS` when a real dashboard analytics feature
-  // needs it; the policy contract should match the caller's role.
+  async getVisitsByProperty(propertyId: string): Promise<PropertyVisit[]> {
+    const rows = await db
+      .select()
+      .from(analyticsEvents)
+      .where(
+        and(
+          eq(analyticsEvents.eventType, "property_visit"),
+          sql`${analyticsEvents.metadata} @> ${JSON.stringify({ propertyId })}::jsonb`,
+        ),
+      )
+
+    return rows.map((r) => {
+      const meta = r.metadata as Record<string, unknown>
+      return {
+        id: r.id,
+        propertyId,
+        source: (meta?.source as string) ?? undefined,
+        timestamp: r.createdAt.toISOString(),
+      }
+    })
+  }
 }
