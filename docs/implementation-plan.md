@@ -3,10 +3,10 @@
 > Plan de ejecución granular para llevar Black Estate de frontend con datos mock a producto funcional con backend real.
 >
 > **Creado:** 2026-04-13
-> **Última actualización:** 2026-04-16
-> **Estado:** Capa 1 + Capa 2 mayor completadas. **Migración Better Auth → Supabase Auth EN CURSO.** Sub-plan 01 (schema multitenancy) ✅ done. Resto de fases (02-14) ver `docs/plans/2026-04-16-supabase-auth-migration/`. Plan `2026-04-15-profile-settings-modular-split.md` queda diferido hasta completar la migración auth (algunas decisiones cambian con el nuevo stack).
+> **Última actualización:** 2026-05-13
+> **Estado:** Capa 1 + Capa 2 mayor completadas. **Migración Better Auth → Supabase Auth ✅ completada 2026-04-17** (sub-plans 00–14 cerrados — ver `docs/plans/2026-04-16-supabase-auth-migration/`). Capa 4.3 (Email + invitations) Fase 1 ✅ completada 2026-05-13 (`docs/plans/2026-05-12-mailing-architecture.md`); Fase 2 (Resend + dominio) bloqueada por pre-requisitos del usuario. Plan `2026-04-15-profile-settings-modular-split.md` quedó obsoleto (superseded por la migración).
 
-## Migración Better Auth → Supabase Auth (en curso)
+## Migración Better Auth → Supabase Auth ✅ Completada
 
 | Sub-plan | Tema | Estado |
 |---|---|---|

@@ -1,5 +1,8 @@
 # Analytics Module Implementation Plan
 
+> **Status:** ✅ **Implementado** — `/dashboard/analytics` operativo con feature module en `features/analytics/`. Data layer real conectado a Drizzle (no mocks). Refinamientos posteriores (origen de citas bot vs agente, completed derivado) trackeados en `analytics-appointments.md` y `analytics-module-design.md`.
+> **Plan original:** 2026-02-25 — pre-Supabase Auth migration. Algunos detalles (mock data en `lib/data/analytics.ts`, RBAC via Better Auth) quedaron obsoletos cuando se reemplazó el stack auth; el módulo se migró a Clean Architecture + datos reales durante la migración Supabase Auth (2026-04-17).
+
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
 **Goal:** Build a full analytics and reporting module at `/dashboard/analytics` with 5 tabs (Resumen, Leads, Propiedades, Financiero, Bot), date range filtering, and PDF/Excel export.

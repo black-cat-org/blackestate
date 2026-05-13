@@ -2,8 +2,10 @@
 
 > Documento de referencia con todas las decisiones de stack tomadas para Black Estate, las razones detrás de cada elección, costos esperados y rol de cada pieza dentro del producto.
 >
-> **Última actualización:** 2026-04-11
+> **Última actualización:** 2026-05-13
 > **Estado:** Stack cerrado para MVP. Las decisiones de evolución futura están al final del documento.
+>
+> **Histórico:** La pieza de autenticación inicial fue Better Auth (Apr 2026). Se reemplazó por Supabase Auth en la migración del 17/04/2026 (`docs/plans/2026-04-16-supabase-auth-migration/`) para alinear con el ecosistema Supabase (Storage, Realtime, mobile SDK clase mundial). Toda referencia a Better Auth en este documento ha sido actualizada a Supabase Auth + tablas multitenancy custom en `public.*`.
 
 ---
 
@@ -20,7 +22,7 @@
 - Sistema de citas con calendario.
 - Módulo financiero (comisiones, ROI, rentabilidad).
 
-**Modelo de tenancy:** multi-tenant con soporte dual para agente individual (organización de 1 miembro) y agencias con múltiples agentes (organización con roles `owner`/`admin`/`agent`). Single DB en Supabase con Better Auth Organization Plugin para identidad, roles y permissions.
+**Modelo de tenancy:** multi-tenant con soporte dual para agente individual (organización de 1 miembro) y agencias con múltiples agentes (organización con roles `owner`/`admin`/`agent`). Single DB en Supabase con multitenancy custom en `public.*` (tablas `organization`, `member`, `invitation`, `user_active_org`, `role_permissions`) sobre Supabase Auth como provider de identidad.
 
 **Etapa actual:** MVP. Frontend completo con datos mock; backend e infraestructura en construcción.
 
@@ -34,7 +36,7 @@
 | ---------------------------- | --------------------------------- | --------- | ------------------------------------------------------ |
 | Hosting & runtime            | **Vercel**                        | $0        | Deploy del Next.js + edge/serverless functions         |
 | Base de datos                | **Supabase** (Postgres)           | $0–25/mes | DB + Storage + Realtime + RLS                          |
-| Autenticación e identidad    | **Better Auth** (open source)     | $0        | Users, organizations, roles custom, invitaciones       |
+| Autenticación e identidad    | **Supabase Auth** (incluido en Supabase) | $0 hasta 50k MAU | Users + custom JWT claims; multitenancy en `public.*` tables |
 | Email transaccional          | **Resend**                        | $0        | Envío de emails desde el producto                      |
 | Templates de email           | **React Email**                   | $0        | Composición de templates en JSX                        |
 | Notificaciones multi-canal   | **Knock**                         | $0        | Orquestación in-app + email + push + preferencias      |
@@ -67,7 +69,7 @@
        │                   │                   │
        ▼                   ▼                   ▼
 ┌─────────────┐    ┌──────────────┐   ┌──────────────┐
-│ Better Auth │    │   Supabase   │   │   Inngest    │
+│Supabase Auth│    │   Supabase   │   │   Inngest    │
 │ Auth + Orgs │───►│  Postgres    │   │  Background  │
 │ (in-app)    │    │  + Storage   │   │  jobs        │
 └─────────────┘    │  + Realtime  │   └──────┬───────┘
@@ -85,7 +87,7 @@ Soporte: Crisp (inbox unificado de clientes)
 
 **Flujo principal de auth y datos:**
 
-1. Usuario hace sign-in en el app Next.js → Better Auth valida credenciales y crea session en Postgres.
+1. Usuario hace sign-in en el app Next.js → Supabase Auth valida credenciales (email/password u OAuth Google) y emite JWT con claims custom (`active_org_id`, `org_role`, `is_super_admin`, `user_name`) inyectados por el hook `custom_access_token`.
 2. Las API routes y Server Actions usan `auth.api.getSession()` para verificar la session y obtener user/org context.
 3. Las queries contra Supabase Postgres se ejecutan via Drizzle ORM, filtrando por `organization_id` de la session activa.
 4. Las tablas de auth (`user`, `session`, `account`, `organization`, `member`, `invitation`) viven directamente en Postgres — sin webhooks ni sincronización.
@@ -145,40 +147,46 @@ Soporte: Crisp (inbox unificado de clientes)
 
 **Notas técnicas.**
 - Connection pooling: usar **Supavisor** (incluido) en modo `transaction` para Vercel serverless.
-- Migraciones: gestionadas con Better Auth CLI (`npx auth migrate`) y Drizzle Kit para tablas de dominio.
-- Better Auth se conecta directamente a Postgres via `pg.Pool` — no usa el cliente `@supabase/supabase-js` para auth.
+- Migraciones: gestionadas con Drizzle Kit (`drizzle-kit generate` + `drizzle-kit migrate`) para todas las tablas de dominio. Las tablas de auth (`auth.users`, `auth.sessions`, etc.) son administradas por Supabase Auth y no se tocan manualmente.
+- App se conecta a Postgres via `pg.Pool` para queries de dominio (Drizzle) y vía `@supabase/ssr` para auth/JWT.
 
 ---
 
-### 4.3 Better Auth — Autenticación, organizations y roles
+### 4.3 Supabase Auth — Autenticación + multitenancy custom
 
-**Qué es.** Librería open source de autenticación y autorización para TypeScript. Framework-agnostic, con ecosistema de plugins para organizations, 2FA, SSO, y más. Se conecta directamente a tu base de datos (Postgres, MySQL, SQLite, MongoDB). Respaldada por $5M de Y Combinator.
+**Qué es.** Servicio de autenticación integrado en Supabase. Maneja users, sessions, email/password, OAuth providers (Google, GitHub, Apple, etc.), password reset, email verification, magic links, MFA, SSO. Las sesiones se gestionan vía JWT con refresh tokens; cookies HTTP-only en el cliente. Provee SDKs mobile clase mundial (iOS, Android, Flutter, React Native) — clave para el roadmap de Black Estate mobile.
 
-**Rol en Black Estate.** Es la **fuente de verdad para identidad, organizations, roles y permissions**. Maneja:
-- Sign-up, sign-in, password reset, verificación de email.
-- OAuth con Google y Apple.
-- **Organization Plugin**: cada agente individual obtiene una org personal de 1 miembro con rol `owner`; cada inmobiliaria es una org con N miembros y roles diferenciados.
-- **Roles custom**: `owner` (full + billing), `admin` (full producto, sin billing), `agent` (operativo).
-- **Permissions granulares**: ~20 permissions sobre 7 recursos (property, lead, analytics, bot, settings, billing, org).
-- **Invitaciones**: flujo email → token → join.
-- **Session management**: cookies con soporte para Server Components y Server Actions via `nextCookies` plugin.
+**Rol en Black Estate.** Es la **fuente de verdad para identidad y sesiones**; la multitenancy (organizations, members, invitations, roles, permissions) se construye sobre tablas propias en `public.*` que se relacionan con `auth.users.id` y se inyectan en el JWT como claims custom. Maneja:
+- Sign-up, sign-in, password reset, verificación de email vía `@supabase/ssr`.
+- OAuth con Google (Apple diferido por costo de Developer Account).
+- **Multitenancy en `public.*`:** tablas `organization`, `member`, `invitation`, `user_active_org`, `role_permissions`. Cada agente individual obtiene una org personal de 1 miembro con rol `owner` (auto-creada por trigger `handle_new_user` en `auth.users` INSERT); cada inmobiliaria es una org con N miembros y roles diferenciados.
+- **Roles custom:** `owner` (full + billing), `admin` (full producto, sin billing), `agent` (operativo). Enum + `role_permissions` table.
+- **Permissions granulares:** ~20 permissions sobre 7 recursos (property, lead, analytics, bot, settings, billing, org). Función `authorize(action, resource)` SECURITY DEFINER + RLS policies.
+- **Invitaciones:** flujo email → token → `accept_invitation` RPC. Soporta multi-org (un user puede ser member de varias orgs con roles distintos).
+- **Custom JWT claims** (vía hook `custom_access_token`): `active_org_id`, `org_role`, `is_super_admin`, `user_name`, `user_metadata.avatar_url`. RLS policies y `withRLS()` los leen para scopear queries.
+- **Session management:** cookies HTTP-only gestionadas por `@supabase/ssr`, con soporte nativo para Server Components, Server Actions y middleware Next.js 16 (proxy).
+- **Realtime membership revocation:** cambios de rol/remove se broadcastean via Supabase Realtime al canal privado `user:{auth.uid()}` para que el cliente afectado refresque su JWT y reaccione en <2s (defense-in-depth con RLS membership check).
 
-**Por qué la elegimos.**
-- **$0 para siempre**: roles custom, permissions, organizations, invitaciones — todo gratis, sin add-ons ni límites de MAU.
-- **Organization Plugin completo**: el modelo dual "agente solo / agencia con equipo" con roles custom y RBAC granular funciona out-of-the-box.
-- **Sin vendor lock-in**: las tablas viven en nuestra DB (Supabase Postgres), el código vive en nuestro repo. Controlamos todo.
-- **Open source**: Apache 2.0, comunidad activa, MCP Server y Skills para AI agents.
-- **Framework integration**: soporte nativo para Next.js 16 (App Router, Server Actions, proxy).
+**Por qué lo elegimos.**
+- **Stack coherente:** DB, Storage, Realtime, Auth y futuro Edge Functions ya son Supabase — un solo provider, un solo SDK, un solo sistema de RLS donde el JWT del user fluye nativamente.
+- **Mobile SDK clase mundial:** confirmed en roadmap. Supabase Auth tiene SDKs maduros para iOS/Android/Flutter/React Native; Better Auth (la opción inicial) está detrás.
+- **$0 hasta 50k MAU:** free tier real para MVP. Roles custom y multitenancy se construyen en nuestras tablas, no en features detrás de paywall.
+- **JWT claims customizables:** el hook `custom_access_token` permite inyectar lo que necesitemos (active_org, role, super_admin) sin parches extra-DB.
+- **RLS first-class:** las policies leen `auth.uid()` y `auth.jwt() -> claims` directamente — sin carpintería para que RLS funcione.
 
-**Costo.** $0 — es open source. Sin límites de MAU, orgs, ni features detrás de paywall.
+**Costo.** $0 hasta 50k MAU; $25/mes Pro plan agrega 100k MAU + Daily Active Users analytics + 7-day retention. Sin add-ons para roles/orgs (todo se construye en nuestras tablas).
 
 **Notas técnicas.**
-- Instancia server en `lib/auth.ts`, cliente React en `lib/auth-client.ts`.
-- Roles y permissions definidos en `lib/auth-permissions.ts` usando `createAccessControl()`.
-- API route handler en `app/api/auth/[...all]/route.ts`.
-- Proxy (Next.js 16) en `proxy.ts` protegiendo `/dashboard/*`.
-- Las tablas de auth (`user`, `session`, `account`, `organization`, `member`, `invitation`) se crean con `npx auth migrate`.
-- Para el flujo "agente individual": hook `afterCreate` en sign-up que crea automáticamente una org personal con rol `owner`.
+- Server client en `lib/supabase/server.ts` (per-request, cookie-aware) + admin singleton para operaciones cross-org.
+- Browser client en `lib/supabase/client.ts` (singleton globalThis).
+- Middleware en `lib/supabase/middleware.ts` (Edge Runtime safe).
+- Proxy en `proxy.ts` protege `/dashboard/*` redirigiendo a `/sign-in` cuando no hay sesión.
+- Custom claims hook: `drizzle/sql/003_custom_access_token_hook.sql`.
+- Org creation trigger: `drizzle/sql/005_org_creation_trigger.sql` (atómico via `EXCEPTION` para race-safe slug).
+- Bootstrap & accept invitation RPCs (`SECURITY DEFINER`): `drizzle/sql/007_rls_helpers_and_bootstrap.sql` + `008_accept_invitation_fixes.sql`.
+- Auth pages: `/sign-in`, `/sign-up`, `/forgot-password`, `/reset-password` en grupo `(auth)`.
+- Callback PKCE `app/auth/callback/route.ts` + token_hash `app/auth/confirm/route.ts` (fix Gmail link pre-fetch).
+- Env vars: `requireSupabaseEnv()` con accesos literales por requirement de Turbopack/Webpack.
 
 ---
 
@@ -328,7 +336,7 @@ Cada error se enriquece con `userId`, `organizationId`, feature/route, y se aler
 **Por qué la elegimos.**
 - Colapsa 4-5 herramientas distintas (Mixpanel + Plausible + LaunchDarkly + FullStory) en una sola.
 - Free tier muy generoso (1M eventos/mes + 5k recordings/mes).
-- Integración con Better Auth: pasa `userId` y `organizationId` a cada evento, permitiendo segmentación por org.
+- Integración con Supabase Auth: pasa `userId` (`auth.uid()`) y `organizationId` (claim `active_org_id`) a cada evento, permitiendo segmentación por org.
 - Open source — escape hatch a self-host si llegara el caso.
 
 **Costo.**
@@ -522,7 +530,7 @@ Cada función es código TypeScript en `inngest/functions/*.ts`, con steps idemp
 - **Genera tests automáticamente** a partir del código existente — cada feature nueva llega con tests sin esfuerzo manual.
 - **Valida código generado por IA** — dado que Black Estate usa Claude Haiku para generar copy, descripciones y respuestas del bot, TestSprite cierra el loop verificando que el código producido por IA funcione correctamente.
 - **Testing E2E de flujos críticos** — onboarding de agente, carga de propiedad, creación de lead, agendamiento de cita, flujo del bot WhatsApp.
-- **Testing de API routes y Server Actions** — validación de los endpoints que conectan con Supabase, Better Auth, Inngest.
+- **Testing de API routes y Server Actions** — validación de los endpoints que conectan con Supabase (Auth + DB + Storage + Realtime), Inngest.
 - **Integración con CI/CD** — corre tests en cada push/PR antes del deploy en Vercel.
 - **Debugging asistido** — cuando un test falla, el agente sugiere y aplica fixes.
 
@@ -649,7 +657,8 @@ Workflow visual estilo Zapier. Solo agregar si en el futuro Black Estate quiere 
 | Herramienta evaluada | Por qué se descartó                                                          |
 | -------------------- | ---------------------------------------------------------------------------- |
 | **Neon**             | Excelente Postgres, pero no aporta sobre Supabase (que ya da DB + Storage + Auth + Realtime). |
-| **Clerk**            | Custom roles y permissions requieren add-on de $100/mes (B2B Authentication). Demasiado caro para MVP bootstrapped. Reemplazado por Better Auth (gratis, open source). |
+| **Clerk**            | Custom roles y permissions requieren add-on de $100/mes (B2B Authentication). Demasiado caro para MVP bootstrapped. Reemplazado por Supabase Auth + multitenancy custom en `public.*` ($0 hasta 50k MAU, control total del modelo de datos). |
+| **Better Auth**      | Elegido inicialmente por Organization Plugin + $0 perpetuo. Se reemplazó por Supabase Auth en abril 2026 — el acoplamiento Better Auth ↔ ecosistema Supabase (Storage, Realtime, mobile) requería carpintería extra de JWT signing para que RLS funcionara. Con Supabase Auth nativo, todo el stack habla el mismo lenguaje. |
 | **Auth.js**          | Demasiada construcción manual para multi-tenancy con roles.                  |
 | **WorkOS**           | Enterprise-first (SSO/SAML). Overkill total para MVP B2B LATAM.              |
 | **Supabase Auth**    | Funciona bien, pero requiere construir Organizations/roles/invites manualmente. |
