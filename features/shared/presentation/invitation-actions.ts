@@ -3,7 +3,8 @@
 import { after } from "next/server"
 import { createElement } from "react"
 import { revalidatePath } from "next/cache"
-import { getSessionContext } from "@/features/shared/infrastructure/session-context"
+import { getSessionContext, getInviteeAuthIdentity } from "@/features/shared/infrastructure/session-context"
+import { getInvitationByTokenUseCase } from "@/features/shared/application/get-invitation-by-token.use-case"
 import { getSupabaseServerClient } from "@/lib/supabase/server"
 import { DrizzleInvitationRepository } from "@/features/shared/infrastructure/drizzle-invitation.repository"
 import { DrizzleOrganizationRepository } from "@/features/shared/infrastructure/drizzle-organization.repository"
@@ -180,14 +181,40 @@ export async function sendInvitationAction(input: SendInvitationDTO): Promise<Pe
  * action does not need to materialise a SessionContext — important because
  * a brand-new invitee may not yet have an `active_org_id` and
  * `getSessionContext()` would throw.
+ *
+ * No `revalidatePath` here: the accept flow is invoked from a Client
+ * Component (`accept-invitation-card.client.tsx`) which calls
+ * `router.replace("/dashboard")` on success. The replace triggers a
+ * fresh server render of the dashboard route with the refreshed JWT, so
+ * the cache invalidation is implicit. Calling `revalidatePath` from a
+ * Server Action invoked DURING the render of `/accept-invite` (the
+ * legacy auto-accept page) raised the "used revalidatePath during
+ * render" error that motivated the confirmation-page redesign.
  */
 export async function acceptInvitationAction(
   invToken: string,
 ): Promise<{ organizationId: string }> {
   const result = await acceptInvitationUseCase(repo, invToken)
   await refreshJwt()
-  revalidatePath("/dashboard")
   return result
+}
+
+/**
+ * Fetch the invitation pointed to by the token, scoped to the caller.
+ * Powers the `/accept-invite?inv=<token>` confirmation page: the page
+ * uses the result to render `<AcceptInvitationCard invitation={...} />`
+ * or an "invitation not found / expired / wrong account" fallback.
+ *
+ * Uses `getInviteeAuthIdentity` (not `getSessionContext`) so a brand-new
+ * invitee without an `active_org_id` can still pull their pending row —
+ * the RLS policy `invitation_select_admin_or_invitee` authorises the
+ * invitee branch via `auth.email()` regardless of org membership.
+ */
+export async function getInvitationByTokenAction(
+  invToken: string,
+): Promise<IncomingInvitation | undefined> {
+  const { ctx } = await getInviteeAuthIdentity()
+  return getInvitationByTokenUseCase(ctx, repo, invToken)
 }
 
 export async function cancelInvitationAction(invitationId: string): Promise<void> {
@@ -204,21 +231,39 @@ export async function listInvitationsAction(): Promise<PendingInvitation[]> {
 /**
  * List pending invitations addressed to the caller. Used by the dashboard
  * "Invitaciones pendientes" panel and the sidebar unread badge.
+ *
+ * Uses `getInviteeAuthIdentity` rather than `getSessionContext` for the
+ * same reason as `getInvitationByTokenAction` and `rejectInvitationAction`:
+ * a brand-new invitee arriving via an invite link may have no
+ * `active_org_id` JWT claim yet (no org membership at all). The
+ * `listMyPending` query filters on `auth.email()` via the
+ * `invitation_select_admin_or_invitee` policy's invitee branch, so the
+ * placeholder orgId is harmless. Falling back to `getSessionContext`
+ * would throw on the dashboard layout for those users and prevent the
+ * pending-invitations badge from rendering.
  */
 export async function listMyPendingInvitationsAction(): Promise<IncomingInvitation[]> {
-  const ctx = await getSessionContext()
+  const { ctx } = await getInviteeAuthIdentity()
   return listMyPendingInvitationsUseCase(ctx, repo)
 }
 
 /**
  * Invitee rejects an invitation. Takes the token (same shape as accept)
  * to avoid exposing invitation ids on the invitee surface.
+ *
+ * Uses `getInviteeAuthIdentity` (not `getSessionContext`) because a
+ * brand-new invitee may not yet have an `active_org_id` JWT claim — the
+ * latter would throw. The RLS policy authorises the invitee branch via
+ * `auth.email()` regardless of org membership.
+ *
+ * No `revalidatePath` here for the same reason as `acceptInvitationAction`:
+ * called from the Client Component card which `router.replace`'s after
+ * success, triggering a fresh server render of `/dashboard`. The
+ * sidebar pending-invitations badge re-fetches naturally on the next
+ * navigation; if real-time freshness mattered we'd handle it via the
+ * realtime broadcast channel, not via cache invalidation.
  */
 export async function rejectInvitationAction(token: string): Promise<void> {
-  const ctx = await getSessionContext()
+  const { ctx } = await getInviteeAuthIdentity()
   await rejectInvitationUseCase(ctx, repo, token)
-  // Use "layout" so the sidebar badge count (computed in dashboard/layout.tsx)
-  // re-fetches. "page" alone would only revalidate /dashboard and the badge
-  // would keep the stale count until the next full navigation.
-  revalidatePath("/dashboard", "layout")
 }
