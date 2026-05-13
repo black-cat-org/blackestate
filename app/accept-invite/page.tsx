@@ -69,7 +69,7 @@ export default async function AcceptInvitePage({ searchParams }: Props) {
               <Inbox className="size-6 text-muted-foreground" aria-hidden="true" />
             </div>
             <CardTitle className="text-2xl font-bold">Invitación no disponible</CardTitle>
-            <CardDescription className="text-base">
+            <CardDescription>
               No encontramos una invitación pendiente con este enlace. Puede que
               haya expirado, que ya la hayas respondido, o que esté dirigida a
               otra cuenta. Si crees que es un error, pide al administrador que
