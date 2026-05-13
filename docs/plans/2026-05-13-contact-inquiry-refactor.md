@@ -556,58 +556,133 @@ WHERE NOT EXISTS (SELECT 1 FROM contact c WHERE c.id = i.contact_id);
 
 ---
 
-## 9. Tareas (checkboxes)
+## 9. Tareas (checkboxes) — orden óptimo de desarrollo
 
 Orden interno por tarea: `implementar → code review → fixes → tests → confirmación → docs → commit`.
 
-### Fase 1 — Infra (schema + RLS + migración)
+El orden refleja **dependencias de desarrollo** (qué se necesita antes para construir lo siguiente), NO el orden de commits. Commits pueden agruparse por fase para mantener PRs revisables.
 
-- [ ] **R1** — Drizzle schema: `lib/db/schema/contact.ts` + `lib/db/schema/inquiry.ts`. Renombrar `lib/db/schema/leads.ts` (se borra al final). Renombrar `lead-property-queue.ts` → `contact-property-queue.ts`.
-- [ ] **R2** — Schema: actualizar `appointments.ts` (`lead_id` → `contact_id`), `bot-conversations.ts` (igual).
-- [ ] **R3** — Migración SQL `drizzle/sql/026_contact_inquiry_refactor.sql` con DDL completa + algoritmo de mapping (§3) + RLS (§5). Idempotente, transaccional, con rollback si falla.
-- [ ] **R4** — Aplicar migración en Supabase dev. Validar contadores §7.1. Backup explícito antes de ejecutar.
-- [ ] **R5** — Rename enums `lead_status_enum` → `inquiry_status_enum` y `lead_source_enum` → `inquiry_source_enum` (`ALTER TYPE RENAME`). Actualizar referencias en TS.
+> **Nota sobre data:** dev DB no tiene data a conservar (confirmado por Gonzalo 2026-05-13). El algoritmo de migración de §3 igual se escribe completo y se valida con seed data sintética antes de aplicarlo — porque sí va a correr en staging/prod más adelante cuando exista data real.
 
-### Fase 2 — Módulo `contacts`
+### Fase 1 — Diseño Domain (sin dependencias externas)
 
-- [ ] **R6** — Domain: `contact.entity.ts` + `contact.repository.ts`.
-- [ ] **R7** — Infrastructure: model + mapper + drizzle repo con `findByPhoneOrEmail`, `searchByQuery`.
-- [ ] **R8** — Use cases (8): create, find-or-create, get-list, get-by-id, get-by-phone-or-email, update, delete, restore, search.
-- [ ] **R9** — Server Actions + components base (lista, detalle, dialog crear/editar).
+Sin tocar DB ni Drizzle. Solo TypeScript interfaces.
 
-### Fase 3 — Módulo `inquiries`
+- [ ] **R1** — `features/contacts/domain/contact.entity.ts` (interfaces Contact, CreateContactDTO, UpdateContactDTO).
+- [ ] **R2** — `features/contacts/domain/contact.repository.ts` (IContactRepository — puerto/contrato).
+- [ ] **R3** — `features/inquiries/domain/inquiry.entity.ts` (interfaces Inquiry, CreateInquiryDTO, InquiryStatus, InquirySource).
+- [ ] **R4** — `features/inquiries/domain/inquiry.repository.ts` (IInquiryRepository).
 
-- [ ] **R10** — Domain: `inquiry.entity.ts` + `inquiry.repository.ts`.
-- [ ] **R11** — Infrastructure: model + mapper (join contact + property para display) + drizzle repo.
-- [ ] **R12** — Use cases (9): create (orquesta find-or-create contact), get-list, get-by-id, get-by-contact, get-by-property, update, delete, manage-queue, track-visit, get-suggested-properties.
-- [ ] **R13** — Server Actions + components (lista, detalle, dialog crear con autocomplete contact).
-- [ ] **R14** — Public actions: `public-actions.ts` para form público de inquiry.
+### Fase 2 — Drizzle schema TypeScript
 
-### Fase 4 — Migración de módulos dependientes
+Schema TS deriva del domain. NO toca DB todavía.
 
-- [ ] **R15** — `features/appointments`: cambiar `lead_id` → `contact_id` en entity, mapper, repo, use cases, UI. Joins ahora a `contact`.
-- [ ] **R16** — `features/bot`: `bot_conversations.lead_id` → `contact_id`. Actualizar entity, repo, use cases.
-- [ ] **R17** — `features/analytics`: payloads de eventos nuevos usan `contactId` + `inquiryId`. Service de lectura tolera ambos (`metadata.leadId` legacy o `metadata.contactId`+`inquiryId`).
-- [ ] **R18** — `features/dashboard`: aggregations actualizadas (contactos únicos, inquiries activas).
-- [ ] **R19** — `features/ai-contents`: sin cambios (no toca leads).
+- [ ] **R5** — `lib/db/schema/contact.ts` (tabla `contact` con cols de §2.1).
+- [ ] **R6** — `lib/db/schema/inquiry.ts` (tabla `inquiry` con cols de §2.2; FK a `contact` + `properties`).
+- [ ] **R7** — Renombrar archivo `lib/db/schema/lead-property-queue.ts` → `lib/db/schema/contact-property-queue.ts`. Actualizar variable export `leadPropertyQueue` → `contactPropertyQueue`. FK `leadId` → `contactId`.
+- [ ] **R8** — Actualizar `lib/db/schema/appointments.ts`: `leadId` text col → `contactId` text col con FK a `contact.id`. Actualizar índices y export.
+- [ ] **R9** — Actualizar `lib/db/schema/bot-conversations.ts`: mismo cambio (`leadId` → `contactId`).
+- [ ] **R10** — Actualizar `lib/db/schema/enums.ts`: rename de pgEnum `leadStatusEnum` → `inquiryStatusEnum`, `leadSourceEnum` → `inquirySourceEnum`. **No** eliminar el enum legacy del archivo — agregar los nuevos junto con los viejos por si quedan referencias durante la transición intra-fase (los viejos se borran en Fase 8).
+- [ ] **R11** — Actualizar `lib/db/schema/index.ts` (barrel): exportar nuevos schemas + mantener `leads` export hasta R-final-cleanup.
 
-### Fase 5 — UI
+### Fase 3 — Migración SQL + apply en dev
 
-- [ ] **R20** — Sidebar: ítem "Contactos" apunta a `/dashboard/contacts`. Sub-ítem "Consultas" → `/dashboard/inquiries`. Renombrar copy actual "Contactos" si confunde.
-- [ ] **R21** — Página `/dashboard/contacts` (lista) + `/dashboard/contacts/[id]` (detalle).
-- [ ] **R22** — Página `/dashboard/inquiries` (lista con filtros) + `/dashboard/inquiries/[id]` (detalle).
-- [ ] **R23** — Form de crear inquiry con autocomplete contact (existing-or-new).
-- [ ] **R24** — Form público (landing) sigue funcionando — apunta a `createPublicInquiryAction`.
-- [ ] **R25** — Eliminar páginas/components viejos de `features/leads`. Borrar dir.
+SQL derivado del schema TS de Fase 2.
 
-### Fase 6 — Cleanup + tests + docs
+- [ ] **R12** — Escribir `drizzle/sql/026_contact_inquiry_refactor.sql`:
+  - `BEGIN;` transaccional.
+  - DDL `CREATE TABLE contact` + índices (§2.1).
+  - DDL `CREATE TABLE inquiry` + índices + FK a `contact` + `properties` (§2.2).
+  - Rename `lead_property_queue` → `contact_property_queue` + rename col `lead_id` → `contact_id` (DDL).
+  - ALTER `appointments` + `bot_conversations`: agregar `contact_id`, poblar desde mapping, drop FK vieja, drop `lead_id`.
+  - Rename enums Postgres: `ALTER TYPE lead_status_enum RENAME TO inquiry_status_enum`, idem source.
+  - Algoritmo mapping §3 con tabla auxiliar `_migration_lead_to_contact`.
+  - RLS policies sobre `contact` + `inquiry` (mirror de policies actuales de `leads`).
+  - **NO** drop de `leads` aquí — se hace al final del refactor.
+  - `COMMIT;`.
+- [ ] **R13** — Aplicar migración R12 en Supabase dev via MCP `apply_migration`. Verificar éxito.
+- [ ] **R14** — Validar §7.4 verificación DB. Si hay discrepancias → rollback (drop tablas nuevas en dev) + arreglar SQL + reaplicar.
 
-- [ ] **R26** — Eliminar `features/leads/` entera. Eliminar `lib/db/schema/leads.ts`.
-- [ ] **R27** — DROP TABLE `public.leads` en Supabase dev (después de validar migración).
-- [ ] **R28** — Smoke Playwright completo §7.3. Tabla de resultados obligatoria.
-- [ ] **R29** — Actualizar `docs/implementation-plan.md` con el refactor (sección nueva o reemplazo de referencias a `leads`).
-- [ ] **R30** — Actualizar `CLAUDE.md`: sección "Tenancy & Auth Model" + "Project Structure" + entity examples. Cualquier mención a `leads` se actualiza.
-- [ ] **R31** — Commits atómicos por fase (1 por R1-R30 grupo coherente; no 30 commits).
+### Fase 4 — Infrastructure repos
+
+Adapters de los puertos definidos en Fase 1, contra la DB ya migrada.
+
+- [ ] **R15** — `features/contacts/infrastructure/contact.model.ts` (Drizzle `$inferSelect`/`$inferInsert`).
+- [ ] **R16** — `features/contacts/infrastructure/contact.mapper.ts` (Model ↔ Entity, null↔undefined).
+- [ ] **R17** — `features/contacts/infrastructure/drizzle-contact.repository.ts` con `findByPhoneOrEmail`, `searchByQuery`, CRUD + soft-delete. withRLS en todas las queries.
+- [ ] **R18** — `features/inquiries/infrastructure/inquiry.model.ts`.
+- [ ] **R19** — `features/inquiries/infrastructure/inquiry.mapper.ts` (join con `contact` y `properties` para display fields).
+- [ ] **R20** — `features/inquiries/infrastructure/drizzle-inquiry.repository.ts` con CRUD + `findActiveByContactAndProperty` + queue ops (heredados de leads).
+
+### Fase 5 — Application use cases
+
+- [ ] **R21** — `features/contacts/application/` (9 archivos): create, find-or-create, get-list, get-by-id, get-by-phone-or-email, search, update, delete, restore.
+- [ ] **R22** — `features/inquiries/application/` (11 archivos): create (orquesta find-or-create), get-list, get-by-id, get-by-contact, get-by-property, update, delete, restore, manage-queue, track-visit, get-suggested-properties.
+
+### Fase 6 — Server Actions + components
+
+- [ ] **R23** — `features/contacts/presentation/actions.ts` (auth actions thin).
+- [ ] **R24** — `features/contacts/presentation/components/` (lista, detalle, dialog crear/editar, autocomplete reusable).
+- [ ] **R25** — `features/inquiries/presentation/actions.ts` (auth actions).
+- [ ] **R26** — `features/inquiries/presentation/public-actions.ts` (form público landing).
+- [ ] **R27** — `features/inquiries/presentation/components/` (lista, detalle, dialog crear con autocomplete contact).
+
+### Fase 7 — Migrar módulos dependientes
+
+Cambiar referencias `leadId` por `contactId` o `inquiryId` donde aplique. Ahora que `contact`/`inquiry` están listos, los downstream pueden migrar.
+
+- [ ] **R28** — `features/appointments`: entity, mapper, repo, use cases, UI. FK ahora a `contact.id`. Joins desde appointment a contact + property.
+- [ ] **R29** — `features/bot`: `bot_conversations.lead_id` → `contact_id`. Entity, repo, use cases.
+- [ ] **R30** — `features/analytics`: payloads nuevos usan `contactId` + `inquiryId`. Service de lectura tolera `metadata.leadId` legacy.
+- [ ] **R31** — `features/dashboard`: aggregations actualizadas (contactos únicos por org, inquiries activas).
+- [ ] **R32** — `features/ai-contents`: review explícita (no debería tocar nada, pero verificar imports/types).
+
+### Fase 8 — UI dashboard
+
+- [ ] **R33** — Páginas `app/dashboard/contacts/page.tsx` + `[id]/page.tsx` (lista + detalle con sub-secciones inquiries/appointments/bot conv).
+- [ ] **R34** — Páginas `app/dashboard/inquiries/page.tsx` + `[id]/page.tsx` (lista filtrable + detalle).
+- [ ] **R35** — Form de crear inquiry desde detalle de prop o desde contact (UX §4.5).
+- [ ] **R36** — Form público (landing) sigue funcionando: apuntar a `createPublicInquiryAction`.
+- [ ] **R37** — Sidebar: ítem "Contactos" apunta a `/dashboard/contacts`. Agregar sub-link "Consultas" → `/dashboard/inquiries`.
+
+### Fase 9 — Cleanup
+
+- [ ] **R38** — Eliminar carpeta `features/leads/` entera.
+- [ ] **R39** — Eliminar `lib/db/schema/leads.ts` + remover export del barrel.
+- [ ] **R40** — Eliminar enums legacy en `lib/db/schema/enums.ts` (los viejos que mantuvimos en R10).
+- [ ] **R41** — SQL migration `drizzle/sql/027_drop_legacy_leads.sql`: `DROP TABLE public.leads;`. Aplicar en dev.
+
+### Fase 10 — Tests + docs + commits
+
+- [ ] **R42** — Smoke Playwright cubriendo §7.3 (T1–T12). Tabla de resultados obligatoria.
+- [ ] **R43** — Actualizar `docs/implementation-plan.md`: marcar tarea de refactor + actualizar todas las referencias a `leads` que queden obsoletas en otras tareas.
+- [ ] **R44** — Actualizar `CLAUDE.md`: sección "Tenancy & Auth Model", "Project Structure" (módulos `contacts/` + `inquiries/`), entity examples, null safety pattern aplicado a `contact` y `inquiry`.
+- [ ] **R45** — Commits agrupados por fase. Recomendación: 1 commit por fase (10 commits totales). Cada commit deja branch buildable.
+
+### Dependencias entre tareas
+
+```
+Fase 1 (Domain) ─────┐
+                     ├──► Fase 2 (Schema TS) ──► Fase 3 (SQL apply) ──► Fase 4 (Repos)
+                     │                                                       │
+                     │                                                       ▼
+                     │                                                  Fase 5 (Use cases)
+                     │                                                       │
+                     │                                                       ▼
+                     │                                              Fase 6 (Actions + components)
+                     │                                                       │
+                     │                                                       ▼
+                     └──────────────────────────────────────────────► Fase 7 (Migrar deps)
+                                                                            │
+                                                                            ▼
+                                                                       Fase 8 (UI)
+                                                                            │
+                                                                            ▼
+                                                                       Fase 9 (Cleanup)
+                                                                            │
+                                                                            ▼
+                                                                       Fase 10 (Tests + docs)
+```
 
 ---
 
@@ -653,7 +728,7 @@ No hay "migración inversa" automatizada — sería trabajo equivalente al refac
 
 ## 13. Pre-flight checks antes de empezar R1
 
-- [ ] Confirmar branch `feat/contact-inquiry-refactor` desde `main`.
-- [ ] Confirmar backup automatizado en Supabase dev (point-in-time recovery activado).
-- [ ] Confirmar contadores actuales: `SELECT count(*) FROM leads`, `SELECT count(DISTINCT phone) FROM leads`, etc. — para validar dedup post-migración.
-- [ ] Confirmar plan con Gonzalo (este doc).
+- [x] Branch `feat/contact-inquiry-refactor` creada desde `main` (post-merge PR #4, commit `ab279a2`).
+- [x] Sin data real en dev DB (confirmado por Gonzalo 2026-05-13). El algoritmo de migración §3 se valida en código pero NO se ejecuta contra data sensible esta vuelta. Cuando staging/prod tengan data, se re-revisa con `pg_dump` previo + corrida sobre branch DB Supabase.
+- [x] Acceso a Supabase MCP `apply_migration` confirmado.
+- [x] Plan confirmado con Gonzalo (2026-05-13).
