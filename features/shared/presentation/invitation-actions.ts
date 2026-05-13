@@ -31,9 +31,27 @@ const orgRepo = new DrizzleOrganizationRepository()
  * Build the absolute accept-invite URL from NEXT_PUBLIC_APP_URL + the
  * invitation token. The query param name is `inv` (memory G37) — kept
  * stable across the email and the in-app pending invitations panel.
+ *
+ * Fails loud when the env var is missing rather than degrading to a
+ * relative URL: email clients can't navigate `/accept-invite?inv=...`,
+ * so a missing var produces invitations with dead CTAs — but `sendEmail`
+ * would still report success. The thrown error is caught inside the
+ * `after()` wrapper at the call site and logged with the invitationId
+ * for operator visibility, while the action itself still returns the
+ * persisted invitation (best-effort contract D-8 preserved).
+ *
+ * Mirrors the literal-access pattern from `requireSupabaseEnv` — written
+ * inline because we have only one consumer for now; if more callers
+ * need NEXT_PUBLIC_APP_URL we extract a shared `requireAppUrl()` helper
+ * alongside requireSupabaseEnv.
  */
 function buildAcceptUrl(token: string): string {
-  const base = process.env.NEXT_PUBLIC_APP_URL ?? ""
+  const base = process.env.NEXT_PUBLIC_APP_URL
+  if (!base) {
+    throw new Error(
+      "[invitation] NEXT_PUBLIC_APP_URL is not set — cannot build accept URL",
+    )
+  }
   // Trim any trailing slash so we don't generate `//accept-invite?...`.
   const normalized = base.endsWith("/") ? base.slice(0, -1) : base
   return `${normalized}/accept-invite?inv=${token}`
@@ -94,9 +112,21 @@ export async function sendInvitationAction(input: SendInvitationDTO): Promise<Pe
 
   after(async () => {
     // Defer the SMTP roundtrip — Server Action returns first, email
-    // delivery happens after. If sendEmail throws we log and move on;
-    // the invitation row is already persisted and recoverable via the
-    // resend flow in the settings UI.
+    // delivery happens after. Best-effort per D-8: the invitation row is
+    // already persisted, the admin can resend, the invitee can refresh
+    // the dashboard to see the in-app pending invitations panel.
+    //
+    // Two distinct failure modes are caught here:
+    //   (a) Transport errors caught inside `sendEmail` — surface as
+    //       `{ success: false, error }` and we log them structured.
+    //   (b) Config errors that `sendEmail` re-throws (missing SMTP env
+    //       vars, transporter init failure) AND the synchronous throw
+    //       from `buildAcceptUrl` when NEXT_PUBLIC_APP_URL is unset —
+    //       these escape `sendEmail`'s try/catch by design. Without the
+    //       outer try/catch they would surface as unhandled rejections
+    //       in the Next.js `after()` runtime: an opaque stderr trace
+    //       with no invitationId context. Wrap so an operator sees
+    //       which invitation failed and why.
     if (!organization) {
       console.error(
         "[invitation-actions] cannot send invitation email: org not found",
@@ -104,24 +134,32 @@ export async function sendInvitationAction(input: SendInvitationDTO): Promise<Pe
       )
       return
     }
-    const result = await sendEmail({
-      to: invitation.email,
-      subject: invitationEmailSubject({
-        inviterName,
-        organizationName: organization.name,
-      }),
-      react: createElement(InvitationEmail, {
-        inviterName,
-        organizationName: organization.name,
-        role: invitation.role,
-        acceptUrl: buildAcceptUrl(token),
-        expiresAtIso: invitation.expiresAt,
-      }),
-    })
-    if (!result.success) {
+    try {
+      const result = await sendEmail({
+        to: invitation.email,
+        subject: invitationEmailSubject({
+          inviterName,
+          organizationName: organization.name,
+        }),
+        react: createElement(InvitationEmail, {
+          inviterName,
+          organizationName: organization.name,
+          role: invitation.role,
+          acceptUrl: buildAcceptUrl(token),
+          expiresAtIso: invitation.expiresAt,
+        }),
+      })
+      if (!result.success) {
+        console.error(
+          "[invitation-actions] email send failed:",
+          result.error.message,
+          { invitationId: invitation.id, to: invitation.email },
+        )
+      }
+    } catch (err) {
       console.error(
-        "[invitation-actions] email send failed:",
-        result.error.message,
+        "[invitation-actions] email runtime error (config or url):",
+        err,
         { invitationId: invitation.id, to: invitation.email },
       )
     }
