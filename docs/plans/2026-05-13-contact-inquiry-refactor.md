@@ -568,7 +568,7 @@ El orden refleja **dependencias de desarrollo** (qué se necesita antes para con
 
 Sin tocar DB ni Drizzle. Solo TypeScript interfaces.
 
-- [ ] **R1** — `features/contacts/domain/contact.entity.ts` (interfaces Contact, CreateContactDTO, UpdateContactDTO).
+- [x] **R1** — `features/contacts/domain/contact.entity.ts` (interfaces Contact, CreateContactDTO, UpdateContactDTO). ✅ 2026-05-13. Review pass tras fix MINOR (comentarios JSDoc traducidos a inglés). Build + tsc + eslint verdes.
 - [ ] **R2** — `features/contacts/domain/contact.repository.ts` (IContactRepository — puerto/contrato).
 - [ ] **R3** — `features/inquiries/domain/inquiry.entity.ts` (interfaces Inquiry, CreateInquiryDTO, InquiryStatus, InquirySource).
 - [ ] **R4** — `features/inquiries/domain/inquiry.repository.ts` (IInquiryRepository).
