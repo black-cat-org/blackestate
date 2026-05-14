@@ -746,7 +746,7 @@ Orden interno por tarea: `implementar → code review → fixes → tests → co
 - [x] **R1** — `features/contacts/domain/contact.entity.ts` (Contact + CreateContactDTO + UpdateContactDTO). ✅ 2026-05-13. Review pass tras fix MINOR (JSDoc inglés). Build + tsc + eslint verdes.
 - [x] **R2** — `features/contacts/domain/contact.repository.ts` (IContactRepository — puerto). ✅ 2026-05-13. Review encontró 2 MAJOR + 2 MINOR — todos resueltos. Key fix: eliminado `findAllActive` (redundante para Contact, no hay status). Build + tsc + eslint verdes.
 - [x] **R3** — `features/deals/domain/deal.entity.ts` (Deal + CreateDealDTO + UpdateDealDTO + DealStage + DealSource + DealFilters). ✅ 2026-05-13. Review: 3 IMPORTANT issues — #1 false positive (inline import) con evidencia grep, #2 y #3 resueltos (JSDoc `wantsOffers?` default + JSDoc `propertyId?` drill-down). Build + tsc + eslint verdes.
-- [ ] **R4** — `features/deals/domain/deal.repository.ts` (IDealRepository — incluye `findActiveByContactAndProperty`, `maxStageOrder`, `findByStage`, `moveStage`, `reorderInStage`).
+- [x] **R4** — `features/deals/domain/deal.repository.ts` (IDealRepository — incluye `findActiveByContactAndProperty`, `maxStageOrder`, `findByStage`, `moveStage`, `reorderInStage`). ✅ 2026-05-13. Review: 3 IMPORTANT + 3 MINOR — todos resueltos. Decisión clave: introducido `ResolvedCreateDealDTO` para garantizar contact-resolved a nivel tipo (reemplaza intersection hack). Build + tsc + eslint verdes.
 
 ### Fase 2 — Drizzle schema TypeScript
 
