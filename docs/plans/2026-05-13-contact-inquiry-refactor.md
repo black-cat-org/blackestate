@@ -640,8 +640,9 @@ Orden re-ajustado para que los enums y las tablas con FK cruzadas se construyan 
 - [x] **R6** — `lib/db/schema/deal.ts` (tabla `deal` con cols §2.3 + FK opcional `inquiry_id` a inquiry). ✅ 2026-05-13. Review: 1 IMPORTANT (cascade decision documentada) resuelto. Barrel update incluida. `inquiry_id` FK declarada SQL-side R12 para evitar circular import. Build + tsc + eslint verdes.
 - [x] **I3** — `lib/db/schema/inquiry.ts` (tabla `inquiry` con cols §2.2 + FK opcional `promoted_deal_id` a deal). Cierra la navegación bidireccional sin JOIN extra. ✅ 2026-05-13. Review: 1 IMPORTANT (`ON DELETE SET NULL` documentado en ambos lados de la FK bidireccional Inquiry↔Deal) resuelto — fix simétrico en `deal.ts` también. Build + tsc + eslint verdes.
 - [x] **R7** — `lib/db/schema/contact-property-queue.ts` creada en paralelo (Opción B coexistencia — confirmada con Gonzalo). El archivo legacy `lead-property-queue.ts` queda intacto hasta R46 (Fase 10) cuando el consumidor en `features/bot` se migre (R35). ✅ 2026-05-13. Review: 2 IMPORTANT (índice `cpq_property_id_idx` faltante + JSDoc menciones R34/R35 corregidas a solo R35) resueltos. Build + tsc + eslint verdes.
-- [ ] **R8** — Actualizar `appointments.ts`: `leadId` → `dealId` (FK a `deal.id`).
-- [ ] **R9** — Actualizar `bot-conversations.ts`: `leadId` → `contactId`.
+- ⏭️ **R8** — ~~Actualizar `appointments.ts`: `leadId` → `dealId`~~ **Diferida a R34** (Fase 8 — `features/appointments` migrate). Razón: el schema TS y el código consumidor deben moverse juntos para evitar romper el build a mitad del refactor. La migración SQL real de la columna sí ocurre en R12 (CREATE TABLE deal + ALTER appointments). El schema Drizzle TS se realinea con el código en R34.
+- ⏭️ **R9** — ~~Actualizar `bot-conversations.ts`: `leadId` → `contactId`~~ **Diferida a R35** (Fase 8 — `features/bot` migrate). Misma razón que R8.
+- [x] **R11** — Actualizar `lib/db/schema/index.ts` (barrel): exportar contact (ya), deal, inquiry, contact-property-queue. ✅ 2026-05-13. Cubierta progresivamente durante R5/R6/I3/R7 — cada nueva tabla agregada incluyó su export en el barrel. Verificación final: los 4 exports presentes en la sección "Contact + Inquiry + Deal refactor".
 - [ ] **R11** — Actualizar `lib/db/schema/index.ts` (barrel): exportar deal, inquiry, contact-property-queue.
 
 ### Fase 3 — Migración SQL + apply en dev
