@@ -129,9 +129,12 @@ export interface IInquiryRepository {
    * Used by `createInquiryUseCase` to detect duplicates BEFORE inserting:
    * the unique constraint at the DB level
    * `(orgId, contactId, propertyId) WHERE deletedAt IS NULL AND status='open'`
-   * enforces this, but querying first lets the use case reactivate the
-   * existing row (when the source / message updates) instead of surfacing
-   * a constraint violation to the caller.
+   * enforces this, but querying first lets the use case return the
+   * existing row as-is (EC8 reactivation) instead of surfacing a
+   * constraint violation to the caller. The existing row is NOT patched
+   * with the incoming source/message — those carry the metadata of the
+   * ORIGINAL inquiry. If the agent later wants to amend, they use
+   * `updateInquiry` explicitly.
    *
    * Discarded or promoted Inquiries on the same pair do NOT block a new
    * `open` Inquiry — they represent past interest.
