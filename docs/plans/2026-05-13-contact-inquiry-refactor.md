@@ -744,7 +744,7 @@ Orden interno por tarea: `implementar → code review → fixes → tests → co
 ### Fase 1 — Diseño Domain (sin dependencias externas)
 
 - [x] **R1** — `features/contacts/domain/contact.entity.ts` (Contact + CreateContactDTO + UpdateContactDTO). ✅ 2026-05-13. Review pass tras fix MINOR (JSDoc inglés). Build + tsc + eslint verdes.
-- [ ] **R2** — `features/contacts/domain/contact.repository.ts` (IContactRepository — puerto).
+- [x] **R2** — `features/contacts/domain/contact.repository.ts` (IContactRepository — puerto). ✅ 2026-05-13. Review encontró 2 MAJOR + 2 MINOR — todos resueltos. Key fix: eliminado `findAllActive` (redundante para Contact, no hay status). Build + tsc + eslint verdes.
 - [ ] **R3** — `features/deals/domain/deal.entity.ts` (Deal + CreateDealDTO + UpdateDealDTO + DealStage + DealSource).
 - [ ] **R4** — `features/deals/domain/deal.repository.ts` (IDealRepository — incluye `findActiveByContactAndProperty`, `maxStageOrder`, `findByStage`, `moveStage`, `reorderInStage`).
 
