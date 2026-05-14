@@ -16,6 +16,7 @@ export { propertyTransfers } from "./property-transfers";
 export { contact } from "./contact";
 export { deal } from "./deal";
 export { inquiry } from "./inquiry";
+export { contactPropertyQueue } from "./contact-property-queue";
 
 // Multitenancy (Supabase Auth migration — sub-plan 01)
 export { organization } from "./organization";
