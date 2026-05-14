@@ -105,15 +105,6 @@ export interface IDealRepository {
   ): Promise<Deal | undefined>
 
   /**
-   * Return the maximum `stage_order` currently assigned in a given
-   * stage for the caller's org, or `-1` if the column is empty. Used by
-   * `createDealUseCase` to place a new Deal at the bottom of its
-   * destination column via `maxStageOrder(stage) + 1` without special-
-   * casing the empty column.
-   */
-  maxStageOrder(ctx: SessionContext, stage: DealStage): Promise<number>
-
-  /**
    * Insert a new Deal. The caller (use case) MUST resolve the Contact
    * first and pass a {@link ResolvedCreateDealDTO} with `contactId`
    * populated — the repository does not accept `contactDraft` and will

@@ -233,27 +233,6 @@ export class DrizzleDealRepository implements IDealRepository {
     return rows[0] ? mapDealRowToEntity(rows[0]) : undefined
   }
 
-  async maxStageOrder(
-    ctx: SessionContext,
-    stage: DealStage,
-  ): Promise<number> {
-    const rows = await withRLS(ctx, (tx) =>
-      tx
-        .select({
-          max: sql<number>`coalesce(max(${deal.stageOrder}), -1)::int`,
-        })
-        .from(deal)
-        .where(
-          and(
-            eq(deal.organizationId, ctx.orgId),
-            eq(deal.stage, stage),
-            isNull(deal.deletedAt),
-          ),
-        ),
-    )
-    return rows[0]?.max ?? -1
-  }
-
   // ---------------------------------------------------------------------------
   // Mutations — create / update
   // ---------------------------------------------------------------------------
