@@ -626,7 +626,7 @@ Orden interno por tarea: `implementar → code review → fixes → tests → co
 
 - [x] **R1** — `features/contacts/domain/contact.entity.ts`. ✅ 2026-05-13.
 - [x] **R2** — `features/contacts/domain/contact.repository.ts`. ✅ 2026-05-13.
-- [ ] **I1** — `features/inquiries/domain/inquiry.entity.ts` (Inquiry + CreateInquiryDTO + UpdateInquiryDTO + InquiryStatus + InquirySource).
+- [x] **I1** — `features/inquiries/domain/inquiry.entity.ts` (Inquiry + CreateInquiryDTO + UpdateInquiryDTO + InquiryStatus + InquirySource + InquiryFilters). ✅ 2026-05-13. Review: 1 IMPORTANT (invariante `promotedDealId` ↔ `status='promoted'` documentado bidireccional) resuelto via JSDoc reforzado (Option B — consistente con Deal pattern). Build + tsc + eslint verdes.
 - [ ] **I2** — `features/inquiries/domain/inquiry.repository.ts` (IInquiryRepository — incluye `findOpenByContactAndProperty`, `discard`, `promote` atómico).
 - [x] **R3** — `features/deals/domain/deal.entity.ts` (5 stages + inquiryId opcional). ✅ 2026-05-13.
 - [x] **R4** — `features/deals/domain/deal.repository.ts`. ✅ 2026-05-13.
