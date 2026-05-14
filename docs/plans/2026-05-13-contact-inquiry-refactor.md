@@ -636,7 +636,7 @@ Orden interno por tarea: `implementar → code review → fixes → tests → co
 Orden re-ajustado para que los enums y las tablas con FK cruzadas se construyan en el orden de dependencia correcto:
 
 - [x] **R5** — `lib/db/schema/contact.ts`. ✅ 2026-05-13.
-- [ ] **R10** — Actualizar `enums.ts`: agregar `dealStageEnum` (5 valores), `dealSourceEnum`, `inquiryStatusEnum`, `inquirySourceEnum`. Conservar enums viejos durante transición. **Primero porque las tablas R6 e I3 los referencian.**
+- [x] **R10** — Actualizar `enums.ts`: agregar `dealStageEnum` (5 valores), `dealSourceEnum`, `inquiryStatusEnum`, `inquirySourceEnum`. Conservar enums viejos durante transición. ✅ 2026-05-13. Review: 1 IMPORTANT (Spanish en JSDoc del dealStageEnum) resuelto. Build + tsc + eslint verdes.
 - [ ] **R6** — `lib/db/schema/deal.ts` (tabla `deal` con cols §2.3 + FK opcional `inquiry_id` a inquiry). **Antes que I3 para que la FK bidireccional Inquiry↔Deal pueda declararse limpia en ambos lados.**
 - [ ] **I3** — `lib/db/schema/inquiry.ts` (tabla `inquiry` con cols §2.2 + FK opcional `promoted_deal_id` a deal). Cierra la navegación bidireccional sin JOIN extra.
 - [ ] **R7** — Renombrar `lib/db/schema/lead-property-queue.ts` → `contact-property-queue.ts`.
