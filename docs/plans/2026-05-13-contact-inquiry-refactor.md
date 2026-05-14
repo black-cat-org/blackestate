@@ -638,7 +638,7 @@ Orden re-ajustado para que los enums y las tablas con FK cruzadas se construyan 
 - [x] **R5** — `lib/db/schema/contact.ts`. ✅ 2026-05-13.
 - [x] **R10** — Actualizar `enums.ts`: agregar `dealStageEnum` (5 valores), `dealSourceEnum`, `inquiryStatusEnum`, `inquirySourceEnum`. Conservar enums viejos durante transición. ✅ 2026-05-13. Review: 1 IMPORTANT (Spanish en JSDoc del dealStageEnum) resuelto. Build + tsc + eslint verdes.
 - [x] **R6** — `lib/db/schema/deal.ts` (tabla `deal` con cols §2.3 + FK opcional `inquiry_id` a inquiry). ✅ 2026-05-13. Review: 1 IMPORTANT (cascade decision documentada) resuelto. Barrel update incluida. `inquiry_id` FK declarada SQL-side R12 para evitar circular import. Build + tsc + eslint verdes.
-- [ ] **I3** — `lib/db/schema/inquiry.ts` (tabla `inquiry` con cols §2.2 + FK opcional `promoted_deal_id` a deal). Cierra la navegación bidireccional sin JOIN extra.
+- [x] **I3** — `lib/db/schema/inquiry.ts` (tabla `inquiry` con cols §2.2 + FK opcional `promoted_deal_id` a deal). Cierra la navegación bidireccional sin JOIN extra. ✅ 2026-05-13. Review: 1 IMPORTANT (`ON DELETE SET NULL` documentado en ambos lados de la FK bidireccional Inquiry↔Deal) resuelto — fix simétrico en `deal.ts` también. Build + tsc + eslint verdes.
 - [ ] **R7** — Renombrar `lib/db/schema/lead-property-queue.ts` → `contact-property-queue.ts`.
 - [ ] **R8** — Actualizar `appointments.ts`: `leadId` → `dealId` (FK a `deal.id`).
 - [ ] **R9** — Actualizar `bot-conversations.ts`: `leadId` → `contactId`.

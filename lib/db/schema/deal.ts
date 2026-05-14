@@ -37,11 +37,17 @@ import { dealStageEnum, dealSourceEnum } from "./enums";
  *
  * The `inquiry_id` foreign key intentionally does NOT use Drizzle's
  * `.references()` — it lives only as a `text` column. The Inquiry
- * table is defined in `./inquiry.ts` (I3) which itself has a back-link
+ * table (`./inquiry.ts`, I3) has a symmetric back-link
  * (`promoted_deal_id`) to this table. Declaring both FKs at the TS
- * layer would create a circular import. The actual `FOREIGN KEY (...)
- * REFERENCES public.inquiry(id)` lives in the R12 SQL migration where
- * Postgres handles forward/circular references natively. Mirror of the
+ * layer would create a circular import. The actual constraint
+ * `FOREIGN KEY (inquiry_id) REFERENCES public.inquiry(id) ON DELETE SET NULL`
+ * lives in the R12 SQL migration. **`ON DELETE SET NULL` — not CASCADE
+ * — is intentional:** if an Inquiry is ever hard-deleted, the Deal
+ * must survive with `inquiry_id = NULL` because the commercial
+ * opportunity stands on its own beyond its originating Inquiry.
+ * Inverse of the `contact_id` / `property_id` cascade above, where a
+ * hard-delete on identity rows legitimately invalidates downstream
+ * Deals. Postgres handles circular FKs natively; mirror of the
  * cross-schema `member.user_id → auth.users(id)` convention.
  */
 export const deal = pgTable(

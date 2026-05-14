@@ -15,6 +15,7 @@ export { propertyTransfers } from "./property-transfers";
 // Contact + Inquiry + Deal refactor (sub-plan 2026-05-13-contact-inquiry-refactor)
 export { contact } from "./contact";
 export { deal } from "./deal";
+export { inquiry } from "./inquiry";
 
 // Multitenancy (Supabase Auth migration — sub-plan 01)
 export { organization } from "./organization";
