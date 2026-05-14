@@ -13,9 +13,11 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
-import { restoreContactAction } from "@/features/contacts/presentation/actions"
-import { describeContactRestoreError } from "@/features/contacts/presentation/contact-error-messages"
-import type { Contact } from "@/features/contacts/domain/contact.entity"
+import { restoreInquiryAction } from "@/features/inquiries/presentation/actions"
+import { describeInquiryRestoreError } from "@/features/inquiries/presentation/inquiry-error-messages"
+import { INQUIRY_SOURCE_LABELS } from "@/lib/constants/inquiry"
+import { InquiryStatusBadge } from "./inquiry-status-badge"
+import type { Inquiry } from "@/features/inquiries/domain/inquiry.entity"
 
 const dateFormatter = new Intl.DateTimeFormat("es-BO", {
   day: "2-digit",
@@ -23,11 +25,11 @@ const dateFormatter = new Intl.DateTimeFormat("es-BO", {
   year: "numeric",
 })
 
-interface ContactTrashListProps {
-  contacts: Contact[]
+interface InquiryTrashListProps {
+  inquiries: Inquiry[]
 }
 
-export function ContactTrashList({ contacts }: ContactTrashListProps) {
+export function InquiryTrashList({ inquiries }: InquiryTrashListProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [restoringId, setRestoringId] = useState<string | null>(null)
@@ -37,22 +39,22 @@ export function ContactTrashList({ contacts }: ContactTrashListProps) {
     setRestoringId(id)
     startTransition(async () => {
       try {
-        await restoreContactAction(id)
-        toast.success("Contacto restaurado")
+        await restoreInquiryAction(id)
+        toast.success("Consulta restaurada")
         router.refresh()
       } catch (error) {
         const code = error instanceof Error ? error.message : ""
-        toast.error(describeContactRestoreError(code))
+        toast.error(describeInquiryRestoreError(code))
       } finally {
         setRestoringId(null)
       }
     })
   }
 
-  if (contacts.length === 0) {
+  if (inquiries.length === 0) {
     return (
       <div className="rounded-md border border-dashed p-12 text-center">
-        <p className="text-muted-foreground">No hay contactos en la papelera.</p>
+        <p className="text-muted-foreground">No hay consultas en la papelera.</p>
       </div>
     )
   }
@@ -62,37 +64,43 @@ export function ContactTrashList({ contacts }: ContactTrashListProps) {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Nombre</TableHead>
             <TableHead>Contacto</TableHead>
-            <TableHead>Eliminado</TableHead>
-            <TableHead>Eliminado por</TableHead>
+            <TableHead>Propiedad</TableHead>
+            <TableHead>Origen</TableHead>
+            <TableHead>Estado</TableHead>
+            <TableHead>Eliminada</TableHead>
+            <TableHead>Eliminada por</TableHead>
             <TableHead className="text-right">Acciones</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {contacts.map((contact) => (
-            <TableRow key={contact.id}>
-              <TableCell className="font-medium">{contact.name}</TableCell>
-              <TableCell className="text-muted-foreground">
-                <div className="flex flex-col text-xs">
-                  {contact.phone && <span>{contact.phone}</span>}
-                  {contact.email && <span>{contact.email}</span>}
-                  {!contact.phone && !contact.email && <span>—</span>}
-                </div>
+          {inquiries.map((inquiry) => (
+            <TableRow key={inquiry.id}>
+              <TableCell className="font-medium">
+                {inquiry.contactName ?? "—"}
+              </TableCell>
+              <TableCell className="text-muted-foreground text-xs">
+                {inquiry.propertyTitle ?? "(propiedad eliminada)"}
+              </TableCell>
+              <TableCell className="text-muted-foreground text-xs">
+                {inquiry.source ? INQUIRY_SOURCE_LABELS[inquiry.source] : "—"}
+              </TableCell>
+              <TableCell>
+                <InquiryStatusBadge status={inquiry.status} />
               </TableCell>
               <TableCell className="text-muted-foreground">
-                {contact.deletedAt
-                  ? dateFormatter.format(new Date(contact.deletedAt))
+                {inquiry.deletedAt
+                  ? dateFormatter.format(new Date(inquiry.deletedAt))
                   : "—"}
               </TableCell>
               <TableCell className="text-muted-foreground">
-                {contact.deletedBy ? (
+                {inquiry.deletedBy ? (
                   <div className="flex flex-col">
                     <span className="text-foreground text-sm">
-                      {contact.deletedBy.userName ?? "—"}
+                      {inquiry.deletedBy.userName ?? "—"}
                     </span>
-                    {contact.deletedBy.userEmail && (
-                      <span className="text-xs">{contact.deletedBy.userEmail}</span>
+                    {inquiry.deletedBy.userEmail && (
+                      <span className="text-xs">{inquiry.deletedBy.userEmail}</span>
                     )}
                   </div>
                 ) : (
@@ -103,11 +111,11 @@ export function ContactTrashList({ contacts }: ContactTrashListProps) {
                 <Button
                   variant="outline"
                   size="sm"
-                  disabled={isPending && restoringId === contact.id}
-                  onClick={() => handleRestore(contact.id)}
+                  disabled={isPending && restoringId === inquiry.id}
+                  onClick={() => handleRestore(inquiry.id)}
                 >
                   <ArchiveRestore className="mr-2 size-4" />
-                  {isPending && restoringId === contact.id
+                  {isPending && restoringId === inquiry.id
                     ? "Restaurando…"
                     : "Restaurar"}
                 </Button>

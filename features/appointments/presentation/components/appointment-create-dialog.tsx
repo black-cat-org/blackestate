@@ -36,7 +36,7 @@ import {
   type AppointmentCreateValues,
 } from "@/lib/validations/appointment"
 import { createAppointmentAction } from "@/features/appointments/presentation/actions"
-import { nullable } from "@/lib/utils/form"
+import { emptyToUndefined } from "@/lib/utils/form"
 import type { Appointment } from "@/features/appointments/domain/appointment.entity"
 import type { Lead } from "@/features/leads/domain/lead.entity"
 import type { Property } from "@/features/properties/domain/property.entity"
@@ -102,7 +102,7 @@ export function AppointmentCreateDialog({
           time: values.time,
           endTime: values.endTime,
           origin: "agent",
-          notes: nullable(values.notes),
+          notes: emptyToUndefined(values.notes),
         })
         toast.success("Cita creada")
         router.refresh()

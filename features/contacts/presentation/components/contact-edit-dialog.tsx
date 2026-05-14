@@ -43,7 +43,7 @@ import {
   updateContactAction,
 } from "@/features/contacts/presentation/actions"
 import { describeContactSaveError } from "@/features/contacts/presentation/contact-error-messages"
-import { nullable } from "@/lib/utils/form"
+import { emptyToUndefined } from "@/lib/utils/form"
 import type {
   Contact,
   ContactPreferredChannel,
@@ -121,9 +121,9 @@ export function ContactEditDialog({
         if (contact) {
           const patch: UpdateContactDTO = {
             name: values.name.trim(),
-            phone: nullable(values.phone),
-            email: nullable(values.email),
-            notes: nullable(values.notes),
+            phone: emptyToUndefined(values.phone),
+            email: emptyToUndefined(values.email),
+            notes: emptyToUndefined(values.notes),
             tags: parseTagsInput(values.tags),
             preferredChannel: preferredChannel as ContactPreferredChannel | undefined,
           }
@@ -133,9 +133,9 @@ export function ContactEditDialog({
         } else {
           const payload: CreateContactDTO = {
             name: values.name.trim(),
-            phone: nullable(values.phone),
-            email: nullable(values.email),
-            notes: nullable(values.notes),
+            phone: emptyToUndefined(values.phone),
+            email: emptyToUndefined(values.email),
+            notes: emptyToUndefined(values.notes),
             tags: parseTagsInput(values.tags),
             preferredChannel: preferredChannel as ContactPreferredChannel | undefined,
           }

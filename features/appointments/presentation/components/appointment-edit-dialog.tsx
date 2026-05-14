@@ -29,7 +29,7 @@ import {
   type AppointmentEditValues,
 } from "@/lib/validations/appointment"
 import { updateAppointmentAction } from "@/features/appointments/presentation/actions"
-import { nullable } from "@/lib/utils/form"
+import { emptyToUndefined } from "@/lib/utils/form"
 import type { Appointment } from "@/features/appointments/domain/appointment.entity"
 
 interface AppointmentEditDialogProps {
@@ -80,7 +80,7 @@ export function AppointmentEditDialog({
           date: values.date,
           time: values.time,
           endTime: values.endTime,
-          notes: nullable(values.notes),
+          notes: emptyToUndefined(values.notes),
         })
         toast.success("Cita actualizada")
         router.refresh()
