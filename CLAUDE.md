@@ -260,6 +260,7 @@ export async function createPropertyAction(formData: PropertyFormData): Promise<
 | `app/` pages → Infrastructure | No | Never |
 | `app/` pages → Application | No | Server Actions mediate |
 | Any layer → `lib/*` | Yes | Shared utilities (`lib/supabase/*`, `lib/db/*`, `lib/utils/*`, `lib/constants/*`) are cross-cutting. Callable from Application, Presentation, or `app/`. Feature-specific `features/*/infrastructure/` still cannot be imported from Presentation |
+| Feature-A Infrastructure → Feature-B Infrastructure | **Exception** | Only when a repository genuinely owns an atomic operation that spans two domain tables (e.g. `IInquiryRepository.promote` inserts into `deal` while updating `inquiry` in a single tx). The owning repo imports the partner feature's mapper to translate Insert/Row shapes. The alternative — a SECURITY DEFINER RPC — would be overkill for invariants the partial UNIQUE constraint already enforces at the DB. Documented uses: `features/inquiries/infrastructure/drizzle-inquiry.repository.ts` imports `mapCreateDTOToInsert` + `mapDealRowToEntity` from `features/deals/infrastructure/deal.mapper.ts` for the atomic promote operation. Any new exception must be added to this list with justification |
 
 ## Database Layer
 

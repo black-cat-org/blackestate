@@ -211,11 +211,25 @@ export interface IInquiryRepository {
    * clause also pins `organization_id = ctx.orgId` explicitly so a
    * spoofed JWT cannot promote across orgs even if RLS were misconfigured.
    *
-   * Idempotency / concurrency: the `FOR UPDATE` lock combined with the
-   * `status = 'open'` check guarantees that two concurrent calls cannot
-   * both succeed — the second sees the Inquiry already `promoted` and
-   * throws `inquiry_not_open`. Caller catches and decides whether to
-   * surface the already-existing Deal or treat as error.
+   * Idempotency / concurrency — two distinct race surfaces are guarded
+   * by different mechanisms:
+   *   - **Same-inquiry race** (two callers promoting Inquiry X): the
+   *     `FOR UPDATE` lock on Inquiry X serializes them. The second
+   *     transaction blocks until the first commits, then sees
+   *     `status = 'promoted'` and throws `inquiry_not_open`.
+   *   - **Cross-inquiry race** (two callers promoting Inquiry X and
+   *     Inquiry Y, both onto the same Contact + Property pair): the
+   *     `FOR UPDATE` lock does NOT serialize them — they lock
+   *     different rows. The collision is caught by the partial UNIQUE
+   *     constraint `deal_unique_active_contact_property` on the
+   *     `deal` table (migration 026). The losing transaction throws
+   *     `deal_already_active`. Do NOT remove the unique constraint
+   *     thinking the lock makes it redundant — they guard different
+   *     surfaces.
+   *
+   * Caller catches `inquiry_not_open` / `deal_already_active` and
+   * decides whether to surface the already-existing Deal or treat as
+   * a domain error.
    *
    * Returns both rows in their post-transaction state so the caller can
    * render "Created Deal X from Inquiry Y" without a second roundtrip.

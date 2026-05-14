@@ -96,8 +96,19 @@ export function mapInquiryRowWithJoinsToEntity(
 //   - `id`                → Drizzle `$defaultFn(crypto.randomUUID)`
 //   - `createdAt`/`updatedAt` → DB `now()` / `$onUpdate`
 
+// Signature accepts the minimum shape both `CreateInquiryDTO` (the public
+// DTO that still carries `contactId`/`contactDraft`) and the repository's
+// `ResolvedCreateInquiryDTO` (which omits those) can satisfy — the mapper
+// only reads `propertyId`, `source`, `message`. Using a `Pick` here
+// eliminates the `as CreateInquiryDTO` cast at the repository call site
+// (R17 review-feedback equivalent).
+type InquiryInsertSourceFields = Pick<
+  CreateInquiryDTO,
+  "propertyId" | "source" | "message"
+>
+
 export function mapCreateDTOToInsert(
-  data: CreateInquiryDTO,
+  data: InquiryInsertSourceFields,
   ctx: SessionContext,
   contactId: string,
 ): InquiryInsert {
