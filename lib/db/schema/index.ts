@@ -12,8 +12,9 @@ export { agentProfiles } from "./agent-profiles";
 export { platformAdmins } from "./platform-admins";
 export { propertyTransfers } from "./property-transfers";
 
-// Contact + Deal refactor (sub-plan 2026-05-13-contact-inquiry-refactor)
+// Contact + Inquiry + Deal refactor (sub-plan 2026-05-13-contact-inquiry-refactor)
 export { contact } from "./contact";
+export { deal } from "./deal";
 
 // Multitenancy (Supabase Auth migration — sub-plan 01)
 export { organization } from "./organization";
