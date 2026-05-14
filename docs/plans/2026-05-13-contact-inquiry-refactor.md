@@ -415,19 +415,19 @@ features/deals/
 export async function promoteInquiryUseCase(
   ctx: SessionContext,
   inquiryRepo: IInquiryRepository,
-  dealRepo: IDealRepository,
   inquiryId: string,
-  dealData: Omit<CreateDealDTO, "contactId" | "propertyId" | "inquiryId">,
+  dealInput: PromoteInquiryDealInput,
 ): Promise<{ deal: Deal; inquiry: Inquiry }> {
-  // 1. Read inquiry + validate status='open'
-  // 2. Atomic transaction:
-  //    a) Insert deal with inquiry_id=inquiryId, contact_id and property_id from inquiry
-  //    b) Update inquiry: status='promoted', promoted_deal_id=deal.id
-  // Both rows wrote together. ROLLBACK if any fails.
+  return inquiryRepo.promote(ctx, inquiryId, dealInput)
 }
 ```
 
-El `inquiryRepo.promote(...)` lo orquesta dentro de una única `withRLS(ctx, async (tx) => { ... })`.
+El use case es delegación delgada — la atomicidad bidireccional vive **enteramente dentro de `IInquiryRepository.promote()`**. El adapter Drizzle (I6) corre `withRLS(ctx, async (tx) => { ... })`:
+1. `SELECT inquiry ... FOR UPDATE` (lock + validation status='open').
+2. `INSERT deal` con `contact_id` y `property_id` heredados de la Inquiry y `inquiry_id` apuntando a ella.
+3. `UPDATE inquiry` con `status='promoted'` y `promoted_deal_id = deal.id`.
+
+Una sola transacción → si falla cualquier paso, ROLLBACK total. El use case NO recibe `dealRepo` como parámetro: cross-table writes en una sola tx son responsabilidad del repo dueño de la operación atómica.
 
 ### 4.5 UX — flujos principales
 
@@ -627,7 +627,7 @@ Orden interno por tarea: `implementar → code review → fixes → tests → co
 - [x] **R1** — `features/contacts/domain/contact.entity.ts`. ✅ 2026-05-13.
 - [x] **R2** — `features/contacts/domain/contact.repository.ts`. ✅ 2026-05-13.
 - [x] **I1** — `features/inquiries/domain/inquiry.entity.ts` (Inquiry + CreateInquiryDTO + UpdateInquiryDTO + InquiryStatus + InquirySource + InquiryFilters). ✅ 2026-05-13. Review: 1 IMPORTANT (invariante `promotedDealId` ↔ `status='promoted'` documentado bidireccional) resuelto via JSDoc reforzado (Option B — consistente con Deal pattern). Build + tsc + eslint verdes.
-- [ ] **I2** — `features/inquiries/domain/inquiry.repository.ts` (IInquiryRepository — incluye `findOpenByContactAndProperty`, `discard`, `promote` atómico).
+- [x] **I2** — `features/inquiries/domain/inquiry.repository.ts` (IInquiryRepository — incluye `findOpenByContactAndProperty`, `discard`, `promote` atómico). ✅ 2026-05-13. Review: 3 IMPORTANT resueltos (throw token `deal_already_active` agregado; `findAll` vs `findAllOpen` ordering documentado coherente; §4.4 use case sin `dealRepo` — atomicidad vive en repo). Build + tsc + eslint verdes.
 - [x] **R3** — `features/deals/domain/deal.entity.ts` (5 stages + inquiryId opcional). ✅ 2026-05-13.
 - [x] **R4** — `features/deals/domain/deal.repository.ts`. ✅ 2026-05-13.
 
