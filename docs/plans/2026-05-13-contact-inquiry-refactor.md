@@ -662,7 +662,7 @@ Orden re-ajustado para que los enums y las tablas con FK cruzadas se construyan 
 
 ### Fase 4 — Infrastructure repos
 
-- [ ] **R15** — `features/contacts/infrastructure/contact.model.ts`.
+- [x] **R15** — `features/contacts/infrastructure/contact.model.ts`. ✅ 2026-05-14. Exporta `ContactRow` / `ContactInsert` derivados de `typeof contact.$inferSelect` / `$inferInsert`, mirror exacto de `lead.model.ts` / `property.model.ts`. Review: 1 IMPORTANT (semicolons inconsistentes con templates) — fixed. Verificado 5/5 model files existentes (lead, property, bot, appointment, organization) sin semicolons. tsc + eslint + build verdes. Cleanup de `ContactRecord`/`NewContactRecord` schema-level diferido a R46b (no es regresión — exports coexisten temporalmente con consumers cero, R46b graps + delete al final del sub-plan).
 - [ ] **R16** — `features/contacts/infrastructure/contact.mapper.ts` (null↔undefined).
 - [ ] **R17** — `features/contacts/infrastructure/drizzle-contact.repository.ts`.
 - [ ] **I4** — `features/inquiries/infrastructure/inquiry.model.ts`.
@@ -719,6 +719,7 @@ Orden re-ajustado para que los enums y las tablas con FK cruzadas se construyan 
 - [ ] **R44** — Eliminar `lib/db/schema/leads.ts` + barrel.
 - [ ] **R45** — Eliminar enums legacy en `enums.ts`.
 - [ ] **R46** — SQL `drizzle/sql/027_drop_legacy_leads.sql`: `DROP TABLE public.leads;`. Aplicar en dev.
+- [ ] **R46b** — Cleanup de exports schema-level redundantes con feature-layer model files. Grep para verificar que ningún consumer importa `ContactRecord`/`NewContactRecord`/`DealRecord`/`NewDealRecord`/`InquiryRecord`/`NewInquiryRecord`/`ContactPropertyQueueRecord`/`NewContactPropertyQueueRecord` fuera del propio archivo schema. Si zero hits → borrar esos exports en `lib/db/schema/contact.ts`/`deal.ts`/`inquiry.ts`/`contact-property-queue.ts`. Razón: feature-layer (`features/*/infrastructure/*.model.ts`) es el dueño del naming `Row`/`Insert` por convención existente (pattern `lead.model.ts`/`property.model.ts`); duplicar la inferencia en schema deja dead code que confunde a futuros lectores. Aplica también a cualquier `Record` suffix de tablas creadas en este sub-plan.
 
 ### Fase 11 — Tests + docs + commits
 
