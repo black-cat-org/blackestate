@@ -643,21 +643,20 @@ Orden re-ajustado para que los enums y las tablas con FK cruzadas se construyan 
 - ⏭️ **R8** — ~~Actualizar `appointments.ts`: `leadId` → `dealId`~~ **Diferida a R34** (Fase 8 — `features/appointments` migrate). Razón: el schema TS y el código consumidor deben moverse juntos para evitar romper el build a mitad del refactor. La migración SQL real de la columna sí ocurre en R12 (CREATE TABLE deal + ALTER appointments). El schema Drizzle TS se realinea con el código en R34.
 - ⏭️ **R9** — ~~Actualizar `bot-conversations.ts`: `leadId` → `contactId`~~ **Diferida a R35** (Fase 8 — `features/bot` migrate). Misma razón que R8.
 - [x] **R11** — Actualizar `lib/db/schema/index.ts` (barrel): exportar contact (ya), deal, inquiry, contact-property-queue. ✅ 2026-05-13. Cubierta progresivamente durante R5/R6/I3/R7 — cada nueva tabla agregada incluyó su export en el barrel. Verificación final: los 4 exports presentes en la sección "Contact + Inquiry + Deal refactor".
-- [ ] **R11** — Actualizar `lib/db/schema/index.ts` (barrel): exportar deal, inquiry, contact-property-queue.
 
 ### Fase 3 — Migración SQL + apply en dev
 
-- [ ] **R12** — Escribir `drizzle/sql/026_contact_inquiry_deal_refactor.sql`:
+- [x] **R12** — Escribir `drizzle/sql/026_contact_inquiry_deal_refactor.sql`. ✅ 2026-05-14. Contenido final:
   - BEGIN transaccional.
-  - DDL types: `deal_stage_enum` (5 vals), `deal_source_enum`, `inquiry_status_enum`, `inquiry_source_enum`.
-  - DDL tablas: `contact`, `inquiry` (con FK a contact + properties + opcional a deal), `deal` (con FK a contact + properties + opcional a inquiry).
-  - Mapping algoritmo §3 con `_migration_lead_to_contact`.
-  - Inserts diferenciados §3.3: lead→deal si tiene appointment o won/lost; lead→inquiry resto.
-  - Recalcular stage_order.
-  - FK switch §3.4: appointments.lead_id → deal_id, queue rename + contact_id, bot_conversations idem.
-  - RLS policies sobre contact + inquiry + deal.
-  - NO drop de leads (al final del refactor).
+  - DDL types: 4 pgEnums (`deal_stage` 5 vals, `deal_source`, `inquiry_status`, `inquiry_source`).
+  - DDL tablas: `contact`, `deal`, `inquiry`, `contact_property_queue`. Partial UNIQUE constraints (`deal_unique_active_contact_property`, `inquiry_unique_open_contact_property`) + partial indexes que Drizzle Kit no expresa (functional `lower(email)`, `deleted_at IS NULL` filters).
+  - Bidirectional FK pair `deal.inquiry_id ↔ inquiry.promoted_deal_id` ambos `ON DELETE SET NULL` (Section 3 — declarados después de crear ambas tablas para evitar circular DDL).
+  - RLS: 5 policies per tabla mirror de `017a_domain_rls_membership_check.sql` + defense-in-depth `is_org_member()`. **Contact diverge**: `select_org` y `select_trash` org-wide (sin filtro `created_by_user_id`) para soportar dedup cross-agent. UPDATE sigue agent-scoped. Documentación inline en Section 4.
+  - Mapping algoritmo §3 con dos TEMP tables: `_migration_groups` (pre-genera `new_contact_id` via `gen_random_uuid()` en grouping para evitar pairing race en NULL-NULL groups) + `_migration_lead_to_contact`. Inserts diferenciados §3.3: lead→deal si tiene appointment activo o status won/lost; lead→inquiry el resto. Stage_order recompute scoped a `WHERE stage NOT IN ('won','lost') AND deleted_at IS NULL`.
   - COMMIT.
+  - **Diferido a R34/R35** (sub-plan §3.4): FK switches `appointments.lead_id → deal_id`, `lead_property_queue → contact_property_queue` rename, `bot_conversations.lead_id → contact_id`. Estos cambios SQL deben aterrizar junto con la migración del código consumidor (features/appointments, features/bot) para no romper el build mid-refactor. Mismo razonamiento que la deferral de R8/R9 (schemas TS).
+  - **Code reviews**: 3 rounds con `feature-dev:code-reviewer`. Round 1: 3 CRITICAL + 5 IMPORTANT → fixed. Round 2: 3 CRITICAL (`array_agg(...) FILTER (...) ORDER BY ...` syntax inválida — habría rollback en prod; stage_order incluía soft-deleted active → MIG10 gap; pairing race con `min(created_at)`) + 4 IMPORTANT → fixed. Round 3: 1 MINOR (CLAUDE.md exceptions phrasing impreciso) → fixed. Sin issues abiertos.
+  - **Tests post-fix**: tsc ✅ / eslint ✅ / build ✅. Playwright + Supabase apply diferidos a R13.
 - [ ] **R13** — Aplicar migración R12 en Supabase dev via MCP `apply_migration`.
 - [ ] **R14** — Validar §6.4. Rollback si discrepancias.
 

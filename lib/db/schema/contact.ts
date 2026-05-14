@@ -24,8 +24,9 @@ import {
  *   - `contact_active_org_idx ON (organization_id) WHERE deleted_at IS NULL`
  *
  * Drizzle Kit cannot express partial / functional indexes natively, so
- * they live in the SQL migration (`drizzle/sql/026_contact_deal_refactor.sql`,
- * created in R12). Do NOT re-add them as regular `index(...)` here —
+ * they live in the SQL migration
+ * (`drizzle/sql/026_contact_inquiry_deal_refactor.sql`, created in R12).
+ * Do NOT re-add them as regular `index(...)` here —
  * `drizzle-kit generate` would emit a full index alongside the partial
  * one and bloat write paths. The pattern mirrors the `member` schema
  * (see `member.ts`).
