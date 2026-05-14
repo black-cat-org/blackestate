@@ -1,64 +1,61 @@
-# Sub-plan — Refactor `lead → contact + deal` (con funnel + Kanban)
+# Sub-plan — Refactor `lead → contact + inquiry + deal` (con funnel + Kanban)
 
 **Fecha:** 2026-05-13
 **Branch:** `feat/contact-inquiry-refactor`
 **Bloqueante de:** `docs/plans/2026-05-13-property-transfers.md`
-**Estado actual:** Schema mono-tabla `leads` mezcla identidad (persona) con oportunidad (interés en una prop). Refactor a modelo CRM industria-standard validado contra AlterEstate / Tokko Broker / HubSpot Real Estate: **Contact ↔ Deal** con **pipeline funnel** y **vista Kanban**.
+**Estado actual:** Schema mono-tabla `leads` mezcla identidad, interés ligero y oportunidad comercial. Refactor al modelo estándar de CRM real-estate validado contra Salesforce Propertybase + HubSpot: **Contact (persona) + Inquiry (interés ligero) + Deal (oportunidad con funnel)**.
 
-> **Nota de naming:** el archivo conserva el slug histórico `contact-inquiry-refactor` por trazabilidad del commit que lo creó. El modelo final usa **Deal** (no Inquiry) — "Inquiry" implica una pregunta del cliente, "Deal" captura la oportunidad comercial real que el agente registra y trabaja a través de un funnel.
+> **Naming:** el archivo conserva el slug `contact-inquiry-refactor` por trazabilidad del commit que lo creó. El modelo usa tres entidades: **Contact**, **Inquiry**, **Deal**.
 
 ---
 
 ## 1. Motivación
 
-Hoy una persona interesada en 3 propiedades = 3 filas `leads` duplicadas con mismo `name + phone + email` y `property_id` distinto. Eso rompe:
+Hoy una persona interesada en 3 propiedades genera 3 filas `leads` duplicadas, con el mismo `name + phone + email` y `property_id` distinto. Además, el modelo mete en la misma tabla dos cosas distintas:
 
-- **Identidad del contacto**: no hay forma de saber "todos los deals de Carlos" sin agrupar por phone/email a mano.
-- **Pipeline visual**: no hay funnel/Kanban — todas las oportunidades viven con `status` simple (new/contacted/interested/won/lost) que no refleja el ciclo de venta real.
-- **Transferencia de propiedades**: cascadear `leads` cuando transferís una prop arrastra contactos que querés conservar.
-- **Analytics y reporting**: "contactos únicos del mes" requiere DISTINCT por (phone, email), frágil. "Conversión por etapa de funnel" no se puede medir.
-- **Bot conversacional**: una conversación bot es con un contacto (persona), no con un "deal en prop". Hoy `bot_conversations.lead_id` apunta a un par persona-prop arbitrario.
-- **Marketing y nurturing**: campañas a "leads únicos" duplican mensajes si el contacto figura en 3 props.
+- **Carlos llenó el form público de Casa A** → interés expresado, sin compromiso.
+- **Carlos agendó visita para Casa A** → oportunidad comercial real.
 
-El modelo estándar (HubSpot, Salesforce Propertybase, AlterEstate, Tokko Broker) separa **tres conceptos**:
+Hoy ambas son `lead` con `status`. Eso rompe:
 
-- **Contact** = la persona física (entidad de identidad). Único por `(org_id, phone, email)`.
-- **Deal** = la oportunidad comercial concreta (Contact ↔ Property con metadata: stage, source, budget). Un Contact puede tener N Deals (uno por cada propiedad de interés).
-- **Pipeline (funnel)** = secuencia de etapas por las que avanza un Deal: Prospecto → Calificado → Visita → Negociación → Reservado → Cerrado-Ganado / Cerrado-Perdido.
+- **Identidad del contacto**: no hay forma de saber "todo lo de Carlos" sin agrupar por phone/email a mano.
+- **Pipeline visual / Kanban**: no se puede separar "interés cold" de "oportunidad caliente". El Kanban se llena de ruido conversacional del bot.
+- **Transferencia de propiedades**: cascadear `leads` arrastra contactos que querés conservar.
+- **Analytics**: no podés medir "tasa de conversión Inquiry → Deal" si ambos viven en la misma tabla con un status.
+- **Bot conversacional**: una conversación bot es con un contact (persona), no con un "interés en prop". Hoy `bot_conversations.lead_id` apunta a un par persona-prop arbitrario.
+
+El modelo estándar separa **tres conceptos** (Propertybase, HubSpot, Salesforce):
+
+- **Contact** = la persona física (identidad). Único por `(org_id, phone, email)` a nivel use case.
+- **Inquiry** = interés expresado sin compromiso. Status `open` / `discarded` / `promoted`. Sin funnel.
+- **Deal** = oportunidad comercial con compromiso real. Funnel de 5 stages (visita / negociación / reserva / ganado / perdido). Una Deal puede haber nacido de promover una Inquiry, o creada directo por el agente.
 
 ---
 
 ## 2. Modelo target
 
 ```
-┌──────────────┐         ┌──────────────┐         ┌──────────────┐
-│   contact    │ 1─────N │     deal     │ N─────1 │   property   │
-│              │         │              │         │              │
-│ id           │         │ contact_id ──┤         │ id           │
-│ org_id       │         │ property_id ─┤         │ org_id       │
-│ name         │         │ org_id       │         │ ...          │
-│ phone        │         │ stage        │         └──────────────┘
-│ email        │         │ source       │
-│ tags         │         │ budget       │
-│ ...          │         │ message      │
-│ created_by   │         │ created_by   │
-└──────────────┘         └──────────────┘
-       │                        │
-       │                        │
-       │                  ┌─────┴────────────┐
-       │                  │   appointment    │ (lead_id → deal_id; conserva property_id por display)
-       │                  └──────────────────┘
-       │                        │
-       │                  ┌─────┴────────────┐
-       │                  │   ai_contents    │ (sin cambio — atado a property)
-       │                  └──────────────────┘
-       │
-       ├──────── contact_property_queue (lead_property_queue renombrada — atada a contact)
-       │
-       └──────── bot_conversation (lead_id → contact_id — bot conversa con persona)
+┌──────────────┐         ┌──────────────┐                ┌──────────────┐
+│   contact    │ 1─────N │   inquiry    │ ───promoted─►  │     deal     │
+│              │         │              │                │              │
+│ id           │         │ contact_id ──┤                │ inquiry_id?──┤ (link al origen)
+│ org_id       │         │ property_id ─┤                │ contact_id ──┤
+│ name         │         │ status       │                │ property_id ─┤
+│ phone        │         │ source       │                │ stage        │
+│ email        │         │ message      │                │ stage_order  │
+│ tags         │         │ promoted_*   │                │ ...          │
+│ ...          │         │ ...          │                └──────────────┘
+└──────────────┘         └──────────────┘                       │
+       │                        │                               │
+       │                  ┌─────┴────────────┐    ┌─────────────┴──────┐
+       │                  │     bot conv     │    │    appointment     │
+       │                  └──────────────────┘    └────────────────────┘
+       │                                                       │
+       └──────── contact_property_queue                         ▼
+                                                          ai_contents (atada a property)
 ```
 
-### 2.1 Tabla `contact` (NUEVA)
+### 2.1 Tabla `contact`
 
 | Columna | Tipo | NOT NULL | Notas |
 |---|---|---|---|
@@ -71,31 +68,20 @@ El modelo estándar (HubSpot, Salesforce Propertybase, AlterEstate, Tokko Broker
 | `notes` | `text` | ❌ | observaciones genéricas |
 | `tags` | `text[]` | ✅ default `'{}'` | etiquetas libres |
 | `preferred_channel` | `text` | ❌ | "whatsapp"/"phone"/"email" — futuro |
-| `catalog_sent_with_origin` | `boolean` | ✅ default false | tracking "le mandé el catálogo desde su origen" — heredado del lead actual |
+| `catalog_sent_with_origin` | `boolean` | ✅ default false | tracking "le mandé el catálogo desde su origen" |
 | `catalog_opened_at` | `timestamptz` | ❌ | tracking apertura del catálogo |
 | `created_at` | `timestamptz` | ✅ | |
 | `updated_at` | `timestamptz` | ✅ | `$onUpdate` |
 | `deleted_at` | `timestamptz` | ❌ | soft delete |
 | `deleted_by_user_id/name/email` | `uuid/text/text` | ❌ | audit (mirror pattern) |
 
-**Índices:**
-- `contact_org_id_idx` ON `(organization_id)`
-- `contact_org_phone_idx` ON `(organization_id, phone) WHERE phone IS NOT NULL AND deleted_at IS NULL` — dedup lookup
-- `contact_org_email_idx` ON `(organization_id, lower(email)) WHERE email IS NOT NULL AND deleted_at IS NULL` — dedup lookup
-- `contact_org_created_by_idx` ON `(organization_id, created_by_user_id)` — agent ownership
-- `contact_active_org_idx` ON `(organization_id) WHERE deleted_at IS NULL` — hot path
+**Índices (TS):** `contact_org_id_idx`, `contact_org_created_by_idx`. **Partial / functional indexes** (org+phone where not null, org+lower(email) where not null, active org where not deleted) viven en SQL manual (R12) — Drizzle Kit no los expresa nativamente.
 
-**Unicidad lógica (no constraint):** un contacto por `(org, phone)` y por `(org, email)`. **Por qué no UNIQUE constraint:** phone/email pueden ser NULL (no todos los contactos tienen ambos), pueden cambiar, y dos personas pueden compartir teléfono familiar — el constraint bloquearía casos válidos. La deduplicación se resuelve en use cases (búsqueda + confirmación humana en autocomplete).
+**Unicidad lógica (no constraint):** un contacto por `(org, phone)` y por `(org, email)`. Dedup en use case, no en schema (phone/email pueden ser NULL, pueden cambiar, teléfonos familiares legítimamente compartidos).
 
-### 2.1b ⛔ CANCELADA — Tabla `contact_property_visits`
+### 2.2 Tabla `inquiry` (interés ligero)
 
-Esta tabla NO se construye. Reemplazada por la tabla `inquiry` definida en §2.1c. Razón del pivote: en el flujo real de Black Estate, no hay "visitas web anónimas trackeadas a posteriori". El interés en una prop solo se registra cuando hay datos del contacto (form público lleno) o cuando una conversación con el bot lo menciona. Eso ya es una **Inquiry** (interés ligero), no una "visit". Cada Inquiry queda en la tabla `inquiry` y puede promoverse a `deal` si avanza.
-
-Sección preservada para trazabilidad del cambio de modelo durante el plan. La descripción y los índices originales quedaban abajo — todos descartados.
-
-### 2.1c Tabla `inquiry` (NUEVA — interés ligero antes del Deal)
-
-Mirror del patrón `Inquiry` de Salesforce Propertybase. Representa un interés expresado por un Contact sobre una Property, sin compromiso comercial concreto. Cuando ese interés madura (cita agendada, oferta), se **promueve** a un `deal`.
+Mirror del patrón `Inquiry` de Salesforce Propertybase. Representa un interés expresado por un Contact sobre una Property, sin compromiso comercial. Cuando ese interés madura (cita agendada, oferta), se **promueve** a un Deal mediante una transacción atómica que crea el Deal y marca la Inquiry como `promoted`.
 
 | Columna | Tipo | NOT NULL | Notas |
 |---|---|---|---|
@@ -104,123 +90,109 @@ Mirror del patrón `Inquiry` de Salesforce Propertybase. Representa un interés 
 | `created_by_user_id` | `uuid` | ✅ | agente o bot que capturó la inquiry |
 | `contact_id` | `text` FK → `contact.id` | ✅ | quién mostró interés |
 | `property_id` | `text` FK → `properties.id` | ✅ | en qué propiedad |
-| `source` | `inquiry_source_enum` | ❌ | `public_form` / `bot` / `manual` / `whatsapp` / `facebook` / etc. |
+| `source` | `inquiry_source_enum` | ❌ | `public_form` / `bot` / `manual` / `whatsapp` / etc. |
 | `message` | `text` | ❌ | mensaje del form / extracto bot / nota del agente |
-| `status` | `inquiry_status_enum` | ✅ default `'open'` | `open` / `discarded` / `promoted` (cuando se convierte en deal) |
-| `promoted_deal_id` | `text` FK → `deal.id` | ❌ | link al deal resultante cuando `status = 'promoted'` |
+| `status` | `inquiry_status_enum` | ✅ default `'open'` | `open` / `discarded` / `promoted` |
+| `promoted_deal_id` | `text` FK → `deal.id` | ❌ | link al deal cuando `status = 'promoted'` |
 | `discarded_reason` | `text` | ❌ | opcional cuando `status = 'discarded'` |
 | `created_at` | `timestamptz` | ✅ default `now()` | |
 | `updated_at` | `timestamptz` | ✅ `$onUpdate` | |
 | `deleted_at` | `timestamptz` | ❌ | soft-delete |
 | `deleted_by_*` | uuid/text/text | ❌ | audit (mirror pattern) |
 
-**Sin funnel/stages.** Solo 3 status: `open` (vigente), `discarded` (no avanzó), `promoted` (se convirtió en deal). Lo que importa de una Inquiry es su volumen y su tasa de conversión a Deal — no su progreso interno.
+**Sin funnel/stages.** Solo 3 status: `open` (vigente), `discarded` (no avanzó), `promoted` (se convirtió en deal).
 
-**Constraint NUEVO:** `UNIQUE(organization_id, contact_id, property_id) WHERE deleted_at IS NULL AND status = 'open'` — un contact tiene a lo sumo una Inquiry **abierta** por propiedad. Si pregunta dos veces, se reactiva la existente (vuelve a `open` desde `discarded`). Si la Inquiry está `promoted`, sí permite crear una nueva inquiry sobre la misma prop (representa interés renovado después de un deal cerrado).
+**Constraint:** `UNIQUE(organization_id, contact_id, property_id) WHERE deleted_at IS NULL AND status = 'open'` — un contact tiene a lo sumo una Inquiry **abierta** por propiedad. Si pregunta dos veces, se reactiva la existente.
 
-**Índices clave:**
-- `inquiry_org_id_idx` ON `(organization_id)` — tenancy
-- `inquiry_contact_id_idx` ON `(contact_id)` — "todas las inquiries de Carlos"
-- `inquiry_property_id_idx` ON `(property_id)` — "quién preguntó por Casa A"
-- `inquiry_org_status_idx` ON `(organization_id, status)` — listado filtrable
-- `inquiry_org_created_by_idx` ON `(organization_id, created_by_user_id)` — ownership
+**Índices:** `inquiry_org_id_idx`, `inquiry_contact_id_idx`, `inquiry_property_id_idx`, `inquiry_org_status_idx`, `inquiry_org_created_by_idx`.
 
-**Nuevos enums `inquiry_status_enum` + `inquiry_source_enum`:**
-- Status: `open` / `discarded` / `promoted`.
-- Source: `public_form` / `bot` / `manual` / `whatsapp` / `facebook` / `instagram` / `tiktok` / `google` / `referral` / `direct`. (Superset de `deal_source_enum`: incluye `public_form`, `bot`, `manual` además de los canales sociales.)
+**Enums:**
+- `inquiry_status_enum`: `open` / `discarded` / `promoted`.
+- `inquiry_source_enum`: `public_form` / `bot` / `manual` / `whatsapp` / `facebook` / `instagram` / `tiktok` / `google` / `referral` / `direct`.
 
-### 2.2 Tabla `deal` (nueva, reemplaza `leads`)
+**Promote atómico — invariante bidireccional Inquiry ↔ Deal:**
+
+Las dos FK (`inquiry.promoted_deal_id` y `deal.inquiry_id`) son intencionales para navegación sin JOIN extra. El invariante de consistencia se mantiene SIEMPRE atómicamente: una sola transacción Postgres que (a) inserta el Deal con `inquiry_id = ?`, (b) actualiza la Inquiry con `status = 'promoted'` y `promoted_deal_id = <id del deal recién insertado>`. El use case `promoteInquiryUseCase` orquesta. El adapter ejecuta dentro de `withRLS(ctx, async (tx) => { tx.insert(deal)... tx.update(inquiry)... })`.
+
+**Edge cases del invariante:**
+- **Restore de Deal soft-deleted vinculado:** la Inquiry NO revierte automáticamente a `open`. El operador decide reabrir manualmente si quiere.
+- **Restore de Inquiry soft-deleted con `status='promoted'`:** se mantiene como `promoted`. El link al Deal sigue válido.
+- **Soft-delete de Inquiry con `status='promoted'`:** el Deal sigue vivo. El historial sigue navegable desde el Deal.
+- **Hard-delete:** prohibido por política firme. `ON DELETE CASCADE` declarado en ambas FKs como red de seguridad si se introduce en el futuro.
+
+### 2.3 Tabla `deal` (oportunidad comercial)
 
 | Columna | Tipo | NOT NULL | Notas |
 |---|---|---|---|
-| `id` | `text` PK | ✅ | preserva IDs viejos en migración |
+| `id` | `text` PK | ✅ | UUID via `$defaultFn` |
 | `organization_id` | `uuid` | ✅ | tenancy |
 | `created_by_user_id` | `uuid` | ✅ | agente dueño del deal |
-| `contact_id` | `text` FK → `contact.id` | ✅ | **NUEVO** |
-| `property_id` | `text` FK → `properties.id` | ✅ | conservado |
-| `inquiry_id` | `text` FK → `inquiry.id` | ❌ | **NUEVO** — link a la Inquiry que originó este Deal (null si se creó directo, sin pasar por Inquiry — caso raro: agente carga oportunidad manual sin paso previo) |
+| `contact_id` | `text` FK → `contact.id` | ✅ | |
+| `property_id` | `text` FK → `properties.id` | ✅ | |
+| `inquiry_id` | `text` FK → `inquiry.id` | ❌ | link al origen cuando el Deal nació promoviendo una Inquiry |
 | `stage` | `deal_stage_enum` | ✅ default `'visit_scheduled'` | etapa del funnel |
-| `stage_order` | `integer` | ✅ default `0` | orden dentro de la columna del Kanban (drag&drop dentro de la misma etapa) |
-| `source` | `deal_source_enum` | ❌ | renombrado desde `lead_source_enum` |
-| `budget` | `text` | ❌ | conservado |
-| `message` | `text` | ❌ | conservado |
-| `property_type_sought` | `text` | ❌ | conservado |
-| `zone_of_interest` | `text` | ❌ | conservado |
-| `wants_offers` | `boolean` | ✅ default false | conservado |
-| `expected_close_at` | `timestamptz` | ❌ | **NUEVO** — fecha estimada de cierre (para forecasting futuro) |
-| `closed_at` | `timestamptz` | ❌ | **NUEVO** — poblado cuando `stage` pasa a `won`/`lost` |
-| `lost_reason` | `text` | ❌ | **NUEVO** — opcional cuando `stage = 'lost'` |
-| `created_at/updated_at/deleted_at + audit cols` | | | conservados |
+| `stage_order` | `integer` | ✅ default `0` | orden dentro de la columna Kanban (drag&drop dentro de la misma etapa) |
+| `source` | `deal_source_enum` | ❌ | canal de origen |
+| `budget` | `text` | ❌ | |
+| `message` | `text` | ❌ | |
+| `property_type_sought` | `text` | ❌ | |
+| `zone_of_interest` | `text` | ❌ | |
+| `wants_offers` | `boolean` | ✅ default false | |
+| `expected_close_at` | `timestamptz` | ❌ | fecha estimada de cierre (forecasting) |
+| `closed_at` | `timestamptz` | ❌ | poblado cuando `stage` pasa a `won`/`lost` |
+| `lost_reason` | `text` | ❌ | opcional cuando `stage = 'lost'` |
+| `created_at/updated_at/deleted_at + audit cols` | | | |
 
-**Enum `deal_stage_enum` (5 valores fijos — solo compromisos reales):**
+**Enum `deal_stage_enum` (5 valores — solo compromisos reales):**
 
-| Valor (código) | Label UI (español) | Descripción |
+| Valor | Label UI | Descripción |
 |---|---|---|
-| `visit_scheduled` | Visita programada | Hay cita agendada o ya visitó la prop |
-| `negotiation` | Negociación | Hablando de precio, condiciones, oferta |
-| `reserved` | Reservado | Reserva formal pagada (seña o anticipo) — paso previo a cerrar |
+| `visit_scheduled` | Visita programada | Cita agendada o ya realizada |
+| `negotiation` | Negociación | Hablando de precio / condiciones / oferta |
+| `reserved` | Reservado | Reserva formal (seña o anticipo) |
 | `won` | Ganado | Venta/alquiler concretado |
-| `lost` | Perdido | Se cayó la operación |
+| `lost` | Perdido | Operación caída |
 
-**Cambio respecto a la versión anterior del plan:** los stages tempranos `prospect` y `qualified` se eliminaron del Deal. Esos estados ahora pertenecen a la **Inquiry** (§2.1c), que es el modelo correcto para "interés expresado sin compromiso concreto". El Deal solo existe cuando hay compromiso real (cita agendada, negociación). Esto evita inflar el Kanban del agente con ruido conversacional del bot.
+`won` y `lost` son terminales: el Deal sale del Kanban activo. Reopen permitido (limpia `closed_at` + `lost_reason`).
 
-`won` y `lost` son **estados terminales** — el Deal sale del Kanban activo y aparece en archivo. `lost_reason` opcional ayuda a entender por qué se cae el funnel.
+**Enum `deal_source_enum`:** `facebook` / `instagram` / `whatsapp` / `tiktok` / `google` / `referral` / `direct`. (Subset de `inquiry_source_enum`: no incluye `public_form` ni `bot` ni `manual` porque esos son canales de captura inicial — el Deal hereda el source del flujo de promoción cuando aplica, o el agente lo selecciona manualmente al crear directo.)
 
-**Lo que se mueve fuera (van a `contact`):** `name`, `phone`, `email`, `propertyVisits` JSONB, `catalogTracking`. Esas son propiedades de la persona, no del deal.
+**Constraint:** `UNIQUE(organization_id, contact_id, property_id) WHERE deleted_at IS NULL AND stage NOT IN ('won','lost')` — un contact tiene a lo sumo un Deal **activo** por propiedad.
 
-**Constraint nuevo:** `UNIQUE(organization_id, contact_id, property_id) WHERE deleted_at IS NULL AND stage NOT IN ('won','lost')` — un contact tiene a lo sumo un deal **activo** por propiedad. Si después de `won/lost` vuelve a interesarse, se crea uno nuevo (representa una negociación distinta).
+**Índices:** `deal_org_id_idx`, `deal_property_id_idx`, `deal_contact_id_idx`, `deal_org_stage_idx`, `deal_org_created_by_idx`. Partial `deal_active_org_idx ON (organization_id) WHERE deleted_at IS NULL AND stage NOT IN ('won','lost')` en SQL manual.
 
-**Índices:**
-- `deal_org_id_idx`
-- `deal_property_id_idx` (era `leads_property_id_idx`)
-- `deal_contact_id_idx` — NUEVO, hot path para "todos los deals de Carlos"
-- `deal_org_stage_idx` — NUEVO, para queries del Kanban (`WHERE org_id = X AND stage = 'qualified' ORDER BY stage_order`)
-- `deal_org_created_by_idx` (era `leads_org_created_by_idx`)
-- `deal_active_org_idx ON (organization_id) WHERE deleted_at IS NULL AND stage NOT IN ('won','lost')` — hot path Kanban activo
+### 2.4 Cambios en tablas dependientes
 
-### 2.3 Cambios en tablas dependientes
-
-| Tabla actual | Cambio | Razón |
+| Tabla | Cambio | Razón |
 |---|---|---|
-| `appointments` | `lead_id` → `deal_id` (FK → deal). Conserva `property_id` como denormalización para display rápido. | Una cita es la visita física de un deal concreto. Si transferís el deal, la cita va con él |
-| `lead_property_queue` | Rename a `contact_property_queue`. `lead_id` → `contact_id`. Conserva `property_id`. | La cola de props sugeridas por el bot pertenece al contact (persona). Cuando el contact muestra interés en una prop sugerida, **se crea un deal nuevo** (no se elimina del queue) |
-| `bot_conversations` | `lead_id` → `contact_id`. | El bot conversa con una persona, no con un deal específico. Los mensajes pueden referenciar varias props vía contenido |
+| `appointments` | `lead_id` → `deal_id` (FK → deal). Conserva `property_id` como denormalización display | Cita = visita física de un Deal concreto. Agendar cita es el trigger natural de promover Inquiry → Deal |
+| `lead_property_queue` | Rename `contact_property_queue`. `lead_id` → `contact_id` | Cola de props sugeridas por el bot. Atado al Contact (persona) |
+| `bot_conversations` | `lead_id` → `contact_id` | El bot conversa con la persona |
 | `bot_messages` | Sin cambio | Sigue ligado a `bot_conversations.id` |
-| `ai_contents` | Sin cambio | `property_id` apunta a prop. Contenidos AI son assets de la propiedad |
-| `analytics_events` | `metadata.leadId` legacy → `metadata.contactId` + `metadata.dealId` cuando aplique. Eventos viejos quedan con `leadId` | Service de analytics lee ambos por compatibilidad histórica |
-| `property_transfers` | Sin cambios estructurales en este refactor. El sub-plan de transfers se actualiza para renombrar `inquiriesCount` → `dealsCount` y cascade actúa sobre `deal` | Coordinado con `docs/plans/2026-05-13-property-transfers.md` |
+| `ai_contents` | Sin cambio | Atado a `property_id`. Asset de la propiedad |
+| `analytics_events` | `metadata.leadId` legacy → `metadata.contactId` + `metadata.inquiryId` / `metadata.dealId` cuando aplique | Service de analytics lee ambos para compatibilidad |
+| `property_transfers` | `inquiriesCount` → `dealsCount` (sub-plan transfers coordinado) | Cascade del transfer actúa sobre Deals. Inquiries NO cascadean (son interés ligero) |
 
-### 2.4 RLS policies a actualizar
+### 2.5 RLS policies
 
-Las policies de `leads` (`drizzle/sql/006`) se replican para:
+Mirror del pattern actual aplicado a `contact`, `inquiry`, `deal`. Reglas: org isolation + soft delete + papelera role-aware + super admin para SELECT; INSERT/UPDATE per role.
 
-- `contact` — mismas reglas (org isolation + soft delete + papelera role-aware + super admin para SELECT; INSERT/UPDATE per role).
-- `deal` — mismas reglas (clone de las de leads). Adicionalmente: agent puede mover stage de sus propios deals (UPDATE policy ya cubre el caso con `created_by_user_id = sub`).
-- `appointments`, `contact_property_queue`, `bot_conversations` — policies existentes siguen valiendo (la columna se renombra pero la lógica RLS sigue siendo "org + agent ownership").
-
-Migración SQL nueva: `drizzle/sql/026_contact_deal_refactor.sql` con todas las DDL + RLS + el enum nuevo.
+Migración SQL: `drizzle/sql/026_contact_inquiry_deal_refactor.sql` con DDL completa + RLS + enums.
 
 ---
 
-## 3. Mapping de datos (lead → contact + deal)
+## 3. Mapping de datos (lead → contact + inquiry/deal)
 
-Algoritmo de migración determinístico, idempotente, ejecutable en una sola transacción Postgres.
+Algoritmo determinístico, idempotente, transaccional. Dev DB sin data real (confirmado por Gonzalo) — el algoritmo se escribe completo para staging/prod futuro.
 
 ### 3.1 Paso 1 — agrupar leads por persona
 
-Para cada `org_id`:
+Phone-first / email-fallback / NULL-NULL → no agrupa.
 
 ```sql
--- "Persona" = misma normalización de phone o mismo email (case-insensitive).
--- Si phone es NULL pero email coincide → misma persona.
--- Si email es NULL pero phone coincide → misma persona.
--- Si ambos NULL → cada lead es su propia persona (no se agrupa).
 WITH normalized AS (
   SELECT
-    l.id AS lead_id,
-    l.organization_id,
-    l.created_by_user_id,
-    l.name,
+    l.id AS lead_id, l.organization_id, l.created_by_user_id, l.name,
     NULLIF(regexp_replace(coalesce(l.phone, ''), '[^0-9+]', '', 'g'), '') AS phone_norm,
     NULLIF(lower(trim(coalesce(l.email, ''))), '') AS email_norm,
     l.created_at
@@ -228,14 +200,10 @@ WITH normalized AS (
   WHERE l.deleted_at IS NULL
 ),
 keyed AS (
-  SELECT
-    *,
-    coalesce(phone_norm, email_norm, lead_id) AS group_key
-  FROM normalized
+  SELECT *, coalesce(phone_norm, email_norm, lead_id) AS group_key FROM normalized
 )
 SELECT
-  organization_id,
-  group_key,
+  organization_id, group_key,
   array_agg(lead_id ORDER BY created_at) AS lead_ids,
   (array_agg(created_by_user_id ORDER BY created_at))[1] AS earliest_creator,
   (array_agg(name) FILTER (WHERE name IS NOT NULL) ORDER BY created_at DESC)[1] AS display_name,
@@ -248,484 +216,330 @@ GROUP BY organization_id, group_key;
 
 ### 3.2 Paso 2 — crear contacts
 
-Por cada grupo del Paso 1 → un `INSERT INTO public.contact(...)`. Generar UUID nuevo para `contact.id`. Mantener tabla auxiliar `_migration_lead_to_contact(lead_id, contact_id)` para el Paso 3.
+Por cada grupo del Paso 1 → un `INSERT INTO public.contact(...)`. Tabla auxiliar `_migration_lead_to_contact(lead_id, contact_id)` para los pasos siguientes.
 
-### 3.2b Paso 2b — desarmar `propertyVisits` JSONB → filas en `contact_property_visits`
+### 3.3 Paso 3 — repartir leads legacy entre `inquiry` y `deal`
 
-Cada lead legacy lleva `propertyVisits` como JSONB array embebido. La migración lo unnest a una fila por evento en la tabla nueva:
+**Regla de mapping:**
+
+| Lead legacy condition | Target | Stage/Status |
+|---|---|---|
+| Tiene **appointment** no soft-deleted, status NOT IN (`cancelled`) | **Deal** | `stage = visit_scheduled` |
+| `status = 'won'` | **Deal** | `stage = won`, `closed_at = updated_at` |
+| `status = 'lost'` | **Deal** | `stage = lost`, `closed_at = updated_at` |
+| `status = 'discarded'` | **Inquiry** | `status = discarded`, `discarded_reason = 'migrated_from_discarded_lead'` |
+| `status = 'new'` / `'contacted'` / `'interested'` sin appointment | **Inquiry** | `status = open` |
+
+**Justificación:** un Deal requiere compromiso comercial real. La presencia de un appointment (o estado terminal) es el proxy disponible en data legacy. Sin esos signos, el lead se traduce como Inquiry.
 
 ```sql
-INSERT INTO public.contact_property_visits(
-  id, organization_id, contact_id, property_id, source, viewed_at, created_at
+-- Step 3a — Deals para leads con appointment o status terminal
+WITH lead_to_deal AS (
+  SELECT
+    l.id AS lead_id,
+    l.organization_id, l.created_by_user_id, m.contact_id, l.property_id,
+    CASE
+      WHEN l.status = 'won' THEN 'won'::public.deal_stage_enum
+      WHEN l.status = 'lost' THEN 'lost'::public.deal_stage_enum
+      ELSE 'visit_scheduled'::public.deal_stage_enum
+    END AS stage,
+    CASE WHEN l.status IN ('won','lost') THEN l.updated_at ELSE NULL END AS closed_at,
+    l.source::text::public.deal_source_enum AS source,
+    l.budget, l.message, l.property_type_sought, l.zone_of_interest, l.wants_offers,
+    l.created_at, l.updated_at, l.deleted_at,
+    l.deleted_by_user_id, l.deleted_by_user_name, l.deleted_by_user_email
+  FROM public.leads l
+  JOIN _migration_lead_to_contact m ON m.lead_id = l.id
+  WHERE
+    l.status IN ('won', 'lost')
+    OR EXISTS (
+      SELECT 1 FROM public.appointments a
+      WHERE a.lead_id = l.id AND a.deleted_at IS NULL
+        AND (a.status IS NULL OR a.status NOT IN ('cancelled'))
+    )
 )
-SELECT
-  gen_random_uuid()::text,
-  l.organization_id,
-  m.contact_id,
-  (v->>'propertyId')::text,
-  NULLIF(v->>'source', '') AS source,
-  COALESCE((v->>'timestamp')::timestamptz, l.created_at) AS viewed_at,
-  l.created_at AS created_at
-FROM public.leads l
-JOIN _migration_lead_to_contact m ON m.lead_id = l.id
-CROSS JOIN LATERAL jsonb_array_elements(coalesce(l.property_visits, '[]'::jsonb)) AS v
-WHERE jsonb_typeof(coalesce(l.property_visits, '[]'::jsonb)) = 'array'
-  AND v->>'propertyId' IS NOT NULL
-  AND EXISTS (SELECT 1 FROM public.properties p WHERE p.id = (v->>'propertyId')::text);
-```
-
-Cuando varios leads se mergearon en un solo contact (dedup por phone/email), los `propertyVisits` de todos esos leads quedan concatenados como filas independientes — el contacto preserva su historial completo de tracking.
-
-**Filtros defensivos:** se descartan entradas sin `propertyId` (corruptas) y referencias a properties que ya no existen (huérfanas por borrado previo de la prop). Filtrar acá evita FK violations al definir la constraint `contact_id → contact.id` / `property_id → properties.id`.
-
-### 3.3 Paso 3 — crear deals (rename leads)
-
-Cada `lead` se convierte en un `deal` con **stage inicial determinado por el status legacy**:
-
-| Lead status legacy | Deal stage |
-|---|---|
-| `new` | `prospect` |
-| `contacted` | `qualified` |
-| `interested` | `qualified` (cuando hay info pero sin visita) |
-| `won` | `won` |
-| `lost` | `lost` |
-| `discarded` | `lost` (con `lost_reason = 'discarded_migration'`) |
-
-```sql
 INSERT INTO public.deal(
-  id, organization_id, created_by_user_id, contact_id, property_id,
-  stage, stage_order, source, budget, message, property_type_sought,
-  zone_of_interest, wants_offers, closed_at, lost_reason,
-  created_at, updated_at, deleted_at, deleted_by_user_id,
-  deleted_by_user_name, deleted_by_user_email
+  id, organization_id, created_by_user_id, contact_id, property_id, inquiry_id,
+  stage, stage_order, source, budget, message, property_type_sought, zone_of_interest,
+  wants_offers, closed_at, lost_reason, created_at, updated_at, deleted_at,
+  deleted_by_user_id, deleted_by_user_name, deleted_by_user_email
 )
 SELECT
-  l.id, l.organization_id, l.created_by_user_id, m.contact_id, l.property_id,
-  CASE l.status
-    WHEN 'new' THEN 'prospect'::public.deal_stage_enum
-    WHEN 'contacted' THEN 'qualified'::public.deal_stage_enum
-    WHEN 'interested' THEN 'qualified'::public.deal_stage_enum
-    WHEN 'won' THEN 'won'::public.deal_stage_enum
-    WHEN 'lost' THEN 'lost'::public.deal_stage_enum
-    WHEN 'discarded' THEN 'lost'::public.deal_stage_enum
-  END AS stage,
-  0 AS stage_order,  -- recalculado en post-migración por org+stage
-  l.source::text::public.deal_source_enum,
-  l.budget, l.message, l.property_type_sought, l.zone_of_interest,
-  l.wants_offers,
-  CASE WHEN l.status IN ('won','lost','discarded') THEN l.updated_at ELSE NULL END AS closed_at,
-  CASE WHEN l.status = 'discarded' THEN 'discarded_migration' ELSE NULL END AS lost_reason,
-  l.created_at, l.updated_at, l.deleted_at, l.deleted_by_user_id,
-  l.deleted_by_user_name, l.deleted_by_user_email
-FROM public.leads l
-JOIN _migration_lead_to_contact m ON m.lead_id = l.id;
+  lead_id, organization_id, created_by_user_id, contact_id, property_id,
+  NULL AS inquiry_id,
+  stage, 0 AS stage_order, source, budget, message, property_type_sought,
+  zone_of_interest, wants_offers, closed_at, NULL AS lost_reason,
+  created_at, updated_at, deleted_at,
+  deleted_by_user_id, deleted_by_user_name, deleted_by_user_email
+FROM lead_to_deal;
 
--- Recalcular stage_order por org+stage (orden por fecha de creación dentro de cada columna)
-UPDATE public.deal d
-SET stage_order = sub.row_number
+-- Recalcular stage_order por org+stage (orden por created_at)
+UPDATE public.deal d SET stage_order = sub.row_number
 FROM (
   SELECT id, row_number() OVER (PARTITION BY organization_id, stage ORDER BY created_at) - 1 AS row_number
   FROM public.deal
 ) sub
 WHERE d.id = sub.id;
+
+-- Step 3b — Inquiries para el resto
+INSERT INTO public.inquiry(
+  id, organization_id, created_by_user_id, contact_id, property_id,
+  source, message, status, discarded_reason,
+  created_at, updated_at, deleted_at,
+  deleted_by_user_id, deleted_by_user_name, deleted_by_user_email
+)
+SELECT
+  l.id, l.organization_id, l.created_by_user_id, m.contact_id, l.property_id,
+  l.source::text::public.inquiry_source_enum,
+  l.message,
+  CASE WHEN l.status = 'discarded' THEN 'discarded' ELSE 'open' END::public.inquiry_status_enum,
+  CASE WHEN l.status = 'discarded' THEN 'migrated_from_discarded_lead' ELSE NULL END,
+  l.created_at, l.updated_at, l.deleted_at,
+  l.deleted_by_user_id, l.deleted_by_user_name, l.deleted_by_user_email
+FROM public.leads l
+JOIN _migration_lead_to_contact m ON m.lead_id = l.id
+WHERE NOT EXISTS (SELECT 1 FROM public.deal d WHERE d.id = l.id);
 ```
 
-**Conservar `deal.id = leads.id`** para que las FK existentes (`appointments.lead_id`, `lead_property_queue.lead_id`, `bot_conversations.lead_id`) sigan apuntando al mismo `text` ID que ahora vive en `deal`.
+**Preservación de IDs:** `inquiry.id = leads.id` o `deal.id = leads.id` según donde aterriza el lead (mutuamente excluyente). Preserva los FKs existentes en tablas dependientes (appointments, queue, bot_conversations).
 
-Adicional: copiar `propertyVisits` JSONB y `catalogTracking` del lead al contact (no al deal — son comportamientos de la persona). Cuando varios leads se mergean en un contact, los `propertyVisits` se concatenan y `catalogTracking` toma el más reciente.
+### 3.4 Paso 4 — switch de FKs en tablas dependientes
 
-### 3.4 Paso 4 — switch de FKs
-
-Las tablas dependientes hoy referencian `leads.id`. Después del Paso 3:
-
-- `appointments.lead_id` → renombrar a `deal_id`. La columna mantiene el mismo `text` ID porque `deal.id = leads.id` (paso 3). Solo se renombra la columna y se ajusta la FK constraint a `REFERENCES public.deal(id)`.
-- `lead_property_queue` → renombrar tabla a `contact_property_queue`. Agregar `contact_id` poblándolo desde el mapping, drop FK vieja a leads, drop `lead_id`.
-- `bot_conversations.lead_id` → renombrar a `contact_id`, repoblar desde mapping, FK a `contact`.
+- `appointments.lead_id` → `deal_id`: rename + FK ahora apunta a `deal.id` (que conserva el ID).
+- `lead_property_queue` → rename a `contact_property_queue`. Agregar `contact_id` poblándolo desde `_migration_lead_to_contact`. Drop FK vieja, drop `lead_id`.
+- `bot_conversations.lead_id` → `contact_id`. Mismo patrón.
 
 ```sql
--- appointments: la FK ahora apunta a deal (mismo ID, columna renombrada)
 ALTER TABLE public.appointments RENAME COLUMN lead_id TO deal_id;
 ALTER TABLE public.appointments
   DROP CONSTRAINT appointments_lead_id_fkey,
-  ADD CONSTRAINT appointments_deal_id_fkey
-    FOREIGN KEY (deal_id) REFERENCES public.deal(id);
+  ADD CONSTRAINT appointments_deal_id_fkey FOREIGN KEY (deal_id) REFERENCES public.deal(id);
 
--- lead_property_queue → contact_property_queue
 ALTER TABLE public.lead_property_queue RENAME TO contact_property_queue;
 ALTER TABLE public.contact_property_queue ADD COLUMN contact_id text;
-UPDATE public.contact_property_queue q
-SET contact_id = m.contact_id
-FROM _migration_lead_to_contact m
-WHERE q.lead_id = m.lead_id;
+UPDATE public.contact_property_queue q SET contact_id = m.contact_id
+FROM _migration_lead_to_contact m WHERE q.lead_id = m.lead_id;
 ALTER TABLE public.contact_property_queue
   ALTER COLUMN contact_id SET NOT NULL,
-  ADD CONSTRAINT contact_property_queue_contact_id_fkey
-    FOREIGN KEY (contact_id) REFERENCES public.contact(id),
+  ADD CONSTRAINT contact_property_queue_contact_id_fkey FOREIGN KEY (contact_id) REFERENCES public.contact(id),
   DROP CONSTRAINT lead_property_queue_lead_id_fkey,
   DROP COLUMN lead_id;
 
 -- bot_conversations: misma estrategia que queue
-ALTER TABLE public.bot_conversations ADD COLUMN contact_id text;
-UPDATE public.bot_conversations bc
-SET contact_id = m.contact_id
-FROM _migration_lead_to_contact m
-WHERE bc.lead_id = m.lead_id;
-ALTER TABLE public.bot_conversations
-  ALTER COLUMN contact_id SET NOT NULL,
-  ADD CONSTRAINT bot_conversations_contact_id_fkey
-    FOREIGN KEY (contact_id) REFERENCES public.contact(id),
-  DROP CONSTRAINT bot_conversations_lead_id_fkey,
-  DROP COLUMN lead_id;
 ```
 
-### 3.5 Paso 5 — drop `leads`
+**Caveat:** appointments cuyo `lead_id` apuntaba a un lead que terminó como **Inquiry** (no Deal) quedan con FK dangling. Filtro defensivo: solo migrar appointments cuyo lead_id → deal.id en el mapping. Los demás se descartan con count registrado (era una cita asociada a un lead que el algoritmo clasificó como Inquiry — contradice la heurística §3.3, pero por safety se filtra). En dev sin data, no aplica.
 
-Una vez `deal` poblada y FKs migradas:
+### 3.5 Paso 5 — drop legacy
 
 ```sql
 DROP TABLE public.leads;
 DROP TABLE _migration_lead_to_contact;
 ```
 
-⚠️ Solo después de validar manualmente que `count(deal) == count(leads pre-mig)` y no hay FK dangling.
+Solo después de validar contadores (§7.4).
 
 ### 3.6 Idempotencia
 
-Toda la migración corre en una sola transacción Postgres. Si falla cualquier paso → ROLLBACK total. Dev → staging → prod.
+Toda la migración corre en una sola transacción Postgres. ROLLBACK total si cualquier paso falla. Dev → staging → prod.
 
 ---
 
-## 4. Arquitectura — módulos `features/contacts` + `features/deals`
+## 4. Arquitectura — módulos `features/contacts` + `features/inquiries` + `features/deals`
 
-Reemplaza `features/leads/` (entera).
+Reemplaza `features/leads/`.
 
 ### 4.1 `features/contacts/`
 
 ```
 features/contacts/
   domain/
-    contact.entity.ts              # Contact + DTOs  ✅ R1 hecha
-    contact.repository.ts          # IContactRepository
+    contact.entity.ts
+    contact.repository.ts
   application/
-    create-contact.use-case.ts
-    find-or-create-contact.use-case.ts  # Dedup por phone/email
-    get-contacts.use-case.ts
-    get-contact-by-id.use-case.ts
-    get-contact-by-phone-or-email.use-case.ts
-    search-contacts.use-case.ts    # Autocomplete del form de Deal
-    update-contact.use-case.ts
-    delete-contact.use-case.ts
-    restore-contact.use-case.ts
+    create-contact / find-or-create / get-list / get-by-id /
+    get-by-phone-or-email / search / update / delete / restore
   infrastructure/
-    contact.model.ts
-    contact.mapper.ts
-    drizzle-contact.repository.ts
+    contact.model.ts / contact.mapper.ts / drizzle-contact.repository.ts
   presentation/
-    actions.ts
-    components/                    # Lista, detalle (con sub-secciones deals/citas/bot), dialog crear/editar
+    actions.ts + components/ (lista, detalle, dialog, autocomplete reusable)
 ```
 
-### 4.2 `features/deals/`
+### 4.2 `features/inquiries/`
+
+```
+features/inquiries/
+  domain/
+    inquiry.entity.ts
+    inquiry.repository.ts
+  application/
+    create-inquiry.use-case.ts     # crea inquiry (find-or-create contact embebido)
+    get-inquiries.use-case.ts
+    get-open-inquiries.use-case.ts # listado por default (filtra status='open')
+    get-inquiry-by-id.use-case.ts
+    get-inquiries-by-contact.use-case.ts
+    get-inquiries-by-property.use-case.ts
+    discard-inquiry.use-case.ts
+    promote-inquiry.use-case.ts    # crea Deal atómicamente + marca inquiry promoted
+    delete-inquiry / restore-inquiry
+  infrastructure/
+    inquiry.model.ts / inquiry.mapper.ts / drizzle-inquiry.repository.ts
+  presentation/
+    actions.ts
+    public-actions.ts              # form público: crea Contact + Inquiry
+    components/ (lista, dialog crear, botón promote, discard modal)
+```
+
+### 4.3 `features/deals/`
 
 ```
 features/deals/
   domain/
-    deal.entity.ts                 # Deal + DTOs + DealStage type
-    deal.repository.ts             # IDealRepository (CRUD + Kanban ops)
+    deal.entity.ts                 # 5 stages + inquiryId opcional
+    deal.repository.ts
   application/
-    create-deal.use-case.ts        # Orquesta findOrCreateContact + deal insert
-    get-deals.use-case.ts
-    get-deal-by-id.use-case.ts
-    get-deals-by-contact.use-case.ts
-    get-deals-by-property.use-case.ts
-    get-deals-by-stage.use-case.ts # Para Kanban columns
-    update-deal.use-case.ts
-    move-deal-stage.use-case.ts    # Mueve entre columnas Kanban (cambia stage + stage_order)
-    reorder-deals-in-stage.use-case.ts  # Reordena dentro de la misma columna
-    delete-deal.use-case.ts
-    restore-deal.use-case.ts
+    create-deal.use-case.ts        # crea Deal directo (caso admin sin Inquiry previa)
+    get-deals.use-case.ts / get-deal-by-id / get-by-contact / get-by-property / get-by-stage
+    update-deal / move-deal-stage / reorder-deals-in-stage
+    delete-deal / restore-deal
   infrastructure/
-    deal.model.ts
-    deal.mapper.ts
-    drizzle-deal.repository.ts
+    deal.model.ts / deal.mapper.ts / drizzle-deal.repository.ts
   presentation/
     actions.ts
-    public-actions.ts              # Form público landing — crea Contact + Deal en stage=prospect
-    components/
-      deal-kanban.tsx              # Tablero principal (drag&drop)
-      deal-kanban-column.tsx       # Columna por etapa
-      deal-card.tsx                # Card del deal en el Kanban
-      deal-detail-page.tsx
-      deal-create-dialog.tsx       # Con autocomplete contact (existente o crear)
+    components/ (deal-kanban, deal-card, deal-detail-page, deal-create-dialog)
 ```
 
-### 4.3 Domain entities
+### 4.4 Use case clave — `promoteInquiryUseCase`
 
 ```ts
-// features/contacts/domain/contact.entity.ts (ya creado en R1)
-// — sin cambios respecto a R1
-```
-
-```ts
-// features/deals/domain/deal.entity.ts
-export type DealStage =
-  | "prospect"
-  | "qualified"
-  | "visit_scheduled"
-  | "negotiation"
-  | "reserved"
-  | "won"
-  | "lost"
-
-export type DealSource =
-  | "facebook" | "instagram" | "whatsapp" | "tiktok"
-  | "google" | "referral" | "direct"
-
-export interface Deal {
-  id: string
-  createdByUserId: string
-  contactId: string
-  propertyId: string
-  stage: DealStage
-  stageOrder: number
-  source?: DealSource
-  budget?: string
-  message?: string
-  propertyTypeSought?: string
-  zoneOfInterest?: string
-  wantsOffers: boolean
-  expectedCloseAt?: string
-  closedAt?: string
-  lostReason?: string
-  createdAt: string
-  updatedAt: string
-  deletedAt?: string
-  deletedBy?: { userId?: string; userName?: string; userEmail?: string }
-
-  // Join fields populated by infra queries when consumer needs them
-  contactName?: string
-  contactPhone?: string
-  contactEmail?: string
-  propertyTitle?: string
-}
-
-export interface CreateDealDTO {
-  // Either pick an existing contact OR create one inline
-  contactId?: string
-  contactDraft?: import("@/features/contacts/domain/contact.entity").CreateContactDTO
-  propertyId: string
-  stage?: DealStage         // default 'prospect' if omitted
-  source?: DealSource
-  budget?: string
-  message?: string
-  propertyTypeSought?: string
-  zoneOfInterest?: string
-  wantsOffers?: boolean
-  expectedCloseAt?: string
-}
-
-export type UpdateDealDTO = Partial<Omit<CreateDealDTO, "contactId" | "contactDraft">>
-
-export interface DealFilters {
-  search: string
-  stage: DealStage | "all"
-  source: DealSource | "all"
-  propertyId?: string
-}
-```
-
-### 4.4 Use case clave — `createDealUseCase`
-
-```ts
-export async function createDealUseCase(
+export async function promoteInquiryUseCase(
   ctx: SessionContext,
-  contactRepo: IContactRepository,
+  inquiryRepo: IInquiryRepository,
   dealRepo: IDealRepository,
-  data: CreateDealDTO,
-): Promise<Deal> {
-  // Resolve contact: existing or create new (with dedup)
-  let contactId = data.contactId
-  if (!contactId) {
-    if (!data.contactDraft) {
-      throw new Error("Either contactId or contactDraft must be provided")
-    }
-    const existing = await contactRepo.findByPhoneOrEmail(
-      ctx,
-      data.contactDraft.phone,
-      data.contactDraft.email,
-    )
-    contactId = existing
-      ? existing.id
-      : (await contactRepo.create(ctx, data.contactDraft)).id
-  }
-
-  // Reuse active deal if one exists for this contact+property (no duplicates)
-  const existingDeal = await dealRepo.findActiveByContactAndProperty(
-    ctx,
-    contactId,
-    data.propertyId,
-  )
-  if (existingDeal) {
-    return existingDeal  // surface to UI; let agent decide whether to reactivate or view
-  }
-
-  // Place new deal at bottom of its stage column
-  const stage = data.stage ?? "prospect"
-  const maxOrder = await dealRepo.maxStageOrder(ctx, stage)
-
-  return dealRepo.create(ctx, {
-    ...data,
-    contactId,
-    stage,
-    stageOrder: maxOrder + 1,
-  })
+  inquiryId: string,
+  dealData: Omit<CreateDealDTO, "contactId" | "propertyId" | "inquiryId">,
+): Promise<{ deal: Deal; inquiry: Inquiry }> {
+  // 1. Read inquiry + validate status='open'
+  // 2. Atomic transaction:
+  //    a) Insert deal with inquiry_id=inquiryId, contact_id and property_id from inquiry
+  //    b) Update inquiry: status='promoted', promoted_deal_id=deal.id
+  // Both rows wrote together. ROLLBACK if any fails.
 }
 ```
 
-### 4.5 UX — flujo principal "Nuevo Negocio"
+El `inquiryRepo.promote(...)` lo orquesta dentro de una única `withRLS(ctx, async (tx) => { ... })`.
+
+### 4.5 UX — flujos principales
+
+**Form público landing:**
 
 ```
-┌────────────────────────────────────────────┐
-│ Nuevo Negocio                              │
-├────────────────────────────────────────────┤
-│ Contacto:                                  │
-│ [escribe nombre, teléfono o email...    ▼] │
-│                                            │
-│  ↓ mientras escribís se filtran resultados │
-│                                            │
-│  Carlos López — 7891-xxxx                  │
-│  Carlos Mendoza — carlos@gmail.com         │
-│                                            │
-│  Si no aparece:                            │
-│   [+ Crear contacto nuevo]                 │
-│   → mini-form inline: nombre*, tel, email  │
-│                                            │
-│ Propiedad: [autocomplete por título/ID  ▼] │
-│                                            │
-│ Etapa inicial: [Prospecto ▼]               │
-│  (default: Prospecto. Editable)            │
-│                                            │
-│ Origen: [WhatsApp ▼]                       │
-│ Presupuesto: [____________]                │
-│ Mensaje: [______________________________]  │
-│                                            │
-│              [Cancelar]  [Crear Negocio]   │
-└────────────────────────────────────────────┘
+Persona X visita /p/[id] → "Quiero más info" → form (nombre, phone, email, mensaje)
+    ↓
+createPublicInquiryAction:
+  findOrCreateContact (dedup) + createInquiry (status='open', source='public_form')
+    ↓
+Bot WhatsApp comienza conversación
 ```
 
-Al escribir en el autocomplete:
-1. Llama `searchContactsAction(query)` con debounce 300ms.
-2. Si encuentra match → preselecciona.
-3. Si NO encuentra y el agente aprieta "+ Crear contacto" → mini-form embebido. Al crear, el contacto se selecciona automáticamente y el form continúa con la prop + etapa + detalles del deal.
-4. Si el agente teclea phone/email que coincide con un contact existente y eligió "Crear nuevo" sin querer → toast: "Este teléfono ya existe (Carlos López). ¿Asociar al deal o crear duplicado?".
+**Listado de Inquiries para el agente:**
 
-**Botón secundario "Nuevo Contacto"** (administrativo, sin atar a propiedad): form simple solo con datos personales. Para propietarios, colegas, referidos sin oportunidad concreta.
+```
+/dashboard/inquiries → tabla con filtros (open / discarded / promoted)
+  Acciones por fila:
+    - "Ver detalle" → /dashboard/inquiries/[id]
+    - "Promover a Negocio" → dialog promoteInquiry (pide stage inicial + datos extra)
+    - "Descartar" → modal pidiendo razón
+```
+
+**Listado de Deals (Kanban) para el agente:**
+
+```
+/dashboard/deals → Kanban con 5 columnas (visit_scheduled / negotiation / reserved / won / lost)
+  Drag&drop entre columnas: moveDealStageAction
+  Drag&drop dentro: reorderDealsInStageAction
+  Vista tabla alternativa para listado plano
+```
 
 ---
 
-## 5. RLS policies — drizzle/sql/026
+## 5. UI — cambios visibles
 
-Mirrors policies de `leads` actuales sobre `contact` + `deal`. Ya enumeradas en §2.4.
+### 5.1 Sidebar
 
-**Cambio de FK en policies existentes:** policies de `appointments`, `bot_conversations`, `contact_property_queue` siguen vigentes — la columna se renombra pero la lógica RLS sigue siendo "org + agent ownership".
+- "Contactos" → `/dashboard/contacts`
+- "Consultas" → `/dashboard/inquiries`
+- "Negocios" → `/dashboard/deals` (Kanban + Tabla)
+- "Propiedades" sin cambio
 
-**Policy adicional para mover stage:** la UPDATE policy del deal ya cubre el caso porque permite update sobre cualquier columna a owner/admin y solo sobre filas propias a agent. No requiere policy específica de `stage`.
-
----
-
-## 6. UI — cambios visibles
-
-### 6.1 Sidebar
-
-- "Contactos" → `/dashboard/contacts` (lista de personas).
-- "Negocios" → `/dashboard/deals` (Kanban + tabla switcheable).
-- "Propiedades" sin cambio.
-
-### 6.2 Página `/dashboard/contacts`
-
-Lista de contacts con filtros (búsqueda + tags). Cada fila muestra: nombre, phone, email, # deals activos, último deal, agente owner.
-
-### 6.3 Página `/dashboard/contacts/[id]` — detalle del contacto
+### 5.2 Página `/dashboard/contacts/[id]` — detalle del contacto
 
 Sub-secciones:
-- **Datos personales**: nombre, phone, email, tags, notes, canal preferido.
-- **Negocios** — lista de deals (activos arriba, won/lost abajo). Click → detalle del deal.
-- **Citas agendadas** — agenda completa (sobre todas las props del contact).
-- **Historial de bot** — conversaciones WhatsApp con timestamps.
-- **Propiedades vistas (web)** — del `propertyVisits` JSONB.
-- Acciones: editar, eliminar, **+ Nuevo Negocio** (preselecciona el contact en el form).
+- Datos personales (nombre, phone, email, tags, notes).
+- **Consultas activas** — Inquiries con `status='open'`.
+- **Negocios activos** — Deals con `stage NOT IN (won,lost)`.
+- **Historial** — Inquiries discarded + Deals closed.
+- **Citas agendadas** — appointments via deal_id.
+- **Historial de bot** — bot_conversations.
 
-### 6.4 Página `/dashboard/deals` — Kanban (vista principal)
+### 5.3 Página `/dashboard/inquiries/[id]`
+
+Detalle de Inquiry: contact, property, source, message, status, fecha. Acciones: Promover a Negocio, Descartar, Volver a abrir (si está discarded).
+
+### 5.4 Página `/dashboard/deals` — Kanban
 
 ```
-┌─────────────────────────────────────────────────────────────────────────────────┐
-│ Negocios                                  [Tabla] [Kanban*]  [+ Nuevo Negocio]  │
-├─────────────────────────────────────────────────────────────────────────────────┤
-│ Filtros: [Agente▼] [Propiedad▼] [Origen▼] [Búsqueda...]                         │
-├─────────┬─────────┬──────────┬────────────┬───────────┬──────────┬─────────────┤
-│Prospecto│Calificado│  Visita  │Negociación │ Reservado │ Ganados  │  Perdidos   │
-│   12    │    7     │    4     │     3      │     1     │   2 ✓    │    5 ✕      │
-├─────────┼─────────┼──────────┼────────────┼───────────┼──────────┼─────────────┤
-│ ┌─────┐ │ ┌─────┐ │ ┌──────┐ │ ┌────────┐ │ ┌───────┐ │ ┌──────┐ │ ┌─────────┐ │
-│ │Carl │ │ │Juan │ │ │María │ │ │Roberto │ │ │Lucía  │ │ │Diego │ │ │Pablo    │ │
-│ │Casa │ │ │Apto │ │ │Lote  │ │ │Comerc. │ │ │Casa   │ │ │Apto  │ │ │Lote     │ │
-│ │A    │ │ │B    │ │ │C     │ │ │D       │ │ │E      │ │ │F     │ │ │G        │ │
-│ │$80k │ │ │$45k │ │ │$120k │ │ │$200k   │ │ │$95k   │ │ │$60k  │ │ │$110k    │ │
-│ └─────┘ │ └─────┘ │ └──────┘ │ └────────┘ │ └───────┘ │ └──────┘ │ └─────────┘ │
-│  ...    │  ...    │   ...    │    ...     │           │   ...    │     ...     │
-└─────────┴─────────┴──────────┴────────────┴───────────┴──────────┴─────────────┘
+┌────────────────────────────────────────────────────────────────────────┐
+│ Negocios                              [Tabla] [Kanban*]  [+ Nuevo]     │
+├────────────────────────────────────────────────────────────────────────┤
+│ Filtros: [Agente▼] [Propiedad▼] [Origen▼] [Búsqueda...]                │
+├──────────┬────────────┬───────────┬─────────┬───────────────────────────┤
+│  Visita  │Negociación │ Reservado │ Ganados │     Perdidos              │
+│programada│            │           │         │                           │
+│    4     │     3      │     1     │   2 ✓   │       5 ✕                 │
+├──────────┼────────────┼───────────┼─────────┼───────────────────────────┤
+│ ┌──────┐ │ ┌────────┐ │ ┌───────┐ │ ┌─────┐ │ ┌────────────────────────┐│
+│ │María │ │ │Roberto │ │ │Lucía  │ │ │Diego│ │ │Pablo                   ││
+│ │Lote C│ │ │Comerc D│ │ │Casa E │ │ │Apto │ │ │Lote G                  ││
+│ │$120k │ │ │$200k   │ │ │$95k   │ │ │F    │ │ │$110k                   ││
+│ └──────┘ │ └────────┘ │ └───────┘ │ │$60k │ │ └────────────────────────┘│
+│   ...    │    ...     │           │ └─────┘ │            ...            │
+└──────────┴────────────┴───────────┴─────────┴───────────────────────────┘
 ```
 
-Características:
-- **Drag&drop entre columnas** → cambia `stage` (server action `moveDealStageAction`).
-- **Drag&drop dentro de la misma columna** → cambia `stage_order` (server action `reorderDealsInStageAction`).
-- **Vista alternativa "Tabla"** para quien prefiere lista plana — toggle en el header.
-- Counter por columna arriba (cuántos deals tiene cada etapa).
-- Card del deal muestra: nombre del contact + título de la prop + presupuesto + tags del contact.
-- Click en card → drawer/page de detalle del deal.
+### 5.5 Página `/dashboard/deals/[id]` — detalle Deal
 
-### 6.5 Página `/dashboard/deals/[id]` — detalle del deal
+Header con Contact + Property linkeados. Si hay `inquiry_id`, link a la Inquiry original ("vino de esta consulta"). Stage actual + selector manual. Citas asociadas. Acciones won/lost (lost pide razón vía UI).
 
-- Header: Contact + Property con links a sus detalles.
-- Stage actual + selector para cambiarlo manualmente (alternativa al drag&drop).
-- Source, budget, mensaje, presupuesto, fecha estimada de cierre.
-- Citas asociadas (sub-sección).
-- Acciones: cambiar stage, agendar cita, marcar won/lost (cuando se marca lost → input "razón de pérdida" obligatorio).
+### 5.6 Form público landing → `createPublicInquiryAction`
 
-### 6.6 Form público (landing → "Quiero más info")
+`/p/[id]` form de contacto público:
+- `findOrCreateContact` (dedup por phone/email)
+- `createInquiry` con `status='open'`, `source='public_form'`
 
-Endpoint público que hoy crea un `lead` ahora:
-- Llama `createPublicDealAction` (rate-limited).
-- Bajo el capó: `findOrCreateContact` (dedup) + crea Deal en stage `prospect`.
-
-### 6.7 Componente reusable: contact-autocomplete
-
-Usado en: form de Nuevo Negocio, form de Nueva Cita (cuando se agenda sin deal previo, raro), filtro del Kanban "deals de X contacto".
+NO crea Deal directamente. El Deal nace después, cuando el bot/agente promueve la Inquiry (cita agendada, negociación).
 
 ---
 
-## 7. Plan de tests
+## 6. Plan de tests
 
-### 7.1 Migración de datos
+### 6.1 Migración
 
 | # | Test | Esperado |
 |---|---|---|
-| MIG1 | Count post-migración: `count(contact) ≤ count(leads pre-mig)` | ✅ dedup reduce o iguala |
-| MIG2 | Count post-migración: `count(deal) == count(leads pre-mig)` | ✅ 1:1 leads → deals |
-| MIG3 | Lead con phone "+591 7xxx" y otro con "591-7xxx" en misma org → 1 contact, 2 deals | ✅ |
+| MIG1 | `count(contact) ≤ count(leads pre-mig)` | ✅ dedup reduce o iguala |
+| MIG2 | `count(inquiry) + count(deal) == count(leads pre-mig)` | ✅ 1:1 leads → inquiry/deal |
+| MIG3 | Lead con phone "+591 7xxx" y otro con "591-7xxx" en misma org → 1 contact | ✅ |
 | MIG4 | Lead sin phone ni email → su propio contact (no se agrupa) | ✅ |
 | MIG5 | Lead con email duplicado cross-org → contacts distintos (tenancy isolation) | ✅ |
 | MIG6 | FK integrity: 0 `appointments` con `deal_id` dangling | ✅ |
 | MIG7 | FK integrity: 0 `contact_property_queue` y `bot_conversations` con `contact_id` dangling | ✅ |
-| MIG8 | Soft-deleted leads → soft-deleted deals; contacts NO auto-soft-deletados | ✅ |
-| MIG9 | Mapping legacy status → stage correcto (`new→prospect`, `contacted→qualified`, `won→won`, etc.) | ✅ |
-| MIG10 | `stage_order` recalculado correcto: dentro de cada (org, stage) los rows tienen `0,1,2,...N-1` sin gaps | ✅ |
-| MIG11 | Lead con `status='won'` o `'lost'` → deal con `closed_at` poblado | ✅ |
-| MIG12 | Lead con `status='discarded'` → deal con `stage='lost'` y `lost_reason='discarded_migration'` | ✅ |
-| MIG13 | `propertyVisits` JSONB y `catalogTracking` movidos al contact (no al deal) | ✅ |
-| MIG14 | Contact con varios leads mergeados: `propertyVisits` concatenado, `catalogTracking` toma el más reciente | ✅ |
+| MIG8 | Soft-deleted leads → soft-deleted inquiry/deal según mapping; contacts NO auto-soft-deletados | ✅ |
+| MIG9 | Mapping: lead con appointment → Deal `visit_scheduled`; lead won/lost → Deal won/lost + closed_at; lead discarded → Inquiry discarded; resto → Inquiry open | ✅ |
+| MIG10 | `stage_order` recalculado correcto (dense `0..N-1` por org+stage activo) | ✅ |
+| MIG11 | `inquiry.id` y `deal.id` nunca colisionan (mutuamente excluyentes en el mapping) | ✅ |
 
-### 7.2 Type / lint / build
+### 6.2 Type / lint / build
 
 | Test | Comando | Esperado |
 |---|---|---|
@@ -733,274 +547,242 @@ Usado en: form de Nuevo Negocio, form de Nueva Cita (cuando se agenda sin deal p
 | ESLint | `npm run lint` | 0 errors / 0 warnings |
 | Build | `npm run build` | success |
 
-### 7.3 Playwright smoke
+### 6.3 Playwright smoke
 
 | # | Test | Esperado |
 |---|---|---|
-| T1 | Crear Deal con contact existente (autocomplete) | Reusa contact, crea deal en stage='prospect' |
-| T2 | Crear Deal con contact draft cuyo phone ya existe | Dedup: misma contact, deal nuevo |
-| T3 | Crear Deal en contact+prop que ya tiene deal activo | Devuelve el existente, NO duplica |
-| T4 | Después de marcar deal anterior `won`, crear nuevo deal en mismo contact+prop | Permite (representa nueva oportunidad) |
-| T5 | Drag&drop card Kanban Prospecto → Calificado | UPDATE stage. Card aparece en columna nueva. Counter ajusta |
-| T6 | Drag&drop dentro de Negociación (reordenar) | UPDATE stage_order. Orden visual respeta |
-| T7 | Marcar deal como `lost` desde detalle | Modal pide `lost_reason`. Submit guarda + `closed_at`. Card sale del Kanban activo |
-| T8 | Marcar deal como `won` | Pide confirmación. `closed_at` poblado. Card sale del Kanban activo |
-| T9 | Borrar contact (soft) → sus deals activos van a papelera | Cascade soft-delete vía use case |
-| T10 | Restaurar contact → deals NO se auto-restauran | Restore explícito por deal |
-| T11 | Detalle de contact muestra deals + citas + bot conv + visitas web | Joins resuelven |
-| T12 | RLS cross-org: user de Org-B no ve contacts/deals de Org-A | Filtrado RLS |
-| T13 | Agent solo edita deals propios (`created_by_user_id = sub`) | RLS UPDATE policy |
-| T14 | Búsqueda autocomplete contact por phone parcial | Top resultados con dedup |
-| T15 | Form público crea Contact + Deal en `prospect` | End-to-end desde landing |
-| T16 | Bot conversation existente → migrada → sigue funcional con `contact_id` | Smoke |
-| T17 | Analytics: dashboard muestra "Contactos únicos del mes" + "Conversion por etapa" | Metadata legacy tolerada |
-| T18 | Toggle Kanban ↔ Tabla mantiene filtros | UX |
+| T1 | Form público en /p/[id] | Crea Contact + Inquiry (status='open', source='public_form'). NO crea Deal |
+| T2 | Bot conversa "me interesa Casa B" | Crea Inquiry sobre Casa B en mismo Contact existente |
+| T3 | Agente promueve Inquiry → Deal | Transacción atómica: deal.inquiry_id=I, inquiry.status='promoted', inquiry.promoted_deal_id=D |
+| T4 | Drag&drop card Visita → Negociación | UPDATE stage + recalcular stage_order de ambas columnas |
+| T5 | Marcar Deal `lost` | Modal pide `lost_reason`. closed_at poblado. Card sale del Kanban |
+| T6 | Marcar Deal `won` | Pide confirmación. closed_at poblado |
+| T7 | Reopen Deal cerrado a `negotiation` | Clear closed_at + lost_reason |
+| T8 | Discard Inquiry | status='discarded', discarded_reason capturado |
+| T9 | Crear Inquiry sobre contact+prop con `open` existente | Reactiva la existente, no duplica |
+| T10 | Crear Inquiry sobre contact+prop con `promoted` previo | Permite nueva Inquiry (interés renovado) |
+| T11 | Detalle Contact muestra Inquiries activas + Deals activos + Citas + Bot history | Joins resuelven |
+| T12 | RLS cross-org: user Org-B no ve datos de Org-A | Filtrado RLS |
+| T13 | Agent edita solo sus propios Deals/Inquiries | RLS UPDATE policy |
+| T14 | Búsqueda contact autocomplete por phone parcial | Top resultados con dedup |
+| T15 | Bot conversation existente migrada → sigue funcional con `contact_id` | Smoke |
+| T16 | Analytics: "Inquiries del mes" + "Tasa conversion Inquiry→Deal" | Métricas calculadas |
+| T17 | Toggle Kanban ↔ Tabla mantiene filtros | UX |
 
-### 7.4 Verificación DB
+### 6.4 Verificación DB
 
 ```sql
--- Sin contacts huérfanos (sin deals/appointments/queue/conv)?
--- Es válido que existan (capturados sin oportunidad aún).
-SELECT count(*) FROM contact c
-WHERE NOT EXISTS (SELECT 1 FROM deal WHERE contact_id = c.id)
-  AND NOT EXISTS (SELECT 1 FROM contact_property_queue WHERE contact_id = c.id)
-  AND NOT EXISTS (SELECT 1 FROM bot_conversations WHERE contact_id = c.id);
+-- Bidireccional invariant: inquiry.promoted_deal_id ↔ deal.inquiry_id
+SELECT count(*) FROM inquiry i
+WHERE i.status = 'promoted'
+  AND (i.promoted_deal_id IS NULL OR NOT EXISTS (
+    SELECT 1 FROM deal d WHERE d.id = i.promoted_deal_id AND d.inquiry_id = i.id
+  ));
+-- Esperado: 0
 
--- 0 deals dangling
-SELECT count(*) FROM deal d
-WHERE NOT EXISTS (SELECT 1 FROM contact c WHERE c.id = d.contact_id);
+-- No deals dangling
+SELECT count(*) FROM deal d WHERE NOT EXISTS (SELECT 1 FROM contact c WHERE c.id = d.contact_id);
 
--- stage_order sin gaps por (org, stage) activos
+-- stage_order sin gaps
 SELECT organization_id, stage, count(*), max(stage_order) FROM deal
-WHERE deleted_at IS NULL
-GROUP BY organization_id, stage
-HAVING max(stage_order) != count(*) - 1;
+WHERE deleted_at IS NULL AND stage NOT IN ('won','lost')
+GROUP BY organization_id, stage HAVING max(stage_order) != count(*) - 1;
 ```
 
 ---
 
-## 8. Edge cases
+## 7. Edge cases
 
 | # | Caso | Comportamiento |
 |---|---|---|
-| EC1 | Phone normalizado idéntico pero email distinto → ¿misma persona? | **SÍ** (phone wins). Email distinto se preserva en el contact tomando el más reciente. Trade-off: si son 2 personas con teléfono familiar, se separan manualmente después |
-| EC2 | Email idéntico pero phones distintos | **SÍ** (fallback cuando phone NULL en uno) |
-| EC3 | Ambos NULL (solo name) | **NO** se agrupa. Cada uno = su propio contact |
-| EC4 | Lead borrado (soft) en migración | Deal soft-deleted. Contact NO se borra |
-| EC5 | Lead con `name = NULL` | Contact con `name = "Sin nombre"` |
-| EC6 | Misma persona en múltiples orgs | Contacts distintos por tenancy (privacy) |
-| EC7 | Crear Deal activo donde ya hay uno: contact+prop con stage `won` o `lost` | Permite — representa nueva oportunidad de venta |
-| EC8 | Crear Deal donde ya hay uno activo (stage NOT IN won/lost) | Devuelve el existente. UI ofrece "ver deal existente" |
-| EC9 | Mover deal a `lost` sin `lost_reason` | UI pide razón. Backend permite NULL pero UX guía a llenarlo |
-| EC10 | Drag&drop a etapa cerrada (won/lost) | Permite. Pide confirmación. Setea `closed_at` |
-| EC11 | Drag&drop sale de etapa cerrada (reabrir un deal) | Permite. Limpia `closed_at` + `lost_reason`. Útil cuando se reabre una negociación |
-| EC12 | Cambiar phone/email de contact existente | Update del contact. Deals no se ven afectados (siguen con `contact_id`). Display refleja el cambio vía join |
-| EC13 | Merge manual de contacts duplicados | ⏭️ Diferido a v2 |
-| EC14 | Borrar contact con citas futuras | Hard error: "Tiene citas activas en N deals. Cancela primero" |
-| EC15 | Borrar contact sin actividad | Soft delete. Sus deals van a papelera |
-| EC16 | Reorder múltiples cards Kanban rápido | Debounce + lock optimista en cliente. Server reconcilia con `stage_order` recalculado |
-| EC17 | Race condition: 2 agents mueven el mismo deal a stages distintos | Last-write-wins en server (transacción atómica). UI del primero recibe nuevo state via revalidate |
-| EC18 | Public form: spam | Rate limit + heurística (si phone+email ambos vacíos → rechazar) |
-| EC19 | Stage_order conflict cuando 2 deals tienen el mismo número | Permitido en schema. UI usa `(stage_order, created_at)` como tiebreaker para orden visual |
+| EC1 | Phone idéntico, email distinto → ¿misma persona? | SÍ (phone wins). Conservador en favor de menos duplicados |
+| EC2 | Email idéntico, phones distintos | SÍ (fallback) |
+| EC3 | Ambos NULL (solo name) | NO agrupa. Cada uno = su propio contact |
+| EC4 | Lead borrado (soft) migra | Inquiry/Deal soft-deleted; contact NO se borra |
+| EC5 | Lead `name = NULL` | Contact con `name = "Sin nombre"` |
+| EC6 | Persona en múltiples orgs | Contacts distintos por tenancy |
+| EC7 | Crear Inquiry sobre contact+prop con Deal `won/lost` previo | Permite (interés renovado) |
+| EC8 | Crear Inquiry sobre contact+prop con Inquiry `open` existente | Reactiva existente, no duplica |
+| EC9 | Promover Inquiry → Deal + drag a `lost` inmediato | Permitido. Use case no obliga visita previa |
+| EC10 | Reopen Deal cerrado a etapa activa | Clear `closed_at` + `lost_reason`. Inquiry NO revierte automáticamente |
+| EC11 | Race: 2 agentes promueven la misma Inquiry simultáneamente | Unique constraint `(org, contact, property) WHERE status='open'` falla en el segundo → conflicto explícito. UI catch + retry/refresh |
+| EC12 | Reorder múltiples cards rápido | Debounce cliente + lock optimista. Server reconcilia con stage_order recalculado |
+| EC13 | Borrar contact con Deals activos | Hard error: "Tiene N negocios activos. Cierra o transfiere primero" |
+| EC14 | Borrar contact sin actividad | Soft delete; Inquiries y Deals van a papelera |
+| EC15 | Public form: spam | Rate limit + heurística (si phone+email ambos vacíos → rechazar) |
+| EC16 | Soft-delete Inquiry promoted | Deal sigue vivo. Link conserva por historial |
+| EC17 | Restore Deal previamente cerrado y luego soft-deleted | Pasa al estado anterior (stage previo a soft-delete). closed_at conservado salvo que se cambie stage |
+| EC18 | Hard-delete (futuro hipotético) | Política firme: NO hay hard-delete. Cascade declarado en SQL como red de seguridad |
 
 ---
 
-## 9. Tareas (checkboxes) — orden óptimo de desarrollo
+## 8. Tareas (checkboxes) — orden óptimo de desarrollo
 
 Orden interno por tarea: `implementar → code review → fixes → tests → confirmación → docs → commit`.
 
-> **Nota sobre data:** dev DB no tiene data a conservar (confirmado por Gonzalo 2026-05-13). El algoritmo de migración §3 se escribe completo y se valida con seed sintética antes de aplicarlo — porque sí va a correr en staging/prod más adelante.
+> **Nota sobre data:** dev DB sin data real (confirmado 2026-05-13). Algoritmo §3 se escribe para staging/prod futuro.
 
-### Fase 1 — Diseño Domain (sin dependencias externas)
+### Fase 1 — Diseño Domain
 
-- [x] **R1** — `features/contacts/domain/contact.entity.ts` (Contact + CreateContactDTO + UpdateContactDTO). ✅ 2026-05-13. Review pass tras fix MINOR (JSDoc inglés). Build + tsc + eslint verdes.
-- [x] **R2** — `features/contacts/domain/contact.repository.ts` (IContactRepository — puerto). ✅ 2026-05-13. Review encontró 2 MAJOR + 2 MINOR — todos resueltos. Key fix: eliminado `findAllActive` (redundante para Contact, no hay status). Build + tsc + eslint verdes.
-- [x] **R3** — `features/deals/domain/deal.entity.ts` (Deal + CreateDealDTO + UpdateDealDTO + DealStage + DealSource + DealFilters). ✅ 2026-05-13. Review: 3 IMPORTANT issues — #1 false positive (inline import) con evidencia grep, #2 y #3 resueltos (JSDoc `wantsOffers?` default + JSDoc `propertyId?` drill-down). Build + tsc + eslint verdes.
-- [x] **R4** — `features/deals/domain/deal.repository.ts` (IDealRepository — incluye `findActiveByContactAndProperty`, `maxStageOrder`, `findByStage`, `moveStage`, `reorderInStage`). ✅ 2026-05-13. Review: 3 IMPORTANT + 3 MINOR — todos resueltos. Decisión clave: introducido `ResolvedCreateDealDTO` para garantizar contact-resolved a nivel tipo (reemplaza intersection hack). Build + tsc + eslint verdes.
+- [x] **R1** — `features/contacts/domain/contact.entity.ts`. ✅ 2026-05-13.
+- [x] **R2** — `features/contacts/domain/contact.repository.ts`. ✅ 2026-05-13.
+- [ ] **I1** — `features/inquiries/domain/inquiry.entity.ts` (Inquiry + CreateInquiryDTO + UpdateInquiryDTO + InquiryStatus + InquirySource).
+- [ ] **I2** — `features/inquiries/domain/inquiry.repository.ts` (IInquiryRepository — incluye `findOpenByContactAndProperty`, `discard`, `promote` atómico).
+- [x] **R3** — `features/deals/domain/deal.entity.ts` (5 stages + inquiryId opcional). ✅ 2026-05-13.
+- [x] **R4** — `features/deals/domain/deal.repository.ts`. ✅ 2026-05-13.
 
 ### Fase 2 — Drizzle schema TypeScript
 
-- [x] **R5** — `lib/db/schema/contact.ts` (tabla `contact` con cols de §2.1; SIN `property_visits` — esa columna se split a tabla aparte en R5b). ✅ 2026-05-13. Review: 2 IMPORTANT + 1 MINOR — todos resueltos. Cambios extra: exports `ContactRecord` / `NewContactRecord` + barrel export en `lib/db/schema/index.ts`. Build + tsc + eslint verdes.
-- ⛔ **R5b** — ~~`contact-property-visits.ts`~~ **CANCELADA** (pivote 2026-05-13: el modelo cambia a Inquiry + Deal separados, los registros de interés temprano viven en la tabla `inquiry`, no en una tabla aparte de "visitas"). Reemplazada por las tareas **I1**, **I2**, **I3** del bloque Inquiry abajo.
-
-#### Bloque Inquiry (NUEVO — pivote a modelo Inquiry + Deal separados)
-
-Estas tareas se intercalan en las fases existentes en lugar de renumerar todo:
-
-- [ ] **I1** — `features/inquiries/domain/inquiry.entity.ts` (Inquiry + CreateInquiryDTO + UpdateInquiryDTO + InquiryStatus + InquirySource). Ejecutar dentro de Fase 1 (Domain).
-- [ ] **I2** — `features/inquiries/domain/inquiry.repository.ts` (IInquiryRepository: findAll, findOpen, findByContactId, findByPropertyId, findActiveByContactAndProperty, create, discard, promote, softDelete, restore). Ejecutar dentro de Fase 1.
-- [ ] **I3** — `lib/db/schema/inquiry.ts` (tabla `inquiry` con cols de §2.1c). Más nuevos pgEnum `inquiry_status_enum` + `inquiry_source_enum` en `enums.ts`. Más actualizar barrel en `index.ts`. Ejecutar dentro de Fase 2.
-
-Las fases siguientes (4 Infra, 5 Use cases, 6 Actions, 9 UI, 10 Cleanup, 11 Tests) ya cubren todas las tablas — el contenido de cada tarea se expande para incluir Inquiry junto con Contact y Deal, sin agregar más numeración. Los detalles se ajustan al ejecutar cada fase.
-- [ ] **R6** — `lib/db/schema/deal.ts` (tabla `deal` con cols de §2.2 incluyendo `stage` + `stage_order`).
-- [ ] **R7** — Renombrar `lib/db/schema/lead-property-queue.ts` → `contact-property-queue.ts`. Variable `leadPropertyQueue` → `contactPropertyQueue`. FK `leadId` → `contactId`.
-- [ ] **R8** — Actualizar `lib/db/schema/appointments.ts`: `leadId` → `dealId` (FK a `deal.id`).
-- [ ] **R9** — Actualizar `lib/db/schema/bot-conversations.ts`: `leadId` → `contactId` (FK a `contact.id`).
-- [ ] **R10** — Actualizar `lib/db/schema/enums.ts`: agregar `dealStageEnum` (7 valores) + `dealSourceEnum` (rename desde leadSource). Conservar enums viejos durante la transición (se borran en Fase 9).
-- [ ] **R11** — Actualizar `lib/db/schema/index.ts` (barrel): exportar nuevos schemas + mantener `leads` export hasta cleanup final.
+- [x] **R5** — `lib/db/schema/contact.ts`. ✅ 2026-05-13.
+- [ ] **I3** — `lib/db/schema/inquiry.ts` (tabla `inquiry` con cols §2.2 + FK opcional `promoted_deal_id` a deal).
+- [ ] **R6** — `lib/db/schema/deal.ts` (tabla `deal` con cols §2.3 + FK opcional `inquiry_id` a inquiry).
+- [ ] **R7** — Renombrar `lib/db/schema/lead-property-queue.ts` → `contact-property-queue.ts`.
+- [ ] **R8** — Actualizar `appointments.ts`: `leadId` → `dealId` (FK a `deal.id`).
+- [ ] **R9** — Actualizar `bot-conversations.ts`: `leadId` → `contactId`.
+- [ ] **R10** — Actualizar `enums.ts`: agregar `dealStageEnum` (5 valores), `dealSourceEnum`, `inquiryStatusEnum`, `inquirySourceEnum`. Conservar enums viejos durante transición.
+- [ ] **R11** — Actualizar `lib/db/schema/index.ts` (barrel): exportar contact (ya), deal, inquiry, contact-property-queue.
 
 ### Fase 3 — Migración SQL + apply en dev
 
-- [ ] **R12** — Escribir `drizzle/sql/026_contact_deal_refactor.sql`:
-  - `BEGIN;` transaccional.
-  - DDL `CREATE TYPE deal_stage_enum AS ENUM(...)` (7 valores).
-  - DDL `CREATE TABLE contact` + índices (§2.1).
-  - DDL `CREATE TABLE deal` + índices + FK a `contact` + `properties` (§2.2).
-  - Mapping algoritmo §3.1 + §3.2 con tabla auxiliar `_migration_lead_to_contact`.
-  - Inserts §3.3 con CASE de status legacy → stage nuevo.
-  - Recalcular `stage_order` por (org, stage).
-  - Migración tablas dependientes §3.4: appointments `lead_id → deal_id`, queue rename + nueva col, bot_conversations idem.
-  - Mover `propertyVisits` JSONB + `catalogTracking` al contact.
-  - RLS policies sobre `contact` + `deal`.
-  - **NO** drop de `leads` aquí — se hace al final.
-  - `COMMIT;`.
-- [ ] **R13** — Aplicar migración R12 en Supabase dev via MCP `apply_migration`. Verificar éxito.
-- [ ] **R14** — Validar §7.4 verificación DB. Si discrepancias → drop tablas nuevas en dev + arreglar SQL + reaplicar.
+- [ ] **R12** — Escribir `drizzle/sql/026_contact_inquiry_deal_refactor.sql`:
+  - BEGIN transaccional.
+  - DDL types: `deal_stage_enum` (5 vals), `deal_source_enum`, `inquiry_status_enum`, `inquiry_source_enum`.
+  - DDL tablas: `contact`, `inquiry` (con FK a contact + properties + opcional a deal), `deal` (con FK a contact + properties + opcional a inquiry).
+  - Mapping algoritmo §3 con `_migration_lead_to_contact`.
+  - Inserts diferenciados §3.3: lead→deal si tiene appointment o won/lost; lead→inquiry resto.
+  - Recalcular stage_order.
+  - FK switch §3.4: appointments.lead_id → deal_id, queue rename + contact_id, bot_conversations idem.
+  - RLS policies sobre contact + inquiry + deal.
+  - NO drop de leads (al final del refactor).
+  - COMMIT.
+- [ ] **R13** — Aplicar migración R12 en Supabase dev via MCP `apply_migration`.
+- [ ] **R14** — Validar §6.4. Rollback si discrepancias.
 
 ### Fase 4 — Infrastructure repos
 
 - [ ] **R15** — `features/contacts/infrastructure/contact.model.ts`.
-- [ ] **R16** — `features/contacts/infrastructure/contact.mapper.ts` (incluye `propertyVisits` JSONB↔array, `catalogTracking` flat↔nested).
-- [ ] **R17** — `features/contacts/infrastructure/drizzle-contact.repository.ts` con `findByPhoneOrEmail`, `searchByQuery`, CRUD + soft-delete. withRLS.
+- [ ] **R16** — `features/contacts/infrastructure/contact.mapper.ts` (null↔undefined).
+- [ ] **R17** — `features/contacts/infrastructure/drizzle-contact.repository.ts`.
+- [ ] **I4** — `features/inquiries/infrastructure/inquiry.model.ts`.
+- [ ] **I5** — `features/inquiries/infrastructure/inquiry.mapper.ts` (join contact + property + deal cuando promoted).
+- [ ] **I6** — `features/inquiries/infrastructure/drizzle-inquiry.repository.ts` con `promote` atómico (single tx: insert deal + update inquiry).
 - [ ] **R18** — `features/deals/infrastructure/deal.model.ts`.
-- [ ] **R19** — `features/deals/infrastructure/deal.mapper.ts` (join contact + property para display).
-- [ ] **R20** — `features/deals/infrastructure/drizzle-deal.repository.ts` con CRUD + `findActiveByContactAndProperty` + `maxStageOrder` + `moveStage` (atómico: UPDATE stage + recalcular stage_order de origen y destino) + `reorderInStage` (UPDATE stage_order con CTE batch).
+- [ ] **R19** — `features/deals/infrastructure/deal.mapper.ts` (join contact + property + inquiry).
+- [ ] **R20** — `features/deals/infrastructure/drizzle-deal.repository.ts`.
 
 ### Fase 5 — Application use cases
 
-- [ ] **R21** — `features/contacts/application/` (9 archivos): create, find-or-create, get-list, get-by-id, get-by-phone-or-email, search, update, delete, restore.
-- [ ] **R22** — `features/deals/application/` (10 archivos): create (orquesta find-or-create-contact), get-list, get-by-id, get-by-contact, get-by-property, get-by-stage, update, move-stage, reorder-in-stage, delete, restore.
+- [ ] **R21** — `features/contacts/application/` (9 use cases).
+- [ ] **I7** — `features/inquiries/application/` (10 use cases: create, get-list, get-open, get-by-id, get-by-contact, get-by-property, discard, promote, delete, restore). El `create` orquesta find-or-create contact via contactRepo. El `promote` orquesta la transacción atómica vía inquiryRepo.promote().
+- [ ] **R22** — `features/deals/application/` (10 use cases).
 
 ### Fase 6 — Server Actions + components base
 
-- [ ] **R23** — `features/contacts/presentation/actions.ts` (thin auth actions).
-- [ ] **R24** — `features/contacts/presentation/components/`: contact-list, contact-detail (con sub-secciones), contact-edit-dialog, **contact-autocomplete** (reusable).
-- [ ] **R25** — `features/deals/presentation/actions.ts` (auth) + `public-actions.ts` (form público landing).
-- [ ] **R26** — `features/deals/presentation/components/deal-create-dialog.tsx` (con contact-autocomplete embebido + mini-form contact inline).
+- [ ] **R23** — `features/contacts/presentation/actions.ts`.
+- [ ] **R24** — `features/contacts/presentation/components/` (lista, detalle con sub-secciones, edit dialog, **contact-autocomplete reusable**).
+- [ ] **I8** — `features/inquiries/presentation/actions.ts` (auth) + `public-actions.ts` (form público — crea Contact + Inquiry).
+- [ ] **I9** — `features/inquiries/presentation/components/` (lista filtrable, detalle, dialog crear, **promote-inquiry-dialog**, discard modal).
+- [ ] **R25** — `features/deals/presentation/actions.ts`.
+- [ ] **R26** — `features/deals/presentation/components/deal-create-dialog.tsx`.
 - [ ] **R27** — `features/deals/presentation/components/deal-detail-page.tsx`.
 
 ### Fase 7 — Kanban UI (drag&drop)
 
-- [ ] **R28** — Elegir librería drag&drop. Reco: **dnd-kit** (mantenido, accesible, soporta touch, ~10kb). Alternativas evaluadas: react-beautiful-dnd (deprecada), pragmatic-drag-and-drop (Atlassian, más nuevo). Decisión en code review.
-- [ ] **R29** — `features/deals/presentation/components/deal-kanban-column.tsx`: columna con drop zone, header con counter, ordena por `stageOrder`.
-- [ ] **R30** — `features/deals/presentation/components/deal-card.tsx`: card draggable. Muestra contact name, property title, budget, tags.
-- [ ] **R31** — `features/deals/presentation/components/deal-kanban.tsx`: tablero principal. Maneja `onDragEnd` → `moveDealStageAction` o `reorderDealsInStageAction`. Optimistic update con rollback en error.
-- [ ] **R32** — `features/deals/presentation/components/deal-stage-badge.tsx`: badge reusable con color por etapa (Prospecto azul / Calificado celeste / Visita amarillo / Negociación naranja / Reservado violeta / Ganado verde / Perdido rojo).
-- [ ] **R33** — Toggle vista Kanban ↔ Tabla en `/dashboard/deals`. Filtros (agente, propiedad, origen, búsqueda) afectan ambas vistas.
+- [ ] **R28** — Elegir lib drag&drop (reco: dnd-kit).
+- [ ] **R29** — `deal-kanban-column.tsx`.
+- [ ] **R30** — `deal-card.tsx`.
+- [ ] **R31** — `deal-kanban.tsx` (drag&drop + optimistic update + rollback).
+- [ ] **R32** — `deal-stage-badge.tsx`.
+- [ ] **R33** — Toggle Kanban ↔ Tabla en `/dashboard/deals`.
 
 ### Fase 8 — Migrar módulos dependientes
 
-- [ ] **R34** — `features/appointments`: entity (`leadId` → `dealId`), mapper, repo, use cases, UI. Joins desde appointment a deal → contact + property.
-- [ ] **R35** — `features/bot`: `bot_conversations.lead_id` → `contact_id` en entity, repo, use cases, UI.
-- [ ] **R36** — `features/analytics`: nuevos eventos con `contactId` + `dealId`. Lectura tolerante a `metadata.leadId` legacy.
-- [ ] **R37** — `features/dashboard`: aggregations actualizadas — "contactos únicos", "deals activos por stage", "conversion rate funnel", "top agente por deals ganados".
-- [ ] **R38** — `features/ai-contents`: review explícita (sin cambios esperados, verificar imports).
+- [ ] **R34** — `features/appointments`: `lead_id` → `deal_id`. Joins a deal → contact + property.
+- [ ] **R35** — `features/bot`: `bot_conversations.lead_id` → `contact_id`.
+- [ ] **R36** — `features/analytics`: eventos nuevos con `contactId` + `inquiryId`/`dealId`. Lectura tolerante a `metadata.leadId` legacy. Métricas nuevas: "Inquiries del mes", "Conversion Inquiry→Deal".
+- [ ] **R37** — `features/dashboard`: aggregations actualizadas.
+- [ ] **R38** — `features/ai-contents`: review (sin cambios esperados).
 
-### Fase 9 — UI dashboard (páginas standalone)
+### Fase 9 — UI dashboard
 
-- [ ] **R39** — Página `app/dashboard/contacts/page.tsx` + `[id]/page.tsx`.
-- [ ] **R40** — Página `app/dashboard/deals/page.tsx` (Kanban + Tabla) + `[id]/page.tsx` (detalle).
-- [ ] **R41** — Sidebar: agregar "Contactos" + "Negocios". Reemplazar "Leads" si existe en el sidebar actual.
-- [ ] **R42** — Form público en `/p/[id]` apunta a `createPublicDealAction`.
+- [ ] **R39** — Página `/dashboard/contacts` (lista + detalle con sub-secciones).
+- [ ] **I10** — Página `/dashboard/inquiries` (lista filtrable + `[id]` detalle + acciones promote/discard).
+- [ ] **R40** — Página `/dashboard/deals` (Kanban + Tabla) + `[id]` detalle.
+- [ ] **R41** — Sidebar: "Contactos", "Consultas", "Negocios". Eliminar "Leads".
+- [ ] **R42** — Form público en `/p/[id]` apunta a `createPublicInquiryAction`.
 
 ### Fase 10 — Cleanup
 
-- [ ] **R43** — Eliminar carpeta `features/leads/` entera.
-- [ ] **R44** — Eliminar `lib/db/schema/leads.ts` + remover del barrel.
-- [ ] **R45** — Eliminar enums legacy en `lib/db/schema/enums.ts`.
+- [ ] **R43** — Eliminar `features/leads/`.
+- [ ] **R44** — Eliminar `lib/db/schema/leads.ts` + barrel.
+- [ ] **R45** — Eliminar enums legacy en `enums.ts`.
 - [ ] **R46** — SQL `drizzle/sql/027_drop_legacy_leads.sql`: `DROP TABLE public.leads;`. Aplicar en dev.
 
 ### Fase 11 — Tests + docs + commits
 
-- [ ] **R47** — Smoke Playwright §7.3 (T1–T18). Tabla de resultados obligatoria.
-- [ ] **R48** — Actualizar `docs/implementation-plan.md`: marcar refactor + actualizar referencias a `leads`.
-- [ ] **R49** — Actualizar `CLAUDE.md`: sección "Tenancy & Auth Model", "Project Structure", entity examples Contact+Deal, null safety pattern.
-- [ ] **R50** — Actualizar `docs/plans/2026-05-13-property-transfers.md`: renombrar `inquiry` → `deal`, ajustar counts schema, ajustar cascade.
-- [ ] **R51** — Commits agrupados por fase (~11 commits totales).
+- [ ] **R47** — Smoke Playwright §6.3 (T1–T17). Tabla obligatoria.
+- [ ] **R48** — Actualizar `docs/implementation-plan.md`.
+- [ ] **R49** — Actualizar `CLAUDE.md`: project structure (modules contacts/inquiries/deals), null safety, entity examples.
+- [ ] **R50** — Actualizar `docs/plans/2026-05-13-property-transfers.md`: cascade actúa sobre Deals; Inquiries NO cascadean en transfer (son interés ligero, no compromiso del agente origen).
+- [ ] **R51** — Commits agrupados por fase.
 
-### Dependencias entre tareas
+### Dependencias
 
 ```
-Fase 1 (Domain) ────────► Fase 2 (Schema TS) ───► Fase 3 (SQL apply) ──► Fase 4 (Repos)
-                                                                              │
-                                                                              ▼
-                                                                       Fase 5 (Use cases)
-                                                                              │
-                                                                              ▼
-                                                                  Fase 6 (Actions + base UI)
-                                                                              │
-                                                                              ▼
-                                                                      Fase 7 (Kanban UI)
-                                                                              │
-                                                                              ▼
-                                                                  Fase 8 (Migrar deps)
-                                                                              │
-                                                                              ▼
-                                                                  Fase 9 (Páginas dashboard)
-                                                                              │
-                                                                              ▼
-                                                                       Fase 10 (Cleanup)
-                                                                              │
-                                                                              ▼
-                                                                  Fase 11 (Tests + docs)
+Fase 1 ─► Fase 2 ─► Fase 3 ─► Fase 4 ─► Fase 5 ─► Fase 6 ─► Fase 7 ─► Fase 8 ─► Fase 9 ─► Fase 10 ─► Fase 11
 ```
 
 ---
 
-## 10. Riesgos y mitigaciones
+## 9. Riesgos y mitigaciones
 
 | Riesgo | Probabilidad | Impacto | Mitigación |
 |---|---|---|---|
-| Migración pierde data por bug de mapping | Baja | Crítico | Backup pre-migración. Transaccional (rollback total). Conteos pre/post §7.1. Dev → staging → prod |
-| Dedup agresivo merge personas con phone compartido | Media | Medio | UI futura para "split contact". Aceptamos riesgo (más raro que el dolor de duplicados actuales) |
-| Refactor toca demasiados módulos a la vez → rama de larga vida | Alta | Medio | Fasear en R1-R51. Cada fase es commit propio. Cada fase deja branch buildable |
-| Analytics queries históricas rompen porque `metadata.leadId` ya no existe | Media | Bajo | Eventos viejos NO se reescriben — siguen con `leadId`. Service lee `metadata.dealId ?? metadata.leadId` |
-| Bot en producción rompe durante refactor | Media | Crítico | Bot está mock. Cuando se conecte (Capa 4) ya estará el nuevo modelo. Sin riesgo prod hoy |
-| FK cascade DROP destruye datos | Baja | Crítico | NUNCA `DROP TABLE leads CASCADE`. Validar FK migration antes del drop final |
-| Drag&drop optimistic update se desincroniza con server | Media | Bajo | Rollback visual en error + revalidate del Kanban. UX clara cuando algo falla |
-| Race condition: 2 agents mueven mismo deal a la vez | Baja | Bajo | Last-write-wins en server (transacción atómica). Real-time futuro vía Supabase Realtime channels para Kanban si se necesita |
+| Migración pierde data por bug de mapping | Baja | Crítico | Backup pre-mig. Transaccional. Conteos pre/post §6.1 |
+| Mapping appointment→Deal mal clasifica leads | Media | Medio | Validación post-migración explícita §6.4. Filtros defensivos |
+| Race en promote Inquiry → Deal | Baja | Bajo | Unique constraint en DB. UI catch + refresh |
+| Inquiry/Deal counts no balancean post-migración | Media | Medio | MIG2: `count(inquiry) + count(deal) == count(leads pre-mig)`. Falla loud |
+| Bot en producción rompe | Media | Crítico | Bot mock hoy. Cuando se conecte ya está el modelo nuevo |
+| Refactor toca demasiados módulos → rama larga | Alta | Medio | Fasear R1-R51. Cada fase buildable |
+| Drag&drop optimistic se desincroniza | Media | Bajo | Rollback visual + revalidate |
+| Hard-delete futuro rompe integridad bidireccional Inquiry↔Deal | Baja | Medio | Política firme NO hard-delete. Cascade en SQL como red de seguridad |
 
 ---
 
-## 11. Rollback plan
+## 10. Rollback plan
 
-Si la migración rompe algo después de aplicarse en prod:
-
-1. Restaurar backup pre-migración (Supabase point-in-time recovery o `pg_dump`).
-2. Revertir merge del PR del refactor.
-3. Investigar causa raíz off-prod.
-
-No hay migración inversa automatizada — es trabajo equivalente al refactor mismo. Backup + revert es la estrategia.
+Si la migración rompe algo en prod: restaurar backup (Supabase point-in-time) + revertir merge del PR + investigar off-prod. No hay migración inversa.
 
 ---
 
-## 12. Decisiones cerradas
+## 11. Decisiones cerradas
 
 | # | Decisión | Resolución |
 |---|---|---|
-| D1 | Modelo target | ✅ Contact + Deal + Pipeline funnel (validado contra AlterEstate / Tokko / HubSpot) |
+| D1 | Modelo target | ✅ Contact + Inquiry + Deal (mirror Propertybase/HubSpot) |
 | D2 | Unicidad de Contact en DB | ❌ NO UNIQUE constraint. Dedup en use case |
 | D3 | Estrategia de dedup en migración | ✅ Phone first, email fallback, ambos NULL → no agrupar |
-| D4 | Conservar `id` de leads como `id` de deals | ✅ Preserva FKs sin re-mapping de IDs |
-| D5 | Rename FKs en tablas dependientes | ✅ `appointments.lead_id` → `deal_id`. `bot_conversations.lead_id` → `contact_id`. `lead_property_queue.lead_id` → `contact_id` |
-| D6 | Renombrar enums | ✅ `lead_status_enum` → `deal_stage_enum` (con 7 valores, no 5). `lead_source_enum` → `deal_source_enum` |
-| D7 | Analytics historical events | ✅ Lectura tolerante a ambos. NO rewrite del historial |
+| D4 | Conservar `id` de leads como `id` de inquiry o deal | ✅ Preserva FKs sin re-mapping |
+| D5 | Rename FKs en tablas dependientes | ✅ `appointments.lead_id → deal_id`. `bot_conversations.lead_id → contact_id`. `lead_property_queue.lead_id → contact_id` |
+| D6 | Enums | ✅ Nuevos: `deal_stage_enum` (5 vals), `deal_source_enum`, `inquiry_status_enum`, `inquiry_source_enum` |
+| D7 | Analytics historical events | ✅ Lectura tolerante. NO rewrite del historial |
 | D8 | UI merge manual de contacts duplicados | ⏭️ Diferido a v2 |
-| D9 | Etapas del funnel | ✅ 7 fijas: Prospecto / Calificado / Visita / Negociación / Reservado / Cerrado-Ganado / Cerrado-Perdido. Hardcoded — configurable por org en v2 |
-| D10 | Vista Kanban | ✅ Incluida en este refactor (R28–R33). Drag&drop con dnd-kit. Vista tabla alternativa |
-| D11 | Citas (`appointments`) — ¿atadas a contact o a deal? | ✅ Atadas a **deal** — porque la cita es la visita física de un negocio concreto. Si transferís el deal, la cita va con él |
-| D12 | Queue del bot — ¿atado a contact o deal? | ✅ Atado a **contact** — el bot sugiere props a una persona; cuando muestra interés se crea un deal |
-| D13 | Reusar deal activo en mismo contact+prop | ✅ SÍ — si ya hay deal `NOT IN (won, lost)`, devolverlo en lugar de duplicar. UI ofrece "ver existente" |
-| D14 | Crear nuevo deal donde había uno `won/lost` | ✅ Permite — nueva oportunidad de venta |
-| D15 | `lost_reason` obligatorio | UI: sí pide. Backend: opcional (acepta NULL para flexibilidad) |
-| D16 | `expected_close_at` y `closed_at` | ✅ Incluidos en schema para soportar forecasting y reporting futuro sin nuevo refactor |
+| D9 | Etapas del Deal funnel | ✅ 5 fijas: visit_scheduled / negotiation / reserved / won / lost. Configurable por org en v2 |
+| D10 | Vista Kanban | ✅ Incluida (dnd-kit). Vista tabla alternativa |
+| D11 | Citas (`appointments`) — ¿atadas a contact o a deal? | ✅ Atadas a **deal**. Cuando se agenda cita en una Inquiry, primero se promueve a Deal |
+| D12 | Queue del bot — ¿atado a contact o deal? | ✅ Atado a **contact** |
+| D13 | Reusar Inquiry abierta en mismo contact+prop | ✅ SÍ — UNIQUE constraint en DB |
+| D14 | Crear Inquiry nueva donde había Deal `won/lost` | ✅ Permite (interés renovado) |
+| D15 | `lost_reason` obligatorio | UI sí pide. Backend opcional |
+| D16 | `expected_close_at` y `closed_at` | ✅ Incluidos para forecasting |
+| D17 | Promote Inquiry → Deal | ✅ Transacción atómica bidireccional. `inquiry.promoted_deal_id` ↔ `deal.inquiry_id`. Ambas FK declaradas para navegación sin JOIN extra |
 
 ---
 
-## 13. Pre-flight checks antes de empezar R2
+## 12. Pre-flight checks antes de empezar I1
 
-- [x] Branch `feat/contact-inquiry-refactor` creada desde `main` (post-merge PR #4, commit `ab279a2`).
-- [x] R1 (Contact entity) completada y commiteada.
-- [x] Sin data real en dev DB (confirmado por Gonzalo 2026-05-13).
-- [x] Acceso a Supabase MCP `apply_migration` confirmado.
-- [x] Plan confirmado con Gonzalo (2026-05-13): modelo Contact + Deal + Funnel con 7 etapas + Kanban.
+- [x] Branch `feat/contact-inquiry-refactor` creada desde `main`.
+- [x] R1, R2, R3, R4, R5 completadas (Fase 1 Contact + Deal + R5 Contact schema).
+- [x] Sin data real en dev DB (2026-05-13).
+- [x] Acceso a Supabase MCP `apply_migration`.
+- [x] Plan confirmado con Gonzalo (2026-05-13).

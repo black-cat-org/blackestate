@@ -117,7 +117,11 @@ export interface Deal {
  *
  * Exactly one of the two must be provided; the use case throws otherwise.
  *
- * `stage` is optional and defaults to `prospect` at the use-case boundary.
+ * `stage` is optional and defaults to `'visit_scheduled'` at the use-case
+ * boundary — the canonical entry point for a fresh Deal is "an Inquiry
+ * was promoted because a visit got scheduled". Stages tempranos
+ * (`prospect`, `qualified`) no longer exist on Deal — that "interest
+ * without commitment" surface lives on the Inquiry entity instead.
  * `stageOrder` is NOT part of this DTO: the adapter computes it as
  * `MAX(stageOrder) + 1` for the target stage in the caller's org so the
  * new Deal lands at the bottom of its Kanban column.
