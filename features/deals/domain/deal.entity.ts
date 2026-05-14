@@ -90,8 +90,15 @@ export interface Deal {
   createdAt: string
   updatedAt: string
   deletedAt?: string
+  // When `deletedBy` is present, the deleting user is identified by
+  // `userId` — that field is never absent. `userName` / `userEmail` are
+  // denormalised snapshots that may be missing for older soft-deletes
+  // (pre soft-delete-audit migration). Mirror of the `Contact` / `Inquiry`
+  // entity invariants tightened in R16 / I5 — encodes the actual shape
+  // the mapper produces and prevents consumers from defensive checks on
+  // a value that cannot be undefined here.
   deletedBy?: {
-    userId?: string
+    userId: string
     userName?: string
     userEmail?: string
   }
