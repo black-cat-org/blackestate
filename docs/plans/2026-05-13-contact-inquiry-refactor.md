@@ -633,14 +633,16 @@ Orden interno por tarea: `implementar → code review → fixes → tests → co
 
 ### Fase 2 — Drizzle schema TypeScript
 
+Orden re-ajustado para que los enums y las tablas con FK cruzadas se construyan en el orden de dependencia correcto:
+
 - [x] **R5** — `lib/db/schema/contact.ts`. ✅ 2026-05-13.
-- [ ] **I3** — `lib/db/schema/inquiry.ts` (tabla `inquiry` con cols §2.2 + FK opcional `promoted_deal_id` a deal).
-- [ ] **R6** — `lib/db/schema/deal.ts` (tabla `deal` con cols §2.3 + FK opcional `inquiry_id` a inquiry).
+- [ ] **R10** — Actualizar `enums.ts`: agregar `dealStageEnum` (5 valores), `dealSourceEnum`, `inquiryStatusEnum`, `inquirySourceEnum`. Conservar enums viejos durante transición. **Primero porque las tablas R6 e I3 los referencian.**
+- [ ] **R6** — `lib/db/schema/deal.ts` (tabla `deal` con cols §2.3 + FK opcional `inquiry_id` a inquiry). **Antes que I3 para que la FK bidireccional Inquiry↔Deal pueda declararse limpia en ambos lados.**
+- [ ] **I3** — `lib/db/schema/inquiry.ts` (tabla `inquiry` con cols §2.2 + FK opcional `promoted_deal_id` a deal). Cierra la navegación bidireccional sin JOIN extra.
 - [ ] **R7** — Renombrar `lib/db/schema/lead-property-queue.ts` → `contact-property-queue.ts`.
 - [ ] **R8** — Actualizar `appointments.ts`: `leadId` → `dealId` (FK a `deal.id`).
 - [ ] **R9** — Actualizar `bot-conversations.ts`: `leadId` → `contactId`.
-- [ ] **R10** — Actualizar `enums.ts`: agregar `dealStageEnum` (5 valores), `dealSourceEnum`, `inquiryStatusEnum`, `inquirySourceEnum`. Conservar enums viejos durante transición.
-- [ ] **R11** — Actualizar `lib/db/schema/index.ts` (barrel): exportar contact (ya), deal, inquiry, contact-property-queue.
+- [ ] **R11** — Actualizar `lib/db/schema/index.ts` (barrel): exportar deal, inquiry, contact-property-queue.
 
 ### Fase 3 — Migración SQL + apply en dev
 
