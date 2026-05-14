@@ -16,6 +16,10 @@ Contienen: hooks, triggers, functions, policies, rewires de FKs, y migraciones d
 | 006 | `006_rls_policies_supabase_auth.sql` | 07 | Rewrite RLS para Supabase Auth |
 | 011 | `011_rewire_fks.sql` | 11 | Re-wire FKs de tablas dominio → nueva `organization` |
 | 012 | `012_drop_legacy_tables.sql` | 12 | Drop tablas Better Auth legacy |
+| … | … | … | (migraciones 013–025 documentadas en sub-plans propios) |
+| 026 | `026_contact_inquiry_deal_refactor.sql` | contact-inquiry-refactor (R12) | Tablas `contact`/`inquiry`/`deal` + partial indexes + UNIQUE constraints |
+| **027** | _reservado para_ `027_drop_legacy_leads.sql` | contact-inquiry-refactor (R46) | Drop final `public.leads` después de borrar `features/leads/` (R43). Slot intencional — la migración se aplica en Fase 10 |
+| 028 | `028_public_create_inquiry_rpc.sql` | contact-inquiry-refactor (I8b) | SECURITY DEFINER RPC `public_create_inquiry` — bridge anon → Contact+Inquiry |
 
 ## Aplicar
 

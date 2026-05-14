@@ -89,7 +89,7 @@ export default async function PropertyLandingPage({ params, searchParams }: Page
 
             {/* Contact form - mobile only */}
             <div className="lg:hidden">
-              <LandingContactForm propertyId={property.id} source={source} />
+              <LandingContactForm propertyId={property.id} />
             </div>
           </div>
 
@@ -97,7 +97,7 @@ export default async function PropertyLandingPage({ params, searchParams }: Page
           <div className="hidden lg:block">
             <div className="sticky top-6 space-y-6">
               <LandingPriceCard property={property} source={source} />
-              <LandingContactForm propertyId={property.id} source={source} />
+              <LandingContactForm propertyId={property.id} />
             </div>
           </div>
         </div>

@@ -3,8 +3,11 @@
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { toast } from "sonner"
-import { leadFormSchema, type LeadFormValues } from "@/lib/validations/lead"
-import { submitLeadAction } from "@/app/p/[id]/actions"
+import {
+  publicInquiryFormSchema,
+  type PublicInquiryFormValues,
+} from "@/lib/validations/public-inquiry"
+import { createPublicInquiryAction } from "@/features/inquiries/presentation/public-actions"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Form,
@@ -16,40 +19,59 @@ import {
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { Checkbox } from "@/components/ui/checkbox"
 import { Button } from "@/components/ui/button"
 import { SendIcon, Loader2Icon } from "lucide-react"
 
 interface LandingContactFormProps {
   propertyId: string
-  source: string | null
 }
 
-export function LandingContactForm({ propertyId, source }: LandingContactFormProps) {
-  const form = useForm<LeadFormValues>({
-    resolver: zodResolver(leadFormSchema),
+/**
+ * Map throw tokens raised by `createPublicInquiryAction` to Spanish
+ * user copy. Tokens live on the action contract and propagate
+ * unwrapped from the RPC — this map is the single translation point
+ * for the public-form UX.
+ */
+function describeSubmitError(code: string): string {
+  switch (code) {
+    case "name_required":
+      return "Por favor ingresa tu nombre."
+    case "contact_missing_phone_and_email":
+      return "Ingresa al menos un teléfono o un correo."
+    case "property_not_found_or_inactive":
+      return "Esta propiedad ya no está disponible."
+    case "invalid_input":
+      return "Revisa los datos del formulario."
+    default:
+      return "No se pudo enviar la consulta. Intenta de nuevo."
+  }
+}
+
+export function LandingContactForm({ propertyId }: LandingContactFormProps) {
+  const form = useForm<PublicInquiryFormValues>({
+    resolver: zodResolver(publicInquiryFormSchema),
     defaultValues: {
       name: "",
       phone: "",
       email: "",
       message: "",
-      wantsOffers: false,
     },
+    mode: "onSubmit",
   })
 
   const { isSubmitting } = form.formState
 
-  async function onSubmit(data: LeadFormValues) {
-    const result = await submitLeadAction(propertyId, source, data)
-
-    if (result.success) {
+  async function onSubmit(data: PublicInquiryFormValues) {
+    try {
+      await createPublicInquiryAction(propertyId, data)
       toast.success("Consulta enviada", {
         description: "Nos pondremos en contacto a la brevedad.",
       })
       form.reset()
-    } else {
+    } catch (error) {
+      const code = error instanceof Error ? error.message : ""
       toast.error("Error", {
-        description: result.error || "No se pudo enviar la consulta.",
+        description: describeSubmitError(code),
       })
     }
   }
@@ -61,7 +83,11 @@ export function LandingContactForm({ propertyId, source }: LandingContactFormPro
       </CardHeader>
       <CardContent>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <form
+            noValidate
+            onSubmit={form.handleSubmit(onSubmit)}
+            className="space-y-4"
+          >
             <FormField
               control={form.control}
               name="name"
@@ -69,7 +95,11 @@ export function LandingContactForm({ propertyId, source }: LandingContactFormPro
                 <FormItem>
                   <FormLabel>Nombre *</FormLabel>
                   <FormControl>
-                    <Input placeholder="Tu nombre" {...field} />
+                    <Input
+                      autoComplete="name"
+                      placeholder="Tu nombre"
+                      {...field}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -81,9 +111,15 @@ export function LandingContactForm({ propertyId, source }: LandingContactFormPro
               name="phone"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Teléfono *</FormLabel>
+                  <FormLabel>Teléfono</FormLabel>
                   <FormControl>
-                    <Input placeholder="Ej: 11 1234-5678" type="tel" {...field} />
+                    <Input
+                      autoComplete="tel"
+                      inputMode="tel"
+                      placeholder="+591 7…"
+                      type="tel"
+                      {...field}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -95,9 +131,15 @@ export function LandingContactForm({ propertyId, source }: LandingContactFormPro
               name="email"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Email *</FormLabel>
+                  <FormLabel>Correo</FormLabel>
                   <FormControl>
-                    <Input placeholder="tu@email.com" type="email" {...field} />
+                    <Input
+                      autoComplete="email"
+                      inputMode="email"
+                      placeholder="tu@correo.com"
+                      type="email"
+                      {...field}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -112,29 +154,12 @@ export function LandingContactForm({ propertyId, source }: LandingContactFormPro
                   <FormLabel>Mensaje</FormLabel>
                   <FormControl>
                     <Textarea
-                      placeholder="Contanos qué te interesa saber..."
+                      placeholder="Cuéntanos qué te interesa saber…"
+                      rows={3}
                       {...field}
                     />
                   </FormControl>
                   <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="wantsOffers"
-              render={({ field }) => (
-                <FormItem className="flex items-center gap-2 space-y-0">
-                  <FormControl>
-                    <Checkbox
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
-                  </FormControl>
-                  <FormLabel className="text-sm font-normal">
-                    Quiero recibir ofertas similares
-                  </FormLabel>
                 </FormItem>
               )}
             />
@@ -145,7 +170,7 @@ export function LandingContactForm({ propertyId, source }: LandingContactFormPro
               ) : (
                 <SendIcon className="size-4" />
               )}
-              {isSubmitting ? "Enviando..." : "Enviar consulta"}
+              {isSubmitting ? "Enviando…" : "Enviar consulta"}
             </Button>
           </form>
         </Form>
