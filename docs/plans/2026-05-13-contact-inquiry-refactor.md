@@ -674,7 +674,7 @@ Orden re-ajustado para que los enums y las tablas con FK cruzadas se construyan 
 
 ### Fase 5 — Application use cases
 
-- [ ] **R21** — `features/contacts/application/` (9 use cases).
+- [x] **R21** — `features/contacts/application/` (9 use cases). ✅ 2026-05-14. 9 files thin-delegation con DI pattern (recibe `IContactRepository` interface, presentation layer R23 inyecta `DrizzleContactRepository`). Single composer: `findOrCreateContactUseCase` (lookup → fallback create). Anti-pattern legacy de leads explícitamente NO heredado (lead uses cases instancian `DrizzleLeadRepository` direct, viola CLAUDE.md). EC13 (hard-error deleting contact con deals activos) diferido a R23 server action layer (donde ambos repos están en scope) — documented inline. tsc + eslint + build verdes. Review: 0 issues actionable. Fase 5 contact use cases cerrada.
 - [ ] **I7** — `features/inquiries/application/` (10 use cases: create, get-list, get-open, get-by-id, get-by-contact, get-by-property, discard, promote, delete, restore). El `create` orquesta find-or-create contact via contactRepo. El `promote` orquesta la transacción atómica vía inquiryRepo.promote().
 - [ ] **R22** — `features/deals/application/` (10 use cases).
 
