@@ -5,6 +5,13 @@ import type { CreateContactDTO } from "@/features/contacts/domain/contact.entity
  * left-to-right order of the Kanban board columns and the canonical
  * progression of a real estate sales cycle.
  *
+ * Only 5 stages — the Deal model represents real commercial commitment
+ * (cita agendada, negociación, reserva, cierre). The earlier "interest
+ * without commitment" states (prospect, qualified) live on the separate
+ * `Inquiry` entity (`features/inquiries/domain/inquiry.entity.ts`); a
+ * Deal is created when an Inquiry gets promoted (e.g. when the contact
+ * schedules a visit).
+ *
  * `won` and `lost` are terminal stages: the Deal exits the active Kanban
  * board and lands in an archived view. Reopening a closed Deal (moving
  * it back to `negotiation` etc.) is supported — the adapter clears
@@ -14,8 +21,6 @@ import type { CreateContactDTO } from "@/features/contacts/domain/contact.entity
  * boundary; this union must stay in sync (R10 migration).
  */
 export type DealStage =
-  | "prospect"
-  | "qualified"
   | "visit_scheduled"
   | "negotiation"
   | "reserved"
@@ -56,6 +61,14 @@ export interface Deal {
   createdByUserId: string
   contactId: string
   propertyId: string
+  /**
+   * Link to the Inquiry that originated this Deal, when applicable.
+   * Most Deals are created by promoting an Inquiry (visit scheduled,
+   * direct negotiation). A Deal can also be created directly without
+   * a prior Inquiry — e.g. the agent registers an opportunity captured
+   * off-platform — in which case `inquiryId` is `undefined`.
+   */
+  inquiryId?: string
   stage: DealStage
   stageOrder: number
   source?: DealSource
@@ -112,7 +125,15 @@ export interface Deal {
 export interface CreateDealDTO {
   contactId?: string
   contactDraft?: CreateContactDTO
+  /**
+   * Link to the Inquiry that originated this Deal, when applicable.
+   * Set when an Inquiry is being promoted to a Deal (the common path
+   * via `promoteInquiry` flow). Left undefined when the agent creates
+   * a Deal directly without a prior Inquiry.
+   */
+  inquiryId?: string
   propertyId: string
+  /** Defaults to `'visit_scheduled'` at the use-case boundary when omitted — the typical entry point is "an inquiry was promoted because a visit got scheduled". */
   stage?: DealStage
   source?: DealSource
   budget?: string

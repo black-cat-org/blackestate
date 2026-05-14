@@ -87,29 +87,47 @@ El modelo estándar (HubSpot, Salesforce Propertybase, AlterEstate, Tokko Broker
 
 **Unicidad lógica (no constraint):** un contacto por `(org, phone)` y por `(org, email)`. **Por qué no UNIQUE constraint:** phone/email pueden ser NULL (no todos los contactos tienen ambos), pueden cambiar, y dos personas pueden compartir teléfono familiar — el constraint bloquearía casos válidos. La deduplicación se resuelve en use cases (búsqueda + confirmación humana en autocomplete).
 
-### 2.1b Tabla `contact_property_visits` (NUEVA — split de `propertyVisits` JSONB)
+### 2.1b ⛔ CANCELADA — Tabla `contact_property_visits`
 
-Web tracking de propiedades vistas por el contact. Reemplaza el array `propertyVisits` JSONB que vivía embebido en `leads`. Una fila por evento — habilita queries tipo "todos los que visitaron Casa A esta semana" sin desarmar JSON ni pensar en tamaño máximo de fila.
+Esta tabla NO se construye. Reemplazada por la tabla `inquiry` definida en §2.1c. Razón del pivote: en el flujo real de Black Estate, no hay "visitas web anónimas trackeadas a posteriori". El interés en una prop solo se registra cuando hay datos del contacto (form público lleno) o cuando una conversación con el bot lo menciona. Eso ya es una **Inquiry** (interés ligero), no una "visit". Cada Inquiry queda en la tabla `inquiry` y puede promoverse a `deal` si avanza.
+
+Sección preservada para trazabilidad del cambio de modelo durante el plan. La descripción y los índices originales quedaban abajo — todos descartados.
+
+### 2.1c Tabla `inquiry` (NUEVA — interés ligero antes del Deal)
+
+Mirror del patrón `Inquiry` de Salesforce Propertybase. Representa un interés expresado por un Contact sobre una Property, sin compromiso comercial concreto. Cuando ese interés madura (cita agendada, oferta), se **promueve** a un `deal`.
 
 | Columna | Tipo | NOT NULL | Notas |
 |---|---|---|---|
 | `id` | `text` PK | ✅ | UUID via `$defaultFn` |
 | `organization_id` | `uuid` | ✅ | tenancy |
-| `contact_id` | `text` FK → `contact.id` | ✅ | quién visitó |
-| `property_id` | `text` FK → `properties.id` | ✅ | qué propiedad |
-| `source` | `text` | ❌ | de dónde vino el clic (Facebook/WhatsApp/search/etc.) |
-| `viewed_at` | `timestamptz` | ✅ default `now()` | timestamp del evento |
-| `created_at` | `timestamptz` | ✅ default `now()` | timestamp DB row (igual a viewed_at en la práctica) |
+| `created_by_user_id` | `uuid` | ✅ | agente o bot que capturó la inquiry |
+| `contact_id` | `text` FK → `contact.id` | ✅ | quién mostró interés |
+| `property_id` | `text` FK → `properties.id` | ✅ | en qué propiedad |
+| `source` | `inquiry_source_enum` | ❌ | `public_form` / `bot` / `manual` / `whatsapp` / `facebook` / etc. |
+| `message` | `text` | ❌ | mensaje del form / extracto bot / nota del agente |
+| `status` | `inquiry_status_enum` | ✅ default `'open'` | `open` / `discarded` / `promoted` (cuando se convierte en deal) |
+| `promoted_deal_id` | `text` FK → `deal.id` | ❌ | link al deal resultante cuando `status = 'promoted'` |
+| `discarded_reason` | `text` | ❌ | opcional cuando `status = 'discarded'` |
+| `created_at` | `timestamptz` | ✅ default `now()` | |
+| `updated_at` | `timestamptz` | ✅ `$onUpdate` | |
+| `deleted_at` | `timestamptz` | ❌ | soft-delete |
+| `deleted_by_*` | uuid/text/text | ❌ | audit (mirror pattern) |
 
-**Sin soft-delete:** es histórico append-only. Purga futura por GDPR / retención se hace como job aparte (no soft-delete en cada fila).
+**Sin funnel/stages.** Solo 3 status: `open` (vigente), `discarded` (no avanzó), `promoted` (se convirtió en deal). Lo que importa de una Inquiry es su volumen y su tasa de conversión a Deal — no su progreso interno.
 
-**Índices clave para los casos de uso esperados:**
-- `cpv_org_id_idx` ON `(organization_id)` — tenancy hot path
-- `cpv_property_viewed_idx` ON `(property_id, viewed_at DESC)` — "todos los que visitaron Casa A esta semana", consulta más usada
-- `cpv_contact_viewed_idx` ON `(contact_id, viewed_at DESC)` — "todas las props que vio Carlos, ordenadas por fecha"
-- `cpv_property_id_idx` ON `(property_id)` — count agregados por propiedad
+**Constraint NUEVO:** `UNIQUE(organization_id, contact_id, property_id) WHERE deleted_at IS NULL AND status = 'open'` — un contact tiene a lo sumo una Inquiry **abierta** por propiedad. Si pregunta dos veces, se reactiva la existente (vuelve a `open` desde `discarded`). Si la Inquiry está `promoted`, sí permite crear una nueva inquiry sobre la misma prop (representa interés renovado después de un deal cerrado).
 
-**Decisión de diseño — append-only sin dedup:** si el mismo contact visita la misma prop dos veces, son dos filas. Las analytics pueden agregar por DISTINCT cuando lo necesiten (en la mayoría de los casos lo que importa son las visitas absolutas, no las personas únicas). Forzar dedup a nivel schema con un UNIQUE constraint complicaría el caso "Carlos vio Casa A el lunes y otra vez el viernes" — son dos eventos legítimos.
+**Índices clave:**
+- `inquiry_org_id_idx` ON `(organization_id)` — tenancy
+- `inquiry_contact_id_idx` ON `(contact_id)` — "todas las inquiries de Carlos"
+- `inquiry_property_id_idx` ON `(property_id)` — "quién preguntó por Casa A"
+- `inquiry_org_status_idx` ON `(organization_id, status)` — listado filtrable
+- `inquiry_org_created_by_idx` ON `(organization_id, created_by_user_id)` — ownership
+
+**Nuevos enums `inquiry_status_enum` + `inquiry_source_enum`:**
+- Status: `open` / `discarded` / `promoted`.
+- Source: `public_form` / `bot` / `manual` / `whatsapp` / `facebook` / `instagram` / `tiktok` / `google` / `referral` / `direct`. (Superset de `deal_source_enum`: incluye `public_form`, `bot`, `manual` además de los canales sociales.)
 
 ### 2.2 Tabla `deal` (nueva, reemplaza `leads`)
 
@@ -120,8 +138,9 @@ Web tracking de propiedades vistas por el contact. Reemplaza el array `propertyV
 | `created_by_user_id` | `uuid` | ✅ | agente dueño del deal |
 | `contact_id` | `text` FK → `contact.id` | ✅ | **NUEVO** |
 | `property_id` | `text` FK → `properties.id` | ✅ | conservado |
-| `stage` | `deal_stage_enum` | ✅ default `'prospect'` | **NUEVO** — etapa del funnel |
-| `stage_order` | `integer` | ✅ default `0` | **NUEVO** — orden dentro de la columna del Kanban (drag&drop dentro de la misma etapa) |
+| `inquiry_id` | `text` FK → `inquiry.id` | ❌ | **NUEVO** — link a la Inquiry que originó este Deal (null si se creó directo, sin pasar por Inquiry — caso raro: agente carga oportunidad manual sin paso previo) |
+| `stage` | `deal_stage_enum` | ✅ default `'visit_scheduled'` | etapa del funnel |
+| `stage_order` | `integer` | ✅ default `0` | orden dentro de la columna del Kanban (drag&drop dentro de la misma etapa) |
 | `source` | `deal_source_enum` | ❌ | renombrado desde `lead_source_enum` |
 | `budget` | `text` | ❌ | conservado |
 | `message` | `text` | ❌ | conservado |
@@ -133,17 +152,17 @@ Web tracking de propiedades vistas por el contact. Reemplaza el array `propertyV
 | `lost_reason` | `text` | ❌ | **NUEVO** — opcional cuando `stage = 'lost'` |
 | `created_at/updated_at/deleted_at + audit cols` | | | conservados |
 
-**Nuevo enum `deal_stage_enum` (7 valores fijos):**
+**Enum `deal_stage_enum` (5 valores fijos — solo compromisos reales):**
 
 | Valor (código) | Label UI (español) | Descripción |
 |---|---|---|
-| `prospect` | Prospecto | Recién entró al sistema, sin calificar |
-| `qualified` | Calificado | Hablaste con la persona, sabés qué busca, hay match con la prop |
-| `visit_scheduled` | Visita | Hay cita agendada o ya visitó la prop |
+| `visit_scheduled` | Visita programada | Hay cita agendada o ya visitó la prop |
 | `negotiation` | Negociación | Hablando de precio, condiciones, oferta |
 | `reserved` | Reservado | Reserva formal pagada (seña o anticipo) — paso previo a cerrar |
-| `won` | Cerrado-Ganado | Venta/alquiler concretado |
-| `lost` | Cerrado-Perdido | Se cayó la operación |
+| `won` | Ganado | Venta/alquiler concretado |
+| `lost` | Perdido | Se cayó la operación |
+
+**Cambio respecto a la versión anterior del plan:** los stages tempranos `prospect` y `qualified` se eliminaron del Deal. Esos estados ahora pertenecen a la **Inquiry** (§2.1c), que es el modelo correcto para "interés expresado sin compromiso concreto". El Deal solo existe cuando hay compromiso real (cita agendada, negociación). Esto evita inflar el Kanban del agente con ruido conversacional del bot.
 
 `won` y `lost` son **estados terminales** — el Deal sale del Kanban activo y aparece en archivo. `lost_reason` opcional ayuda a entender por qué se cae el funnel.
 
@@ -802,7 +821,17 @@ Orden interno por tarea: `implementar → code review → fixes → tests → co
 ### Fase 2 — Drizzle schema TypeScript
 
 - [x] **R5** — `lib/db/schema/contact.ts` (tabla `contact` con cols de §2.1; SIN `property_visits` — esa columna se split a tabla aparte en R5b). ✅ 2026-05-13. Review: 2 IMPORTANT + 1 MINOR — todos resueltos. Cambios extra: exports `ContactRecord` / `NewContactRecord` + barrel export en `lib/db/schema/index.ts`. Build + tsc + eslint verdes.
-- [ ] **R5b** — `lib/db/schema/contact-property-visits.ts` (tabla nueva `contact_property_visits` con cols de §2.1b; reemplaza el array JSONB embebido del lead actual para habilitar queries como "todos los que visitaron Casa A esta semana").
+- ⛔ **R5b** — ~~`contact-property-visits.ts`~~ **CANCELADA** (pivote 2026-05-13: el modelo cambia a Inquiry + Deal separados, los registros de interés temprano viven en la tabla `inquiry`, no en una tabla aparte de "visitas"). Reemplazada por las tareas **I1**, **I2**, **I3** del bloque Inquiry abajo.
+
+#### Bloque Inquiry (NUEVO — pivote a modelo Inquiry + Deal separados)
+
+Estas tareas se intercalan en las fases existentes en lugar de renumerar todo:
+
+- [ ] **I1** — `features/inquiries/domain/inquiry.entity.ts` (Inquiry + CreateInquiryDTO + UpdateInquiryDTO + InquiryStatus + InquirySource). Ejecutar dentro de Fase 1 (Domain).
+- [ ] **I2** — `features/inquiries/domain/inquiry.repository.ts` (IInquiryRepository: findAll, findOpen, findByContactId, findByPropertyId, findActiveByContactAndProperty, create, discard, promote, softDelete, restore). Ejecutar dentro de Fase 1.
+- [ ] **I3** — `lib/db/schema/inquiry.ts` (tabla `inquiry` con cols de §2.1c). Más nuevos pgEnum `inquiry_status_enum` + `inquiry_source_enum` en `enums.ts`. Más actualizar barrel en `index.ts`. Ejecutar dentro de Fase 2.
+
+Las fases siguientes (4 Infra, 5 Use cases, 6 Actions, 9 UI, 10 Cleanup, 11 Tests) ya cubren todas las tablas — el contenido de cada tarea se expande para incluir Inquiry junto con Contact y Deal, sin agregar más numeración. Los detalles se ajustan al ejecutar cada fase.
 - [ ] **R6** — `lib/db/schema/deal.ts` (tabla `deal` con cols de §2.2 incluyendo `stage` + `stage_order`).
 - [ ] **R7** — Renombrar `lib/db/schema/lead-property-queue.ts` → `contact-property-queue.ts`. Variable `leadPropertyQueue` → `contactPropertyQueue`. FK `leadId` → `contactId`.
 - [ ] **R8** — Actualizar `lib/db/schema/appointments.ts`: `leadId` → `dealId` (FK a `deal.id`).
