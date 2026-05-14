@@ -8,9 +8,11 @@ import type { SessionContext } from "@/features/shared/domain/session-context"
  * adapter so the Kanban renders columns left-to-right with cards in
  * their drag-and-drop order.
  *
- * For the archive view (closed-won/closed-lost), a future
- * `getClosedDealsUseCase` can be added when the archive UI lands.
- * Not part of R22 per the sub-plan §4.3 enumeration.
+ * Sibling use cases handle the non-active views:
+ *   - `getClosedDealsUseCase` — terminal stages (`won`/`lost`),
+ *     ordered by `closed_at DESC` (archive)
+ *   - `getDeletedDealsUseCase` — soft-deleted, ordered by
+ *     `deleted_at DESC` (trash)
  */
 export async function getDealsUseCase(
   ctx: SessionContext,
