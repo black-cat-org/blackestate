@@ -71,7 +71,6 @@ El modelo estándar (HubSpot, Salesforce Propertybase, AlterEstate, Tokko Broker
 | `notes` | `text` | ❌ | observaciones genéricas |
 | `tags` | `text[]` | ✅ default `'{}'` | etiquetas libres |
 | `preferred_channel` | `text` | ❌ | "whatsapp"/"phone"/"email" — futuro |
-| `property_visits` | `jsonb` | ✅ default `'[]'` | web tracking de qué props vio el contact. Mismo shape que el `propertyVisits` actual del lead |
 | `catalog_sent_with_origin` | `boolean` | ✅ default false | tracking "le mandé el catálogo desde su origen" — heredado del lead actual |
 | `catalog_opened_at` | `timestamptz` | ❌ | tracking apertura del catálogo |
 | `created_at` | `timestamptz` | ✅ | |
@@ -87,6 +86,30 @@ El modelo estándar (HubSpot, Salesforce Propertybase, AlterEstate, Tokko Broker
 - `contact_active_org_idx` ON `(organization_id) WHERE deleted_at IS NULL` — hot path
 
 **Unicidad lógica (no constraint):** un contacto por `(org, phone)` y por `(org, email)`. **Por qué no UNIQUE constraint:** phone/email pueden ser NULL (no todos los contactos tienen ambos), pueden cambiar, y dos personas pueden compartir teléfono familiar — el constraint bloquearía casos válidos. La deduplicación se resuelve en use cases (búsqueda + confirmación humana en autocomplete).
+
+### 2.1b Tabla `contact_property_visits` (NUEVA — split de `propertyVisits` JSONB)
+
+Web tracking de propiedades vistas por el contact. Reemplaza el array `propertyVisits` JSONB que vivía embebido en `leads`. Una fila por evento — habilita queries tipo "todos los que visitaron Casa A esta semana" sin desarmar JSON ni pensar en tamaño máximo de fila.
+
+| Columna | Tipo | NOT NULL | Notas |
+|---|---|---|---|
+| `id` | `text` PK | ✅ | UUID via `$defaultFn` |
+| `organization_id` | `uuid` | ✅ | tenancy |
+| `contact_id` | `text` FK → `contact.id` | ✅ | quién visitó |
+| `property_id` | `text` FK → `properties.id` | ✅ | qué propiedad |
+| `source` | `text` | ❌ | de dónde vino el clic (Facebook/WhatsApp/search/etc.) |
+| `viewed_at` | `timestamptz` | ✅ default `now()` | timestamp del evento |
+| `created_at` | `timestamptz` | ✅ default `now()` | timestamp DB row (igual a viewed_at en la práctica) |
+
+**Sin soft-delete:** es histórico append-only. Purga futura por GDPR / retención se hace como job aparte (no soft-delete en cada fila).
+
+**Índices clave para los casos de uso esperados:**
+- `cpv_org_id_idx` ON `(organization_id)` — tenancy hot path
+- `cpv_property_viewed_idx` ON `(property_id, viewed_at DESC)` — "todos los que visitaron Casa A esta semana", consulta más usada
+- `cpv_contact_viewed_idx` ON `(contact_id, viewed_at DESC)` — "todas las props que vio Carlos, ordenadas por fecha"
+- `cpv_property_id_idx` ON `(property_id)` — count agregados por propiedad
+
+**Decisión de diseño — append-only sin dedup:** si el mismo contact visita la misma prop dos veces, son dos filas. Las analytics pueden agregar por DISTINCT cuando lo necesiten (en la mayoría de los casos lo que importa son las visitas absolutas, no las personas únicas). Forzar dedup a nivel schema con un UNIQUE constraint complicaría el caso "Carlos vio Casa A el lunes y otra vez el viernes" — son dos eventos legítimos.
 
 ### 2.2 Tabla `deal` (nueva, reemplaza `leads`)
 
@@ -207,6 +230,34 @@ GROUP BY organization_id, group_key;
 ### 3.2 Paso 2 — crear contacts
 
 Por cada grupo del Paso 1 → un `INSERT INTO public.contact(...)`. Generar UUID nuevo para `contact.id`. Mantener tabla auxiliar `_migration_lead_to_contact(lead_id, contact_id)` para el Paso 3.
+
+### 3.2b Paso 2b — desarmar `propertyVisits` JSONB → filas en `contact_property_visits`
+
+Cada lead legacy lleva `propertyVisits` como JSONB array embebido. La migración lo unnest a una fila por evento en la tabla nueva:
+
+```sql
+INSERT INTO public.contact_property_visits(
+  id, organization_id, contact_id, property_id, source, viewed_at, created_at
+)
+SELECT
+  gen_random_uuid()::text,
+  l.organization_id,
+  m.contact_id,
+  (v->>'propertyId')::text,
+  NULLIF(v->>'source', '') AS source,
+  COALESCE((v->>'timestamp')::timestamptz, l.created_at) AS viewed_at,
+  l.created_at AS created_at
+FROM public.leads l
+JOIN _migration_lead_to_contact m ON m.lead_id = l.id
+CROSS JOIN LATERAL jsonb_array_elements(coalesce(l.property_visits, '[]'::jsonb)) AS v
+WHERE jsonb_typeof(coalesce(l.property_visits, '[]'::jsonb)) = 'array'
+  AND v->>'propertyId' IS NOT NULL
+  AND EXISTS (SELECT 1 FROM public.properties p WHERE p.id = (v->>'propertyId')::text);
+```
+
+Cuando varios leads se mergearon en un solo contact (dedup por phone/email), los `propertyVisits` de todos esos leads quedan concatenados como filas independientes — el contacto preserva su historial completo de tracking.
+
+**Filtros defensivos:** se descartan entradas sin `propertyId` (corruptas) y referencias a properties que ya no existen (huérfanas por borrado previo de la prop). Filtrar acá evita FK violations al definir la constraint `contact_id → contact.id` / `property_id → properties.id`.
 
 ### 3.3 Paso 3 — crear deals (rename leads)
 
@@ -750,7 +801,8 @@ Orden interno por tarea: `implementar → code review → fixes → tests → co
 
 ### Fase 2 — Drizzle schema TypeScript
 
-- [ ] **R5** — `lib/db/schema/contact.ts` (tabla `contact` con cols de §2.1).
+- [x] **R5** — `lib/db/schema/contact.ts` (tabla `contact` con cols de §2.1; SIN `property_visits` — esa columna se split a tabla aparte en R5b). ✅ 2026-05-13. Review: 2 IMPORTANT + 1 MINOR — todos resueltos. Cambios extra: exports `ContactRecord` / `NewContactRecord` + barrel export en `lib/db/schema/index.ts`. Build + tsc + eslint verdes.
+- [ ] **R5b** — `lib/db/schema/contact-property-visits.ts` (tabla nueva `contact_property_visits` con cols de §2.1b; reemplaza el array JSONB embebido del lead actual para habilitar queries como "todos los que visitaron Casa A esta semana").
 - [ ] **R6** — `lib/db/schema/deal.ts` (tabla `deal` con cols de §2.2 incluyendo `stage` + `stage_order`).
 - [ ] **R7** — Renombrar `lib/db/schema/lead-property-queue.ts` → `contact-property-queue.ts`. Variable `leadPropertyQueue` → `contactPropertyQueue`. FK `leadId` → `contactId`.
 - [ ] **R8** — Actualizar `lib/db/schema/appointments.ts`: `leadId` → `dealId` (FK a `deal.id`).
