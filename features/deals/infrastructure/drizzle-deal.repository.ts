@@ -14,10 +14,11 @@ import {
   sql,
 } from "drizzle-orm"
 
-import type {
-  Deal,
-  DealStage,
-  UpdateDealDTO,
+import {
+  TERMINAL_DEAL_STAGES,
+  type Deal,
+  type DealStage,
+  type UpdateDealDTO,
 } from "@/features/deals/domain/deal.entity"
 import type {
   IDealRepository,
@@ -34,8 +35,6 @@ import {
   mapDealRowWithJoinsToEntity,
   mapPartialDTOToUpdate,
 } from "./deal.mapper"
-
-const TERMINAL_STAGES: ReadonlyArray<DealStage> = ["won", "lost"]
 
 /**
  * Drizzle implementation of `IDealRepository`. Mirror of the contact and
@@ -72,7 +71,7 @@ export class DrizzleDealRepository implements IDealRepository {
           and(
             eq(deal.organizationId, ctx.orgId),
             isNull(deal.deletedAt),
-            notInArray(deal.stage, [...TERMINAL_STAGES]),
+            notInArray(deal.stage, [...TERMINAL_DEAL_STAGES]),
           ),
         )
         // Kanban order: column then position-in-column.
@@ -92,7 +91,7 @@ export class DrizzleDealRepository implements IDealRepository {
           and(
             eq(deal.organizationId, ctx.orgId),
             isNull(deal.deletedAt),
-            inArray(deal.stage, [...TERMINAL_STAGES]),
+            inArray(deal.stage, [...TERMINAL_DEAL_STAGES]),
           ),
         )
         // `closed_at DESC NULLS LAST` so a terminal row whose closed_at
@@ -225,7 +224,7 @@ export class DrizzleDealRepository implements IDealRepository {
             eq(deal.contactId, contactId),
             eq(deal.propertyId, propertyId),
             isNull(deal.deletedAt),
-            notInArray(deal.stage, [...TERMINAL_STAGES]),
+            notInArray(deal.stage, [...TERMINAL_DEAL_STAGES]),
           ),
         )
         .limit(1),
@@ -352,8 +351,8 @@ export class DrizzleDealRepository implements IDealRepository {
         toOrder = isWithinStage ? maxVal : maxVal + 1
       }
 
-      const isMovingToTerminal = TERMINAL_STAGES.includes(input.toStage)
-      const wasInTerminal = TERMINAL_STAGES.includes(oldStage)
+      const isMovingToTerminal = TERMINAL_DEAL_STAGES.includes(input.toStage)
+      const wasInTerminal = TERMINAL_DEAL_STAGES.includes(oldStage)
       const isReopening = wasInTerminal && !isMovingToTerminal
 
       if (isWithinStage) {
@@ -467,7 +466,7 @@ export class DrizzleDealRepository implements IDealRepository {
     stage: DealStage,
     orderedIds: string[],
   ): Promise<void> {
-    if (TERMINAL_STAGES.includes(stage)) {
+    if (TERMINAL_DEAL_STAGES.includes(stage)) {
       // Reorder only applies to active Kanban columns. Terminal stages
       // (`won`/`lost`) live in the archive view and have no drag handle.
       // Distinct token from `reorder_ids_mismatch` so the action layer

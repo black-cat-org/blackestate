@@ -28,6 +28,22 @@ export type DealStage =
   | "lost"
 
 /**
+ * Stages that take a Deal out of the active Kanban view. Single source
+ * of truth for "is this Deal closed" — consumed by:
+ *   - `DrizzleDealRepository` for the partial UNIQUE / Kanban filters
+ *   - `deleteContactAction` (R23) for EC13 enforcement (block contact
+ *     deletion when active deals exist)
+ *   - Future analytics / archive UI
+ *
+ * Lives on the domain layer (not infrastructure) so the Presentation
+ * layer can import it without crossing the Application→Infrastructure
+ * boundary. Tightly coupled to the `DealStage` union: adding a new
+ * terminal stage requires updating BOTH this constant AND any DB
+ * migration that introduces the new enum value.
+ */
+export const TERMINAL_DEAL_STAGES: ReadonlyArray<DealStage> = ["won", "lost"]
+
+/**
  * Where the Deal originated. Mirrors `deal_source_enum` at the DB boundary.
  * Renamed from the legacy `lead_source_enum`.
  */
