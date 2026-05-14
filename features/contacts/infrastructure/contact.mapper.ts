@@ -42,6 +42,41 @@ function toPreferredChannel(
 }
 
 // ---------------------------------------------------------------------------
+// Phone / email canonicalisation
+// ---------------------------------------------------------------------------
+//
+// Contacts are deduplicated against `(organization_id, phone)` and
+// `(organization_id, lower(email))` partial indexes from migration 026.
+// For the indexes to be hit, stored values must already be in canonical
+// form — same regex/transform as §3 of the migration script that produced
+// the legacy lead → contact mapping. The repository's `findByPhoneOrEmail`
+// uses the same helpers on incoming query inputs so write and read agree
+// byte-for-byte on what "the same phone" or "the same email" means.
+//
+// `normalizeContactPhone`: strips every character that is not a digit
+//   or a leading `+`. "+591 712-3456" → "+5917123456". Empty / all-junk
+//   inputs collapse to `null` (no false-positive matches against other
+//   contacts with empty phones).
+//
+// `normalizeContactEmail`: lowercases + trims surrounding whitespace.
+//   "  Foo@Bar.com " → "foo@bar.com". Empty after trim collapses to
+//   `null`.
+
+const PHONE_NON_CANONICAL = /[^0-9+]/g
+
+export function normalizeContactPhone(raw: string | null | undefined): string | null {
+  if (raw == null) return null
+  const cleaned = raw.replace(PHONE_NON_CANONICAL, "")
+  return cleaned.length > 0 ? cleaned : null
+}
+
+export function normalizeContactEmail(raw: string | null | undefined): string | null {
+  if (raw == null) return null
+  const cleaned = raw.trim().toLowerCase()
+  return cleaned.length > 0 ? cleaned : null
+}
+
+// ---------------------------------------------------------------------------
 // Model (DB row, uses null) → Entity (domain, uses undefined)
 // ---------------------------------------------------------------------------
 
@@ -101,8 +136,11 @@ export function mapCreateDTOToInsert(
     organizationId: ctx.orgId,
     createdByUserId: ctx.userId,
     name: data.name,
-    phone: data.phone ?? null,
-    email: data.email ?? null,
+    // Phone and email are stored in canonical form so the partial /
+    // functional indexes from migration 026 (`contact_org_phone_idx` and
+    // `contact_org_email_idx`) are hit by repository dedup queries.
+    phone: normalizeContactPhone(data.phone),
+    email: normalizeContactEmail(data.email),
     notes: data.notes ?? null,
     tags: data.tags ?? [],
     preferredChannel: data.preferredChannel ?? null,
@@ -134,8 +172,12 @@ export function mapPartialDTOToUpdate(
   // absence means "leave unchanged". Without this discipline, agents
   // cannot un-set a once-set phone/email/notes — correcting a capture
   // mistake becomes impossible from the UI.
-  if ("phone" in data) update.phone = data.phone ?? null
-  if ("email" in data) update.email = data.email ?? null
+  //
+  // Phone and email pass through the canonicalisation helpers so the
+  // dedup invariants (partial indexes from migration 026, `findByPhoneOrEmail`
+  // contract) hold across UPDATE paths too — not just at create time.
+  if ("phone" in data) update.phone = normalizeContactPhone(data.phone)
+  if ("email" in data) update.email = normalizeContactEmail(data.email)
   if ("notes" in data) update.notes = data.notes ?? null
   if ("preferredChannel" in data)
     update.preferredChannel = data.preferredChannel ?? null

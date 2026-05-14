@@ -57,10 +57,22 @@ export interface CreateContactDTO {
 }
 
 /**
- * Patch shape for updating an existing contact. All fields optional;
- * fields explicitly set to `undefined` or omitted are not touched.
- * Empty string for phone/email means "clear" — translated to NULL by
- * the mapper (per null-safety convention in CLAUDE.md).
+ * Patch shape for updating an existing contact.
+ *
+ * Update semantics (matches the mapper's `'key' in data` idiom):
+ *   - **Omit the key**: leave the column untouched.
+ *   - **Include the key with a value**: write that value.
+ *   - **Include the key with `undefined`**: clear the column to NULL
+ *     (for nullable columns: `phone`, `email`, `notes`, `preferredChannel`).
+ *     For `name` and `tags` (NOT NULL), an explicit `undefined` is a
+ *     no-op — the mapper's `!== undefined` guard ignores them.
+ *
+ * Form-side clearing: any UI that wants to clear `phone`/`email` must
+ * send `{ phone: undefined }` in the DTO (e.g. coerce empty input strings
+ * to `undefined` at the Zod boundary). The mapper does NOT distinguish
+ * `"" ` from `undefined` once they reach it — `normalizeContactPhone("")`
+ * and `normalizeContactPhone(undefined)` both collapse to `null`. The
+ * DTO type stays `string | undefined` to keep the contract narrow.
  */
 export type UpdateContactDTO = Partial<CreateContactDTO>
 
