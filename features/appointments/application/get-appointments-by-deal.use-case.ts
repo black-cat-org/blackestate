@@ -2,10 +2,10 @@ import type { Appointment } from "@/features/appointments/domain/appointment.ent
 import type { SessionContext } from "@/features/shared/domain/session-context"
 import { DrizzleAppointmentRepository } from "@/features/appointments/infrastructure/drizzle-appointment.repository"
 
-export async function getAppointmentsByLeadUseCase(
+export async function getAppointmentsByDealUseCase(
   ctx: SessionContext,
-  leadId: string,
+  dealId: string,
 ): Promise<Appointment[]> {
   const repo = new DrizzleAppointmentRepository()
-  return repo.findByLead(ctx, leadId)
+  return repo.findByDeal(ctx, dealId)
 }

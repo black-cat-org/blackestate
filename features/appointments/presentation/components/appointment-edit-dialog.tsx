@@ -103,7 +103,7 @@ export function AppointmentEditDialog({
         </DialogHeader>
 
         <div className="rounded-md bg-muted/50 px-3 py-2 text-sm text-muted-foreground">
-          <div className="font-medium text-foreground">{appointment.leadName}</div>
+          <div className="font-medium text-foreground">{appointment.contactName}</div>
           <div className="truncate">{appointment.propertyTitle}</div>
         </div>
 

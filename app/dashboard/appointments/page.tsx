@@ -9,14 +9,12 @@ import {
 import { DashboardHeader } from "@/components/dashboard-header"
 import { AppointmentsView } from "@/features/appointments/presentation/components/appointments-view"
 import { getAppointmentsAction } from "@/features/appointments/presentation/actions"
-import { getLeadsAction } from "@/features/leads/presentation/actions"
-import { getPropertiesAction } from "@/features/properties/presentation/actions"
+import { getDealsAction } from "@/features/deals/presentation/actions"
 
 export default async function AppointmentsPage() {
-  const [appointments, leads, properties] = await Promise.all([
+  const [appointments, deals] = await Promise.all([
     getAppointmentsAction(),
-    getLeadsAction(),
-    getPropertiesAction(),
+    getDealsAction(),
   ])
 
   return (
@@ -36,7 +34,7 @@ export default async function AppointmentsPage() {
       </DashboardHeader>
 
       <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-        <AppointmentsView appointments={appointments} leads={leads} properties={properties} />
+        <AppointmentsView appointments={appointments} deals={deals} />
       </div>
     </>
   )

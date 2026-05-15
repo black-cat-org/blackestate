@@ -59,7 +59,7 @@ export function TrashContent({
   const filteredAppointments = useMemo(() => {
     if (!normalizedQuery) return appointments
     return appointments.filter((a) =>
-      [a.leadName, a.propertyTitle]
+      [a.contactName, a.propertyTitle]
         .filter((v): v is string => Boolean(v))
         .some((v) => v.toLowerCase().includes(normalizedQuery)),
     )
@@ -68,7 +68,7 @@ export function TrashContent({
   const searchPlaceholder: Record<ActiveTab, string> = {
     properties: "Buscar por título, ciudad…",
     leads: "Buscar por nombre, email, teléfono…",
-    appointments: "Buscar por lead o propiedad…",
+    appointments: "Buscar por contacto o propiedad…",
   }
 
   return (

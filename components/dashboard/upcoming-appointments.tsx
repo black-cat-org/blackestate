@@ -13,7 +13,7 @@ interface UpcomingAppointmentsProps {
 
 function formatAppointmentDate(date: string, time: string): string {
   const d = new Date(`${date}T${time}:00`)
-  return d.toLocaleDateString("es-AR", {
+  return d.toLocaleDateString("es-BO", {
     weekday: "short",
     day: "numeric",
     month: "short",
@@ -26,7 +26,7 @@ export function UpcomingAppointments({ appointments }: UpcomingAppointmentsProps
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-base">Proximas citas</CardTitle>
+        <CardTitle className="text-base">Próximas citas</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
         {appointments.length === 0 ? (
@@ -39,7 +39,7 @@ export function UpcomingAppointments({ appointments }: UpcomingAppointmentsProps
             {appointments.map((apt) => (
               <Link
                 key={apt.id}
-                href={`/dashboard/leads/${apt.leadId}`}
+                href={`/dashboard/deals/${apt.dealId}`}
                 className="flex items-start gap-3 rounded-lg p-2 -mx-2 hover:bg-accent/50 transition-colors"
               >
                 <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted">
@@ -47,7 +47,7 @@ export function UpcomingAppointments({ appointments }: UpcomingAppointmentsProps
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium">{apt.leadName}</span>
+                    <span className="text-sm font-medium">{apt.contactName}</span>
                     <Badge className={`text-[10px] px-1.5 py-0 ${APPOINTMENT_STATUS_COLORS[apt.status]}`}>
                       {APPOINTMENT_STATUS_LABELS[apt.status]}
                     </Badge>

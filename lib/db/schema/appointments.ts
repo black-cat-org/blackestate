@@ -1,5 +1,5 @@
 import { pgTable, text, uuid, timestamp, index } from "drizzle-orm/pg-core";
-import { leads } from "./leads";
+import { deal } from "./deal";
 import { properties } from "./properties";
 import { appointmentStatusEnum, appointmentOriginEnum } from "./enums";
 
@@ -7,7 +7,7 @@ export const appointments = pgTable("appointments", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   organizationId: uuid("organization_id").notNull(),
   createdByUserId: uuid("created_by_user_id").notNull(),
-  leadId: text("lead_id").notNull().references(() => leads.id),
+  dealId: text("deal_id").notNull().references(() => deal.id, { onDelete: "cascade" }),
   propertyId: text("property_id").notNull().references(() => properties.id),
 
   startsAt: timestamp("starts_at", { withTimezone: true }).notNull(),
@@ -29,7 +29,7 @@ export const appointments = pgTable("appointments", {
   deletedByUserEmail: text("deleted_by_user_email"),
 }, (t) => [
   index("appointments_org_id_idx").on(t.organizationId),
-  index("appointments_lead_id_idx").on(t.leadId),
+  index("appointments_deal_id_idx").on(t.dealId),
   index("appointments_status_idx").on(t.status),
   index("appointments_starts_at_idx").on(t.startsAt),
   index("appointments_org_starts_idx").on(t.organizationId, t.startsAt),

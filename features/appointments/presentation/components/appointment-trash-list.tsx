@@ -63,7 +63,7 @@ export function AppointmentTrashList({ appointments }: AppointmentTrashListProps
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Lead</TableHead>
+            <TableHead>Contacto</TableHead>
             <TableHead>Propiedad</TableHead>
             <TableHead>Fecha</TableHead>
             <TableHead>Horario</TableHead>
@@ -75,7 +75,7 @@ export function AppointmentTrashList({ appointments }: AppointmentTrashListProps
         <TableBody>
           {appointments.map((apt) => (
             <TableRow key={apt.id}>
-              <TableCell className="font-medium">{apt.leadName}</TableCell>
+              <TableCell className="font-medium">{apt.contactName}</TableCell>
               <TableCell className="text-muted-foreground truncate max-w-[160px]">
                 {apt.propertyTitle}
               </TableCell>

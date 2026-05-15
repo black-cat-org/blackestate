@@ -165,7 +165,7 @@ export async function getAlerts(): Promise<AlertItem[]> {
       id: `alert-apt-${apt.id}`,
       type: "urgent",
       title: "Cita por confirmar",
-      description: `${apt.leadName} pidió visitar "${apt.propertyTitle}"`,
+      description: `${apt.contactName} pidió visitar "${apt.propertyTitle}"`,
       actionUrl: "/dashboard/appointments",
       actionLabel: "Ver cita",
     })

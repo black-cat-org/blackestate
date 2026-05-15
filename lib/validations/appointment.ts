@@ -4,7 +4,8 @@ import { z } from "zod"
 // Dashboard agent-side appointment create/edit.
 //
 // Validation rules:
-// - leadId + propertyId required (FK, NOT NULL on DB)
+// - dealId + propertyId required (FK, NOT NULL on DB — R34 switched
+//   the appointment FK from leads → deal; see drizzle/sql/027)
 // - date in YYYY-MM-DD (HTML date input native format)
 // - time + endTime in HH:mm (HTML time input native format)
 // - endTime must be strictly after time on the same day
@@ -18,7 +19,7 @@ const HHMM_REGEX = /^([01]\d|2[0-3]):[0-5]\d$/
 const YYYYMMDD_REGEX = /^\d{4}-\d{2}-\d{2}$/
 
 const baseFields = {
-  leadId: z.string().min(1, "Selecciona un lead"),
+  dealId: z.string().min(1, "Selecciona un negocio"),
   propertyId: z.string().min(1, "Selecciona una propiedad"),
   date: z
     .string()
@@ -55,8 +56,8 @@ export const appointmentCreateSchema = z
 
 export type AppointmentCreateValues = z.infer<typeof appointmentCreateSchema>
 
-// Edit shape: leadId/propertyId locked (cannot move appointment to another
-// lead/property — that would lose the original audit trail). Only date/time
+// Edit shape: dealId/propertyId locked (cannot move appointment to another
+// deal/property — that would lose the original audit trail). Only date/time
 // /notes are editable. Status changes go through their own action
 // (updateAppointmentStatusAction) wired to Kanban transitions.
 export const appointmentEditSchema = z

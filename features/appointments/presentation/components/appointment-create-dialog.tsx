@@ -38,19 +38,23 @@ import {
 import { createAppointmentAction } from "@/features/appointments/presentation/actions"
 import { emptyToUndefined } from "@/lib/utils/form"
 import type { Appointment } from "@/features/appointments/domain/appointment.entity"
-import type { Lead } from "@/features/leads/domain/lead.entity"
-import type { Property } from "@/features/properties/domain/property.entity"
+import type { Deal } from "@/features/deals/domain/deal.entity"
 
 interface AppointmentCreateDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  leads: Lead[]
-  properties: Property[]
+  /**
+   * Active Deals (non-terminal, non-deleted) for the agent to choose
+   * from. The Deal already carries its Contact + Property, so the
+   * appointment automatically inherits both — no separate property
+   * select. Pre-fetched by the page route via `getDealsAction()`.
+   */
+  deals: Deal[]
   onCreated?: (appointment: Appointment) => void
 }
 
 const DEFAULTS: AppointmentCreateValues = {
-  leadId: "",
+  dealId: "",
   propertyId: "",
   date: "",
   time: "",
@@ -61,8 +65,7 @@ const DEFAULTS: AppointmentCreateValues = {
 export function AppointmentCreateDialog({
   open,
   onOpenChange,
-  leads,
-  properties,
+  deals,
   onCreated,
 }: AppointmentCreateDialogProps) {
   const router = useRouter()
@@ -84,20 +87,20 @@ export function AppointmentCreateDialog({
 
   const onSubmit = (values: AppointmentCreateValues) => {
     setServerError(null)
-    const lead = leads.find((l) => l.id === values.leadId)
-    const property = properties.find((p) => p.id === values.propertyId)
-    if (!lead || !property) {
-      setServerError("Lead o propiedad inválidos")
+    const deal = deals.find((d) => d.id === values.dealId)
+    if (!deal) {
+      setServerError("Negocio inválido")
       return
     }
     startTransition(async () => {
       try {
         const apt = await createAppointmentAction({
-          leadId: lead.id,
-          leadName: lead.name,
-          leadPhone: lead.phone,
-          propertyId: property.id,
-          propertyTitle: property.title,
+          dealId: deal.id,
+          contactId: deal.contactId,
+          contactName: deal.contactName ?? "Sin contacto",
+          contactPhone: deal.contactPhone,
+          propertyId: deal.propertyId,
+          propertyTitle: deal.propertyTitle ?? "Sin propiedad",
           date: values.date,
           time: values.time,
           endTime: values.endTime,
@@ -117,6 +120,16 @@ export function AppointmentCreateDialog({
     })
   }
 
+  // The property select is hidden but still in the form to satisfy the
+  // schema (which keeps `propertyId` required to match the DB column
+  // that survives R34). We mirror the selected deal's propertyId into
+  // the form state whenever the deal changes.
+  const handleDealChange = (dealId: string) => {
+    form.setValue("dealId", dealId)
+    const deal = deals.find((d) => d.id === dealId)
+    form.setValue("propertyId", deal?.propertyId ?? "")
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[520px]">
@@ -128,56 +141,26 @@ export function AppointmentCreateDialog({
           <form noValidate onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField
               control={form.control}
-              name="leadId"
+              name="dealId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Lead *</FormLabel>
-                  <Select value={field.value} onValueChange={field.onChange}>
+                  <FormLabel>Negocio *</FormLabel>
+                  <Select value={field.value} onValueChange={handleDealChange}>
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Selecciona un lead" />
+                        <SelectValue placeholder="Selecciona un negocio" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {leads.length === 0 ? (
+                      {deals.length === 0 ? (
                         <div className="px-2 py-3 text-sm text-muted-foreground">
-                          No tienes leads todavía.
+                          No tienes negocios activos todavía.
                         </div>
                       ) : (
-                        leads.map((l) => (
-                          <SelectItem key={l.id} value={l.id}>
-                            {l.name}
-                          </SelectItem>
-                        ))
-                      )}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="propertyId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Propiedad *</FormLabel>
-                  <Select value={field.value} onValueChange={field.onChange}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecciona una propiedad" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {properties.length === 0 ? (
-                        <div className="px-2 py-3 text-sm text-muted-foreground">
-                          No tienes propiedades todavía.
-                        </div>
-                      ) : (
-                        properties.map((p) => (
-                          <SelectItem key={p.id} value={p.id}>
-                            {p.title}
+                        deals.map((d) => (
+                          <SelectItem key={d.id} value={d.id}>
+                            {d.contactName ?? "Sin contacto"}
+                            {d.propertyTitle ? ` · ${d.propertyTitle}` : ""}
                           </SelectItem>
                         ))
                       )}

@@ -19,23 +19,30 @@ import {
   APPOINTMENT_ORIGIN_LABELS,
 } from "@/lib/constants/bot"
 import type { Appointment } from "@/features/appointments/domain/appointment.entity"
-import type { Lead } from "@/features/leads/domain/lead.entity"
-import type { Property } from "@/features/properties/domain/property.entity"
+import type { Deal } from "@/features/deals/domain/deal.entity"
 
 interface AppointmentsViewProps {
   appointments: Appointment[]
-  leads: Lead[]
-  properties: Property[]
+  /**
+   * Active Deals (non-terminal, non-deleted) used by both the create
+   * dialog (selecting which Deal a new appointment hangs off) and the
+   * filter dropdown ("show only appointments tied to deal X"). The
+   * parent page fetches them via `getDealsAction()` post-R34. The
+   * property filter dropdown derives its options from the
+   * appointments themselves (each carries its `propertyId` +
+   * `propertyTitle`), so we don't need a separate Property[] prop.
+   */
+  deals: Deal[]
 }
 
-export function AppointmentsView({ appointments: initialAppointments, leads, properties }: AppointmentsViewProps) {
+export function AppointmentsView({ appointments: initialAppointments, deals }: AppointmentsViewProps) {
   const [viewMode, setViewMode] = useState<"calendar" | "kanban">("calendar")
   const [appointments, setAppointments] = useState(initialAppointments)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [filterStatus, setFilterStatus] = useState("all")
   const [filterOrigin, setFilterOrigin] = useState("all")
   const [filterProperty, setFilterProperty] = useState("all")
-  const [filterLead, setFilterLead] = useState("all")
+  const [filterDeal, setFilterDeal] = useState("all")
   const [search, setSearch] = useState("")
 
   const filteredAppointments = useMemo(() => {
@@ -44,13 +51,13 @@ export function AppointmentsView({ appointments: initialAppointments, leads, pro
       if (filterStatus !== "all" && a.status !== filterStatus) return false
       if (filterOrigin !== "all" && a.origin !== filterOrigin) return false
       if (filterProperty !== "all" && a.propertyId !== filterProperty) return false
-      if (filterLead !== "all" && a.leadId !== filterLead) return false
-      if (q && !a.leadName.toLowerCase().includes(q) && !a.propertyTitle.toLowerCase().includes(q)) return false
+      if (filterDeal !== "all" && a.dealId !== filterDeal) return false
+      if (q && !a.contactName.toLowerCase().includes(q) && !a.propertyTitle.toLowerCase().includes(q)) return false
       return true
     })
-  }, [appointments, filterStatus, filterOrigin, filterProperty, filterLead, search])
+  }, [appointments, filterStatus, filterOrigin, filterProperty, filterDeal, search])
 
-  const uniqueLeadIds = [...new Set(appointments.map((a) => a.leadId))]
+  const uniqueDealIds = [...new Set(appointments.map((a) => a.dealId))]
   const uniquePropertyIds = [...new Set(appointments.map((a) => a.propertyId))]
 
   function handleUpdate(id: string, updates: Partial<Appointment>) {
@@ -103,7 +110,7 @@ export function AppointmentsView({ appointments: initialAppointments, leads, pro
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Buscar por lead o propiedad..."
+            placeholder="Buscar por contacto o propiedad..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-9"
@@ -132,15 +139,21 @@ export function AppointmentsView({ appointments: initialAppointments, leads, pro
               ))}
             </SelectContent>
           </Select>
-          <Select value={filterLead} onValueChange={setFilterLead}>
+          <Select value={filterDeal} onValueChange={setFilterDeal}>
             <SelectTrigger className="w-auto min-w-[150px]">
-              <SelectValue placeholder="Lead" />
+              <SelectValue placeholder="Negocio" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Todos los leads</SelectItem>
-              {uniqueLeadIds.map((id) => {
-                const apt = appointments.find((a) => a.leadId === id)
-                return <SelectItem key={id} value={id}>{apt?.leadName}</SelectItem>
+              <SelectItem value="all">Todos los negocios</SelectItem>
+              {uniqueDealIds.map((id) => {
+                const apt = appointments.find((a) => a.dealId === id)
+                // Show "Contact · Property" to disambiguate when the same
+                // contact has deals across multiple properties — without
+                // the property suffix two rows would look identical.
+                const label = apt
+                  ? `${apt.contactName}${apt.propertyTitle ? ` · ${apt.propertyTitle}` : ""}`
+                  : id
+                return <SelectItem key={id} value={id}>{label}</SelectItem>
               })}
             </SelectContent>
           </Select>
@@ -176,8 +189,7 @@ export function AppointmentsView({ appointments: initialAppointments, leads, pro
       <AppointmentCreateDialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}
-        leads={leads}
-        properties={properties}
+        deals={deals}
         onCreated={handleCreated}
       />
     </div>
