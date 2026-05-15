@@ -115,6 +115,42 @@ export class DrizzleAppointmentRepository implements IAppointmentRepository {
     )
   }
 
+  async findByContact(
+    ctx: SessionContext,
+    contactId: string,
+  ): Promise<Appointment[]> {
+    const rows = await withRLS(ctx, async (tx) => {
+      return tx
+        .select({
+          appointment: appointments,
+          contactId: contact.id,
+          contactName: contact.name,
+          contactPhone: contact.phone,
+          propertyTitle: properties.title,
+        })
+        .from(appointments)
+        .innerJoin(deal, eq(appointments.dealId, deal.id))
+        .leftJoin(contact, eq(deal.contactId, contact.id))
+        .leftJoin(properties, eq(appointments.propertyId, properties.id))
+        .where(
+          and(
+            eq(deal.contactId, contactId),
+            isNull(appointments.deletedAt),
+          ),
+        )
+    })
+
+    return rows.map((r) =>
+      mapRowToEntity(
+        r.appointment,
+        r.contactId ?? "",
+        r.contactName ?? FALLBACK_CONTACT_NAME,
+        r.contactPhone ?? undefined,
+        r.propertyTitle ?? FALLBACK_PROPERTY_TITLE,
+      ),
+    )
+  }
+
   async findByDate(
     ctx: SessionContext,
     date: string,

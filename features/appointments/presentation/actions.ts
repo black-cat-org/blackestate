@@ -3,6 +3,7 @@
 import { getSessionContext } from "@/features/shared/infrastructure/session-context"
 import { getAppointmentsUseCase } from "@/features/appointments/application/get-appointments.use-case"
 import { getAppointmentsByDealUseCase } from "@/features/appointments/application/get-appointments-by-deal.use-case"
+import { getAppointmentsByContactUseCase } from "@/features/appointments/application/get-appointments-by-contact.use-case"
 import { getAppointmentsByDateUseCase } from "@/features/appointments/application/get-appointments-by-date.use-case"
 import { getDeletedAppointmentsUseCase } from "@/features/appointments/application/get-deleted-appointments.use-case"
 import { createAppointmentUseCase } from "@/features/appointments/application/create-appointment.use-case"
@@ -32,6 +33,13 @@ export async function getAppointmentsByDealAction(
 ): Promise<Appointment[]> {
   const ctx = await getSessionContext()
   return getAppointmentsByDealUseCase(ctx, dealId)
+}
+
+export async function getAppointmentsByContactAction(
+  contactId: string,
+): Promise<Appointment[]> {
+  const ctx = await getSessionContext()
+  return getAppointmentsByContactUseCase(ctx, contactId)
 }
 
 export async function getAppointmentsByDateAction(

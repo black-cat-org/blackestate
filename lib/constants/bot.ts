@@ -73,6 +73,25 @@ export const APPOINTMENT_STATUS_COLORS: Record<AppointmentStatus, string> = {
   cancelled: "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300",
 }
 
+/**
+ * Tailwind class fragments for the appointment status badge when rendered
+ * with shadcn `Badge variant="outline"` — the outline variant needs
+ * `border-*` tokens instead of the bare `bg-*` set in
+ * `APPOINTMENT_STATUS_COLORS`. Mirror of `INQUIRY_STATUS_BADGE_CLASSES`
+ * and `DEAL_STAGE_BADGE_CLASSES`: same `Record<AppointmentStatus, string>`
+ * shape so adding a new status is a compile error here.
+ */
+export const APPOINTMENT_STATUS_BADGE_CLASSES: Record<AppointmentStatus, string> = {
+  requested:
+    "border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-300",
+  confirmed:
+    "border-blue-300 bg-blue-50 text-blue-700 dark:border-blue-700 dark:bg-blue-950 dark:text-blue-300",
+  completed:
+    "border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-700 dark:bg-emerald-950 dark:text-emerald-300",
+  cancelled:
+    "border-zinc-300 bg-zinc-50 text-zinc-700 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-300",
+}
+
 export const APPOINTMENT_ORIGIN_LABELS: Record<AppointmentOrigin, string> = {
   agent: "Agente",
   bot: "Bot",
