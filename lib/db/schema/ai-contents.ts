@@ -1,4 +1,4 @@
-import { pgTable, text, uuid, timestamp, index } from "drizzle-orm/pg-core";
+import { pgTable, text, uuid, jsonb, timestamp, index } from "drizzle-orm/pg-core";
 import { properties } from "./properties";
 import { aiContentTypeEnum, aiPlatformEnum } from "./enums";
 
@@ -14,6 +14,14 @@ export const aiContents = pgTable("ai_contents", {
 
   publishedAt: timestamp("published_at", { withTimezone: true }),
   publishedTo: aiPlatformEnum("published_to"),
+
+  // Engagement metrics surfaced by the source platform after publish.
+  // Loose schema (views/likes/comments/shares/clicks all optional
+  // numbers) — JSONB instead of dedicated columns because (a) the
+  // shape may evolve as platforms expose new metrics, (b) we never
+  // query against individual metric values, only read them as a
+  // whole when rendering the content card. R38d ADD COLUMN.
+  analytics: jsonb("analytics"),
 
   // Timestamps
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

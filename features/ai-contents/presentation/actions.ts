@@ -2,7 +2,10 @@
 
 import { addHashtagUseCase } from "@/features/ai-contents/application/add-hashtag.use-case"
 import { addHashtagsUseCase } from "@/features/ai-contents/application/add-hashtags.use-case"
-import { createAiContentUseCase } from "@/features/ai-contents/application/create-ai-content.use-case"
+import {
+  createAiContentUseCase,
+  type CreateAiContentInput,
+} from "@/features/ai-contents/application/create-ai-content.use-case"
 import { deleteAiContentUseCase } from "@/features/ai-contents/application/delete-ai-content.use-case"
 import { deleteAiContentsByPropertyUseCase } from "@/features/ai-contents/application/delete-ai-contents-by-property.use-case"
 import { getAiContentsUseCase } from "@/features/ai-contents/application/get-ai-contents.use-case"
@@ -12,18 +15,18 @@ import { markAiContentPublishedUseCase } from "@/features/ai-contents/applicatio
 import { removeHashtagUseCase } from "@/features/ai-contents/application/remove-hashtag.use-case"
 import { updateAiContentUseCase } from "@/features/ai-contents/application/update-ai-content.use-case"
 import type { AiContent } from "@/features/ai-contents/domain/ai-content.entity"
-import { InMemoryAiContentRepository } from "@/features/ai-contents/infrastructure/in-memory-ai-content.repository"
-import { InMemoryHashtagRepository } from "@/features/ai-contents/infrastructure/in-memory-hashtag.repository"
+import type { UpdateAiContentDTO } from "@/features/ai-contents/domain/ai-content.repository"
+import { DrizzleAiContentRepository } from "@/features/ai-contents/infrastructure/drizzle-ai-content.repository"
+import { DrizzleHashtagRepository } from "@/features/ai-contents/infrastructure/drizzle-hashtag.repository"
 import { getSessionContext } from "@/features/shared/infrastructure/session-context"
 
-// Module-level singletons. The in-memory adapters hold process-global
-// state so a single instance is reused across the request lifetime —
-// this mirrors the singleton pattern used by other features'
-// Drizzle repositories (e.g. `DrizzleDealRepository` in
-// `features/deals/presentation/actions.ts`). R38d will swap these
-// for Drizzle adapters with zero interface churn at the call sites.
-const aiContentRepo = new InMemoryAiContentRepository()
-const hashtagRepo = new InMemoryHashtagRepository()
+// Module-level singletons. The Drizzle adapters are stateless — every
+// query opens its own `withRLS` transaction with the per-call
+// SessionContext — so a single instance is reusable across the
+// process's request lifetime. Mirror of `DrizzleDealRepository` in
+// `features/deals/presentation/actions.ts`.
+const aiContentRepo = new DrizzleAiContentRepository()
+const hashtagRepo = new DrizzleHashtagRepository()
 
 // ---------------------------------------------------------------------------
 // AI content actions
@@ -40,7 +43,7 @@ export async function getAiContentsByPropertyAction(propertyId: string): Promise
 }
 
 export async function createAiContentAction(
-  data: Omit<AiContent, "id" | "createdAt">,
+  data: CreateAiContentInput,
 ): Promise<AiContent> {
   const ctx = await getSessionContext()
   return createAiContentUseCase(ctx, aiContentRepo, data)
@@ -48,7 +51,7 @@ export async function createAiContentAction(
 
 export async function updateAiContentAction(
   id: string,
-  data: Partial<Omit<AiContent, "id" | "createdAt">>,
+  data: UpdateAiContentDTO,
 ): Promise<AiContent> {
   const ctx = await getSessionContext()
   return updateAiContentUseCase(ctx, aiContentRepo, id, data)

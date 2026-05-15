@@ -2,6 +2,27 @@ import type { AiContent } from "@/features/ai-contents/domain/ai-content.entity"
 import type { SessionContext } from "@/features/shared/domain/session-context"
 
 /**
+ * Input shape for `IAiContentRepository.create`. Excludes
+ * server-controlled fields (`id`, `createdAt`, `createdByUserId`) so
+ * a client cannot spoof authorship — the adapter populates
+ * `createdByUserId` from `ctx.userId` inside `withRLS` (RLS INSERT
+ * policy enforces the same predicate at the DB).
+ */
+export type CreateAiContentDTO = Omit<
+  AiContent,
+  "id" | "createdAt" | "createdByUserId"
+>
+
+/**
+ * Patch shape for `IAiContentRepository.update`. Excludes the
+ * immutable + denormalized + audit fields. `propertyTitle` is
+ * derived from a JOIN — never writable through this surface.
+ */
+export type UpdateAiContentDTO = Partial<
+  Omit<AiContent, "id" | "createdAt" | "createdByUserId" | "propertyTitle">
+>
+
+/**
  * Port (interface) for AiContent persistence. Defined here in the
  * Domain layer so Application use cases can depend on the contract
  * without knowing the concrete adapter. Infrastructure provides the
@@ -23,14 +44,11 @@ import type { SessionContext } from "@/features/shared/domain/session-context"
 export interface IAiContentRepository {
   findAll(ctx: SessionContext): Promise<AiContent[]>
   findByProperty(ctx: SessionContext, propertyId: string): Promise<AiContent[]>
-  create(
-    ctx: SessionContext,
-    data: Omit<AiContent, "id" | "createdAt">,
-  ): Promise<AiContent>
+  create(ctx: SessionContext, data: CreateAiContentDTO): Promise<AiContent>
   update(
     ctx: SessionContext,
     id: string,
-    data: Partial<Omit<AiContent, "id" | "createdAt">>,
+    data: UpdateAiContentDTO,
   ): Promise<AiContent>
   delete(ctx: SessionContext, id: string): Promise<void>
   deleteByProperty(ctx: SessionContext, propertyId: string): Promise<void>

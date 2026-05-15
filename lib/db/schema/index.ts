@@ -8,6 +8,7 @@ export { botMessages } from "./bot-messages";
 export { botConfig } from "./bot-config";
 export { analyticsEvents } from "./analytics-events";
 export { aiContents } from "./ai-contents";
+export { hashtagLibrary } from "./hashtag-library";
 export { agentProfiles } from "./agent-profiles";
 export { platformAdmins } from "./platform-admins";
 export { propertyTransfers } from "./property-transfers";
