@@ -1,11 +1,14 @@
 import { z } from "zod"
+import {
+  DEAL_SOURCE_FORM_VALUES,
+  DEAL_STAGE_FORM_VALUES,
+} from "./_deal-enums"
 
 // ---------------------------------------------------------------------------
-// Shared enum literals (kept inline; importing the domain union from
-// `features/inquiries/domain/inquiry.entity` would create a presentation
-// ↔ domain coupling the validation layer does not need — Zod's `z.enum`
-// is the runtime guard, and the domain union enforces compile-time
-// alignment via the action layer's typed DTOs.
+// Inquiry source list — kept inline (no sibling validation file needs
+// it). DealStage / DealSource tuples live in `_deal-enums.ts` so the
+// promote-inquiry schema (this file) and the deal-create schema
+// (`deal.ts`) share one source of truth.
 // ---------------------------------------------------------------------------
 
 const INQUIRY_SOURCE_FORM_VALUES = [
@@ -15,24 +18,6 @@ const INQUIRY_SOURCE_FORM_VALUES = [
   "whatsapp",
   "facebook",
   "instagram",
-  "tiktok",
-  "google",
-  "referral",
-  "direct",
-] as const
-
-const DEAL_STAGE_FORM_VALUES = [
-  "visit_scheduled",
-  "negotiation",
-  "reserved",
-  "won",
-  "lost",
-] as const
-
-const DEAL_SOURCE_FORM_VALUES = [
-  "facebook",
-  "instagram",
-  "whatsapp",
   "tiktok",
   "google",
   "referral",

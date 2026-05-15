@@ -38,6 +38,7 @@ import {
 import { promoteInquiryAction } from "@/features/inquiries/presentation/actions"
 import { describeInquiryPromoteError } from "@/features/inquiries/presentation/inquiry-error-messages"
 import { emptyToUndefined } from "@/lib/utils/form"
+import { NONE_SENTINEL } from "@/lib/constants/form"
 import { DEAL_SOURCE_LABELS, DEAL_STAGE_LABELS } from "@/lib/constants/deal"
 import type {
   Deal,
@@ -56,7 +57,6 @@ import type { Inquiry } from "@/features/inquiries/domain/inquiry.entity"
  * path). Only the optional Source Select needs the "no preference"
  * affordance.
  */
-const NONE_SENTINEL = "__none__"
 
 interface PromoteInquiryDialogProps {
   open: boolean

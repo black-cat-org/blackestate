@@ -4,7 +4,7 @@ import { useEffect, useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { Loader2 } from "lucide-react"
+import { ChevronDown, Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import {
   Dialog,
@@ -24,6 +24,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
 import {
   Select,
   SelectContent,
@@ -32,61 +33,68 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible"
 import { ContactAutocomplete } from "@/features/contacts/presentation/components/contact-autocomplete"
 import {
-  inquiryCreateFormSchema,
-  type InquiryCreateFormValues,
-} from "@/lib/validations/inquiry"
-import { INQUIRY_SOURCE_LABELS } from "@/lib/constants/inquiry"
-import { NONE_SENTINEL } from "@/lib/constants/form"
-import { createInquiryAction } from "@/features/inquiries/presentation/actions"
-import { describeInquiryCreateError } from "@/features/inquiries/presentation/inquiry-error-messages"
+  dealCreateFormSchema,
+  type DealCreateFormValues,
+} from "@/lib/validations/deal"
+import { DEAL_SOURCE_LABELS, DEAL_STAGE_LABELS } from "@/lib/constants/deal"
+import { TERMINAL_DEAL_STAGES } from "@/features/deals/domain/deal.entity"
+import { createDealAction } from "@/features/deals/presentation/actions"
+import { describeDealCreateError } from "@/features/deals/presentation/deal-error-messages"
 import { emptyToUndefined } from "@/lib/utils/form"
+import { cn } from "@/lib/utils"
+import { NONE_SENTINEL } from "@/lib/constants/form"
 import type { Contact } from "@/features/contacts/domain/contact.entity"
 import type {
-  CreateInquiryDTO,
-  Inquiry,
-  InquirySource,
-} from "@/features/inquiries/domain/inquiry.entity"
+  CreateDealDTO,
+  Deal,
+  DealSource,
+  DealStage,
+} from "@/features/deals/domain/deal.entity"
 import type { Property } from "@/features/properties/domain/property.entity"
 
 
 type ContactMode = "existing" | "new"
 
-interface InquiryCreateDialogProps {
+interface DealCreateDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   /**
-   * Active properties available for selection. The caller (the
-   * /dashboard/inquiries page in R39) is expected to load this list
-   * via `getActivePropertiesAction` and pass it down — the dialog
-   * does not fetch on its own to keep it a pure render component.
+   * Active properties available for selection. Loaded by the page
+   * (R40 will use `getActivePropertiesAction`) and passed in — the
+   * dialog stays a pure render component.
    */
   properties: Property[]
   /**
-   * Optionally pre-select a property (e.g. when the dialog is opened
-   * from a property's detail page). Disables the property select if
-   * provided, since the context is fixed.
+   * Optionally pre-select a property (e.g. opened from a property
+   * detail page). Disables the property select when provided.
    */
   initialPropertyId?: string
-  onCreated?: (inquiry: Inquiry) => void
+  onCreated?: (deal: Deal) => void
 }
 
-export function InquiryCreateDialog({
+export function DealCreateDialog({
   open,
   onOpenChange,
   properties,
   initialPropertyId,
   onCreated,
-}: InquiryCreateDialogProps) {
+}: DealCreateDialogProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [serverError, setServerError] = useState<string | null>(null)
   const [contactMode, setContactMode] = useState<ContactMode>("existing")
   const [selectedContact, setSelectedContact] = useState<Contact | undefined>()
+  const [advancedOpen, setAdvancedOpen] = useState(false)
 
-  const form = useForm<InquiryCreateFormValues>({
-    resolver: zodResolver(inquiryCreateFormSchema),
+  const form = useForm<DealCreateFormValues>({
+    resolver: zodResolver(dealCreateFormSchema),
     defaultValues: {
       contactMode: "existing",
       contactId: "",
@@ -94,8 +102,14 @@ export function InquiryCreateDialog({
       contactDraftPhone: "",
       contactDraftEmail: "",
       propertyId: initialPropertyId ?? "",
-      source: "manual",
+      stage: "visit_scheduled",
+      source: "",
       message: "",
+      budget: "",
+      propertyTypeSought: "",
+      zoneOfInterest: "",
+      wantsOffers: false,
+      expectedCloseAt: "",
     },
     mode: "onSubmit",
   })
@@ -109,12 +123,19 @@ export function InquiryCreateDialog({
         contactDraftPhone: "",
         contactDraftEmail: "",
         propertyId: initialPropertyId ?? "",
-        source: "manual",
+        stage: "visit_scheduled",
+        source: "",
         message: "",
+        budget: "",
+        propertyTypeSought: "",
+        zoneOfInterest: "",
+        wantsOffers: false,
+        expectedCloseAt: "",
       })
       setContactMode("existing")
       setSelectedContact(undefined)
       setServerError(null)
+      setAdvancedOpen(false)
     }
   }, [open, initialPropertyId, form])
 
@@ -125,16 +146,10 @@ export function InquiryCreateDialog({
 
   const handleContactModeChange = (mode: ContactMode) => {
     setContactMode(mode)
-    // Sync the discriminator into form state — the Zod superRefine
-    // reads it to decide which branch of fields to validate. Without
-    // this sync, errors leak across tabs.
     form.setValue("contactMode", mode, { shouldValidate: false })
     if (mode === "new") {
       setSelectedContact(undefined)
       form.setValue("contactId", "", { shouldValidate: false })
-      // Clear any pending contactId error from a previous "existing"
-      // submit attempt so the user doesn't see a stale red border on
-      // the autocomplete after switching away.
       form.clearErrors("contactId")
     } else {
       form.setValue("contactDraftName", "", { shouldValidate: false })
@@ -148,16 +163,22 @@ export function InquiryCreateDialog({
     }
   }
 
-  const onSubmit = (values: InquiryCreateFormValues) => {
+  const onSubmit = (values: DealCreateFormValues) => {
     setServerError(null)
     startTransition(async () => {
       const source =
-        values.source === "" ? undefined : (values.source as InquirySource)
+        values.source === "" ? undefined : (values.source as DealSource)
 
-      const payload: CreateInquiryDTO = {
+      const payload: CreateDealDTO = {
         propertyId: values.propertyId,
+        stage: values.stage as DealStage,
         source,
         message: emptyToUndefined(values.message),
+        budget: emptyToUndefined(values.budget),
+        propertyTypeSought: emptyToUndefined(values.propertyTypeSought),
+        zoneOfInterest: emptyToUndefined(values.zoneOfInterest),
+        wantsOffers: values.wantsOffers,
+        expectedCloseAt: emptyToUndefined(values.expectedCloseAt),
       }
 
       if (values.contactMode === "existing" && values.contactId) {
@@ -171,14 +192,14 @@ export function InquiryCreateDialog({
       }
 
       try {
-        const inquiry = await createInquiryAction(payload)
-        toast.success("Consulta creada")
-        onCreated?.(inquiry)
+        const deal = await createDealAction(payload)
+        toast.success("Negocio creado")
+        onCreated?.(deal)
         router.refresh()
         onOpenChange(false)
       } catch (error) {
         const code = error instanceof Error ? error.message : ""
-        const message = describeInquiryCreateError(code)
+        const message = describeDealCreateError(code)
         setServerError(message)
         toast.error(message)
       }
@@ -187,9 +208,9 @@ export function InquiryCreateDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[560px]">
+      <DialogContent className="sm:max-w-[640px]">
         <DialogHeader>
-          <DialogTitle>Nueva consulta</DialogTitle>
+          <DialogTitle>Nuevo negocio</DialogTitle>
         </DialogHeader>
 
         <Form {...form}>
@@ -322,48 +343,80 @@ export function InquiryCreateDialog({
               )}
             />
 
-            <FormField
-              control={form.control}
-              name="source"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Origen</FormLabel>
-                  <Select
-                    onValueChange={(value) =>
-                      field.onChange(value === NONE_SENTINEL ? "" : value)
-                    }
-                    value={field.value ? field.value : NONE_SENTINEL}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value={NONE_SENTINEL}>Sin especificar</SelectItem>
-                      {Object.entries(INQUIRY_SOURCE_LABELS).map(
-                        ([value, label]) => (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <FormField
+                control={form.control}
+                name="stage"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Etapa inicial *</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {Object.entries(DEAL_STAGE_LABELS)
+                          .filter(
+                            ([value]) =>
+                              !TERMINAL_DEAL_STAGES.includes(
+                                value as (typeof TERMINAL_DEAL_STAGES)[number],
+                              ),
+                          )
+                          .map(([value, label]) => (
+                            <SelectItem key={value} value={value}>
+                              {label}
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="source"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Origen</FormLabel>
+                    <Select
+                      onValueChange={(value) =>
+                        field.onChange(value === NONE_SENTINEL ? "" : value)
+                      }
+                      value={field.value ? field.value : NONE_SENTINEL}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value={NONE_SENTINEL}>Sin especificar</SelectItem>
+                        {Object.entries(DEAL_SOURCE_LABELS).map(([value, label]) => (
                           <SelectItem key={value} value={value}>
                             {label}
                           </SelectItem>
-                        ),
-                      )}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
             <FormField
               control={form.control}
               name="message"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Mensaje</FormLabel>
+                  <FormLabel>Nota inicial</FormLabel>
                   <FormControl>
                     <Textarea
-                      placeholder="Qué pidió el cliente, contexto inicial…"
+                      placeholder="Contexto del primer contacto, expectativas, próximos pasos…"
                       rows={3}
                       value={field.value ?? ""}
                       onChange={field.onChange}
@@ -376,6 +429,110 @@ export function InquiryCreateDialog({
                 </FormItem>
               )}
             />
+
+            <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen}>
+              <CollapsibleTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="w-full justify-between"
+                >
+                  Más detalles (opcional)
+                  <ChevronDown
+                    className={cn(
+                      "size-4 transition-transform",
+                      advancedOpen && "rotate-180",
+                    )}
+                  />
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="space-y-4 pt-3">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <FormField
+                    control={form.control}
+                    name="budget"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Presupuesto</FormLabel>
+                        <FormControl>
+                          <Input
+                            autoComplete="off"
+                            placeholder="USD 80.000 — 120.000"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="expectedCloseAt"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Cierre estimado</FormLabel>
+                        <FormControl>
+                          <Input type="date" autoComplete="off" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                <FormField
+                  control={form.control}
+                  name="propertyTypeSought"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Tipo de propiedad buscada</FormLabel>
+                      <FormControl>
+                        <Input
+                          autoComplete="off"
+                          placeholder="Casa, departamento, terreno…"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="zoneOfInterest"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Zona de interés</FormLabel>
+                      <FormControl>
+                        <Input
+                          autoComplete="off"
+                          placeholder="Zona Sur, Equipetrol, Achumani…"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="wantsOffers"
+                  render={({ field }) => (
+                    <FormItem className="flex items-center gap-2 space-y-0">
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                      <FormLabel className="text-sm font-normal">
+                        Quiere recibir ofertas similares
+                      </FormLabel>
+                    </FormItem>
+                  )}
+                />
+              </CollapsibleContent>
+            </Collapsible>
 
             {serverError && (
               <p className="text-destructive text-sm" role="alert">
@@ -394,7 +551,7 @@ export function InquiryCreateDialog({
               </Button>
               <Button type="submit" disabled={isPending}>
                 {isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
-                Crear consulta
+                Crear negocio
               </Button>
             </DialogFooter>
           </form>

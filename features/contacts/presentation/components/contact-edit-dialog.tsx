@@ -44,23 +44,13 @@ import {
 } from "@/features/contacts/presentation/actions"
 import { describeContactSaveError } from "@/features/contacts/presentation/contact-error-messages"
 import { emptyToUndefined } from "@/lib/utils/form"
+import { NONE_SENTINEL } from "@/lib/constants/form"
 import type {
   Contact,
   ContactPreferredChannel,
   CreateContactDTO,
   UpdateContactDTO,
 } from "@/features/contacts/domain/contact.entity"
-
-/**
- * Sentinel used by the `preferredChannel` Select to model the "no
- * preference" option. Radix Select forbids `<SelectItem value="">`,
- * so we use a non-empty token and translate it back to the empty
- * string (the form's "no preference" representation) in
- * `onValueChange` — and translate the form value to this sentinel
- * when binding the trigger so the option is selectable in both
- * create and edit modes.
- */
-const NO_CHANNEL_SENTINEL = "__none__"
 
 interface ContactEditDialogProps {
   open: boolean
@@ -228,9 +218,9 @@ export function ContactEditDialog({
                   <FormLabel>Canal preferido</FormLabel>
                   <Select
                     onValueChange={(value) =>
-                      field.onChange(value === NO_CHANNEL_SENTINEL ? "" : value)
+                      field.onChange(value === NONE_SENTINEL ? "" : value)
                     }
-                    value={field.value ? field.value : NO_CHANNEL_SENTINEL}
+                    value={field.value ? field.value : NONE_SENTINEL}
                   >
                     <FormControl>
                       <SelectTrigger>
@@ -238,7 +228,7 @@ export function ContactEditDialog({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value={NO_CHANNEL_SENTINEL}>
+                      <SelectItem value={NONE_SENTINEL}>
                         Sin preferencia
                       </SelectItem>
                       {Object.entries(PREFERRED_CHANNEL_LABELS).map(
