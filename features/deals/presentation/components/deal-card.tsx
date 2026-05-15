@@ -14,7 +14,8 @@ interface DealCardProps {
 
 const dateFormatter = new Intl.DateTimeFormat("es-BO", {
   day: "2-digit",
-  month: "short",
+  month: "2-digit",
+  year: "numeric",
 })
 
 /**
