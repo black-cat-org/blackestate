@@ -139,24 +139,24 @@ export function AiBrochureGenerator({ property, onGenerated }: AiBrochureGenerat
         const amenityText = property.amenities
           .map((a) => {
             const opt = [
-              { value: "pool", label: "Pileta" },
-              { value: "grill_area", label: "Quincho" },
+              { value: "pool", label: "Piscina" },
+              { value: "grill_area", label: "Área de parrilla" },
               { value: "grill", label: "Parrilla" },
               { value: "garden", label: "Jardín" },
               { value: "terrace", label: "Terraza" },
               { value: "balcony", label: "Balcón" },
-              { value: "laundry", label: "Lavadero" },
+              { value: "laundry", label: "Lavandería" },
               { value: "gym", label: "Gimnasio" },
-              { value: "security", label: "Seguridad 24hs" },
+              { value: "security", label: "Seguridad 24/7" },
               { value: "elevator", label: "Ascensor" },
               { value: "heating", label: "Calefacción" },
               { value: "air_conditioning", label: "Aire acondicionado" },
               { value: "hot_water", label: "Agua caliente" },
               { value: "natural_gas", label: "Gas natural" },
-              { value: "sum", label: "SUM" },
-              { value: "playroom", label: "Playroom" },
-              { value: "solarium", label: "Solarium" },
-              { value: "storage_unit", label: "Baulera" },
+              { value: "sum", label: "Salón de usos múltiples" },
+              { value: "playroom", label: "Sala de juegos" },
+              { value: "solarium", label: "Solárium" },
+              { value: "storage_unit", label: "Bodega" },
             ].find((o) => o.value === a)
             return opt?.label || a
           })
