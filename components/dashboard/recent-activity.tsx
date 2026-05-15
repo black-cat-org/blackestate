@@ -16,6 +16,7 @@ import {
   ArrowRight,
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { formatRelativeTime } from "@/lib/utils/relative-time"
 import type { BotActivity, BotActivityType } from "@/features/bot/domain/bot.entity"
 
 const ICON_MAP: Record<BotActivityType, React.ComponentType<{ className?: string }>> = {
@@ -29,22 +30,6 @@ const ICON_MAP: Record<BotActivityType, React.ComponentType<{ className?: string
   reminder_sent: Bell,
   property_viewed: Eye,
   lead_created: UserPlus,
-}
-
-function formatRelativeTime(timestamp: string): string {
-  const date = new Date(timestamp)
-  const now = new Date()
-  const diffMs = now.getTime() - date.getTime()
-  const diffMins = Math.floor(diffMs / 60000)
-  const diffHours = Math.floor(diffMs / 3600000)
-  const diffDays = Math.floor(diffMs / 86400000)
-
-  if (diffMins < 1) return "Justo ahora"
-  if (diffMins < 60) return `Hace ${diffMins} min`
-  if (diffHours < 24) return `Hace ${diffHours}h`
-  if (diffDays === 1) return "Ayer"
-  if (diffDays < 7) return `Hace ${diffDays} días`
-  return date.toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit" })
 }
 
 interface RecentActivityProps {
@@ -75,7 +60,7 @@ export function RecentActivity({ activities }: RecentActivityProps) {
                 <div
                   key={activity.id}
                   className="flex gap-3 pb-4 relative cursor-pointer hover:bg-accent/30 rounded-lg -mx-2 px-2 transition-colors"
-                  onClick={() => router.push(`/dashboard/leads/${activity.leadId}`)}
+                  onClick={() => router.push(`/dashboard/contacts/${activity.contactId}`)}
                 >
                   {!isLast && (
                     <div className="absolute left-[23px] top-7 bottom-0 w-px bg-border" />

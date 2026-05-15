@@ -4,7 +4,7 @@ export type MessageStatus = "sent" | "delivered" | "read"
 
 export interface BotMessage {
   id: string
-  leadId: string
+  contactId: string
   sender: MessageSender
   contentType: MessageContentType
   text: string
@@ -18,7 +18,7 @@ export type SentPropertyStatus = "sent" | "viewed" | "interested" | "appointment
 
 export interface SentProperty {
   id: string
-  leadId: string
+  contactId: string
   propertyId: string
   propertyTitle: string
   status: SentPropertyStatus
@@ -41,8 +41,8 @@ export type BotActivityType =
 
 export interface BotActivity {
   id: string
-  leadId: string
-  leadName: string
+  contactId: string
+  contactName: string
   type: BotActivityType
   description: string
   propertyId?: string
@@ -56,7 +56,7 @@ export interface AgentNotification {
   type: BotActivityType
   title: string
   description: string
-  leadId?: string
+  contactId?: string
   appointmentId?: string
   read: boolean
   createdAt: string

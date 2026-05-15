@@ -1,11 +1,11 @@
 import { pgTable, text, uuid, timestamp, index } from "drizzle-orm/pg-core";
-import { leads } from "./leads";
+import { contact } from "./contact";
 import { conversationStatusEnum } from "./enums";
 
 export const botConversations = pgTable("bot_conversations", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   organizationId: uuid("organization_id").notNull(),
-  leadId: text("lead_id").notNull().references(() => leads.id),
+  contactId: text("contact_id").notNull().references(() => contact.id, { onDelete: "cascade" }),
 
   status: conversationStatusEnum("status").notNull().default("active"),
 
@@ -18,5 +18,5 @@ export const botConversations = pgTable("bot_conversations", {
   deletedByUserEmail: text("deleted_by_user_email"),
 }, (t) => [
   index("bot_conv_org_id_idx").on(t.organizationId),
-  index("bot_conv_lead_id_idx").on(t.leadId),
+  index("bot_conv_contact_id_idx").on(t.contactId),
 ]);

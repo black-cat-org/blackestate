@@ -21,8 +21,8 @@ export function BotStats({ activities }: BotStatsProps) {
 
   const stats: StatItem[] = [
     {
-      label: "Leads activos",
-      value: new Set(activities.map((a) => a.leadId)).size,
+      label: "Contactos activos",
+      value: new Set(activities.map((a) => a.contactId)).size,
       icon: Users,
     },
     {

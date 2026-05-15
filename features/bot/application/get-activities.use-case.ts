@@ -9,10 +9,10 @@ export async function getAllActivitiesUseCase(
   return repo.getAllActivities(ctx)
 }
 
-export async function getActivitiesByLeadUseCase(
+export async function getActivitiesByContactUseCase(
   ctx: SessionContext,
-  leadId: string,
+  contactId: string,
 ): Promise<BotActivity[]> {
   const repo = new DrizzleBotRepository()
-  return repo.getActivitiesByLead(ctx, leadId)
+  return repo.getActivitiesByContact(ctx, contactId)
 }

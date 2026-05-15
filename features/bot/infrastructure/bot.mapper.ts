@@ -11,11 +11,11 @@ import type { MessageRow, ConfigRow } from "./bot.model"
 
 export function mapMessageRowToEntity(
   row: MessageRow,
-  leadId: string,
+  contactId: string,
 ): BotMessage {
   return {
     id: row.id,
-    leadId,
+    contactId,
     sender: row.sender,
     contentType: row.contentType,
     text: row.text,

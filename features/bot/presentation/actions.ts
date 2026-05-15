@@ -1,9 +1,9 @@
 "use server"
 
 import { getSessionContext } from "@/features/shared/infrastructure/session-context"
-import { getAllMessagesUseCase, getMessagesByLeadUseCase } from "@/features/bot/application/get-messages.use-case"
-import { getAllActivitiesUseCase, getActivitiesByLeadUseCase } from "@/features/bot/application/get-activities.use-case"
-import { getSentPropertiesByLeadUseCase, getSentPropertiesAllUseCase } from "@/features/bot/application/get-sent-properties.use-case"
+import { getAllMessagesUseCase, getMessagesByContactUseCase } from "@/features/bot/application/get-messages.use-case"
+import { getAllActivitiesUseCase, getActivitiesByContactUseCase } from "@/features/bot/application/get-activities.use-case"
+import { getSentPropertiesByContactUseCase, getSentPropertiesAllUseCase } from "@/features/bot/application/get-sent-properties.use-case"
 import { getNotificationsUseCase, getUnreadNotificationCountUseCase, markNotificationReadUseCase, markAllNotificationsReadUseCase } from "@/features/bot/application/manage-notifications.use-case"
 import { getBotConfigUseCase, updateBotConfigUseCase } from "@/features/bot/application/manage-config.use-case"
 import type { BotMessage, BotActivity, SentProperty, AgentNotification, BotConfig } from "@/features/bot/domain/bot.entity"
@@ -19,11 +19,11 @@ export async function getAllMessagesAction(): Promise<BotMessage[]> {
   return getAllMessagesUseCase(ctx)
 }
 
-export async function getMessagesByLeadAction(
-  leadId: string,
+export async function getMessagesByContactAction(
+  contactId: string,
 ): Promise<BotMessage[]> {
   const ctx = await getSessionContext()
-  return getMessagesByLeadUseCase(ctx, leadId)
+  return getMessagesByContactUseCase(ctx, contactId)
 }
 
 // Activities
@@ -33,20 +33,20 @@ export async function getAllActivitiesAction(): Promise<BotActivity[]> {
   return getAllActivitiesUseCase(ctx)
 }
 
-export async function getActivitiesByLeadAction(
-  leadId: string,
+export async function getActivitiesByContactAction(
+  contactId: string,
 ): Promise<BotActivity[]> {
   const ctx = await getSessionContext()
-  return getActivitiesByLeadUseCase(ctx, leadId)
+  return getActivitiesByContactUseCase(ctx, contactId)
 }
 
 // Sent properties
 
-export async function getSentPropertiesByLeadAction(
-  leadId: string,
+export async function getSentPropertiesByContactAction(
+  contactId: string,
 ): Promise<SentProperty[]> {
   const ctx = await getSessionContext()
-  return getSentPropertiesByLeadUseCase(ctx, leadId)
+  return getSentPropertiesByContactUseCase(ctx, contactId)
 }
 
 export async function getSentPropertiesAllAction(): Promise<SentProperty[]> {

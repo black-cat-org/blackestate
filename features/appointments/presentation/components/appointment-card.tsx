@@ -36,7 +36,7 @@ import {
   deleteAppointmentAction,
 } from "@/features/appointments/presentation/actions"
 import { AppointmentEditDialog } from "@/features/appointments/presentation/components/appointment-edit-dialog"
-import { getLeadColor } from "@/lib/utils/lead-colors"
+import { getStableColor } from "@/lib/utils/stable-colors"
 import { toast } from "sonner"
 import type {
   Appointment,
@@ -61,7 +61,7 @@ export function AppointmentCard({
   const [editOpen, setEditOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [deleting, setDeleting] = useState(false)
-  const dealColor = getLeadColor(appointment.dealId)
+  const dealColor = getStableColor(appointment.dealId)
   const transitions = APPOINTMENT_STATUS_TRANSITIONS[appointment.status]
   const hasNotes = !!appointment.notes
 
