@@ -44,6 +44,26 @@ export const DEAL_STAGE_BADGE_CLASSES: Record<DealStage, string> = {
 }
 
 /**
+ * Tailwind class fragments for the Kanban column drop-indicator
+ * (consumed by `deal-kanban-column` when `isOver`). Colors mirror
+ * `DEAL_STAGE_BADGE_CLASSES` for visual continuity between the
+ * header badge and the drop affordance.
+ *
+ * `won` and `lost` are kept for `Record<DealStage, string>` type
+ * exhaustiveness even though terminal stages are NOT rendered as
+ * Kanban columns per R28 design decision — those Deals live in the
+ * archive view. Including them keeps the type stable if the design
+ * ever changes.
+ */
+export const DEAL_STAGE_DROP_INDICATOR_CLASSES: Record<DealStage, string> = {
+  visit_scheduled: "ring-blue-400/60 bg-blue-50/40 dark:bg-blue-950/30",
+  negotiation: "ring-amber-400/60 bg-amber-50/40 dark:bg-amber-950/30",
+  reserved: "ring-indigo-400/60 bg-indigo-50/40 dark:bg-indigo-950/30",
+  won: "ring-emerald-400/60 bg-emerald-50/40 dark:bg-emerald-950/30",
+  lost: "ring-zinc-400/60 bg-zinc-50/40 dark:bg-zinc-950/30",
+}
+
+/**
  * User-facing labels for the Deal source enum. Subset of
  * `INQUIRY_SOURCE_LABELS` — Deal omits `public_form`, `bot`, `manual`
  * because those are early-capture channels that live on the Inquiry
