@@ -29,7 +29,7 @@ export function InquiryFiltersBar({
       <div className="relative flex-1">
         <Search className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2" />
         <Input
-          placeholder="Buscar en el mensaje…"
+          placeholder="Buscar por contacto o mensaje…"
           value={filters.search}
           onChange={(e) => onFiltersChange({ ...filters, search: e.target.value })}
           className="pl-9"
