@@ -1,8 +1,8 @@
 "use client"
 
-import { Users, TrendingUp, DollarSign, Target } from "lucide-react"
+import { Users, TrendingUp, Target, DollarSign } from "lucide-react"
 import { AnalyticsStatCard } from "@/features/analytics/presentation/components/analytics-stat-card"
-import { LeadsTrendChart } from "@/features/analytics/presentation/components/charts/leads-trend-chart"
+import { InquiriesTrendChart } from "@/features/analytics/presentation/components/charts/inquiries-trend-chart"
 import { ConversionsByMonthChart } from "@/features/analytics/presentation/components/charts/conversions-by-month-chart"
 import { SourceDonutChart } from "@/features/analytics/presentation/components/charts/source-donut-chart"
 import { AlertsPanel } from "@/features/analytics/presentation/components/alerts-panel"
@@ -10,16 +10,19 @@ import type { StatCardData, TimeSeriesPoint, AlertItem } from "@/features/analyt
 
 interface OverviewTabProps {
   stats: StatCardData[]
-  leadsTrend: TimeSeriesPoint[]
+  inquiriesTrend: TimeSeriesPoint[]
   conversionsByMonth: TimeSeriesPoint[]
   sourceDistribution: { source: string; label: string; count: number; percentage: number }[]
   alerts: AlertItem[]
   highlights: string[]
 }
 
-const STAT_ICONS = [Users, TrendingUp, DollarSign, Target]
+// Icons paired to overview stat order (post-R36):
+// (1) Consultas nuevas → Users, (2) Tasa conversión → TrendingUp,
+// (3) Conversión Consulta→Negocio → Target, (4) Comisiones → DollarSign.
+const STAT_ICONS = [Users, TrendingUp, Target, DollarSign]
 
-export function OverviewTab({ stats, leadsTrend, conversionsByMonth, sourceDistribution, alerts, highlights }: OverviewTabProps) {
+export function OverviewTab({ stats, inquiriesTrend, conversionsByMonth, sourceDistribution, alerts, highlights }: OverviewTabProps) {
   return (
     <div className="flex flex-col gap-4">
       <div className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-4">
@@ -38,7 +41,7 @@ export function OverviewTab({ stats, leadsTrend, conversionsByMonth, sourceDistr
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
-        <LeadsTrendChart data={leadsTrend} />
+        <InquiriesTrendChart data={inquiriesTrend} />
         <ConversionsByMonthChart data={conversionsByMonth} />
       </div>
 

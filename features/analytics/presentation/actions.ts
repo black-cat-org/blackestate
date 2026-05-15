@@ -2,19 +2,19 @@
 
 import {
   getOverviewStats,
-  getLeadsTrend,
+  getInquiriesTrend,
   getConversionsByMonth,
-  getLeadsSourceDistribution,
+  getInquiriesSourceDistribution,
   getAlerts,
   getHighlights,
-  getLeadsStats,
+  getInquiriesStats,
   getConversionFunnel,
-  getLeadsBySourceOverTime,
+  getInquiriesBySourceOverTime,
   getConversionBySource,
   getPipelineVelocity,
   getPipelineExits,
   getBotEngagement,
-  getLeadsByPropertyType,
+  getInquiriesByPropertyType,
   getPropertiesStats,
   getInventoryStatus,
   getAvgPriceByZone,
@@ -39,7 +39,7 @@ import {
   getAppointmentOutcomes,
 } from "@/features/analytics/infrastructure/analytics.service"
 
-// Re-export types from domain
+// Re-export types from domain.
 export type {
   DateRangePreset,
   DateRange,
@@ -57,6 +57,136 @@ export type {
 } from "@/features/analytics/domain/analytics.entity"
 
 // ============================================================
+// Composite action — single Promise.all under the hood. Mirrors the
+// dashboard's `getDashboardDataAction` pattern (R37): one fetch per
+// page render so the same Inquiry / Deal / Property / Appointment
+// arrays feed every chart without redundant round-trips.
+// ============================================================
+
+export async function getAnalyticsDataAction() {
+  const [
+    overviewStats,
+    inquiriesTrend,
+    conversionsByMonth,
+    sourceDistribution,
+    alerts,
+    highlights,
+    inquiriesStats,
+    conversionFunnel,
+    inquiriesBySourceOverTime,
+    conversionBySource,
+    inquiriesByPropertyType,
+    propertiesStats,
+    inventoryStatus,
+    priceByZone,
+    typeDistribution,
+    pricePerM2,
+    topProperties,
+    priceTrend,
+    financialStats,
+    revenueByMonth,
+    pipeline,
+    commissionsBySource,
+    commissionsByType,
+    topOperations,
+    botStats,
+    botActivityByDay,
+    botFunnel,
+    engagementHeatmap,
+    appointmentOutcomes,
+    botEngagement,
+    agentStats,
+    agentActivityByDay,
+    agentFunnel,
+    agentHeatmap,
+  ] = await Promise.all([
+    getOverviewStats(),
+    getInquiriesTrend(),
+    getConversionsByMonth(),
+    getInquiriesSourceDistribution(),
+    getAlerts(),
+    getHighlights(),
+    getInquiriesStats(),
+    getConversionFunnel(),
+    getInquiriesBySourceOverTime(),
+    getConversionBySource(),
+    getInquiriesByPropertyType(),
+    getPropertiesStats(),
+    getInventoryStatus(),
+    getAvgPriceByZone(),
+    getPropertyTypeDistribution(),
+    getPricePerM2ByZone(),
+    getTopProperties(),
+    getPriceTrendByZone(),
+    getFinancialStats(),
+    getRevenueByMonth(),
+    getPipelineByStage(),
+    getCommissionsBySource(),
+    getCommissionsByOperationType(),
+    getTopOperations(),
+    getBotStats(),
+    getBotActivityByDay(),
+    getBotFunnel(),
+    getEngagementHeatmap(),
+    getAppointmentOutcomes(),
+    getBotEngagement(),
+    getAgentManualStats(),
+    getAgentActivityByDay(),
+    getAgentFunnel(),
+    getAgentHeatmap(),
+  ])
+
+  return {
+    overviewData: {
+      stats: overviewStats,
+      inquiriesTrend,
+      conversionsByMonth,
+      sourceDistribution,
+      alerts,
+      highlights,
+    },
+    inquiriesData: {
+      stats: inquiriesStats,
+      conversionFunnel,
+      inquiriesBySourceOverTime,
+      conversionBySource,
+      inquiriesByPropertyType,
+    },
+    propertiesData: {
+      stats: propertiesStats,
+      inventoryStatus,
+      priceByZone,
+      typeDistribution,
+      pricePerM2,
+      topProperties,
+      priceTrend,
+    },
+    financialData: {
+      stats: financialStats,
+      revenueByMonth,
+      pipeline,
+      commissionsBySource,
+      commissionsByType,
+      topOperations,
+    },
+    botData: {
+      stats: botStats,
+      activityByDay: botActivityByDay,
+      botFunnel,
+      heatmap: engagementHeatmap,
+      botEngagement,
+    },
+    myActivityData: {
+      stats: agentStats,
+      activityByDay: agentActivityByDay,
+      funnel: agentFunnel,
+      appointmentOutcomes,
+      heatmap: agentHeatmap,
+    },
+  }
+}
+
+// ============================================================
 // Overview tab actions
 // ============================================================
 
@@ -64,16 +194,16 @@ export async function getOverviewStatsAction() {
   return getOverviewStats()
 }
 
-export async function getLeadsTrendAction() {
-  return getLeadsTrend()
+export async function getInquiriesTrendAction() {
+  return getInquiriesTrend()
 }
 
 export async function getConversionsByMonthAction() {
   return getConversionsByMonth()
 }
 
-export async function getLeadsSourceDistributionAction() {
-  return getLeadsSourceDistribution()
+export async function getInquiriesSourceDistributionAction() {
+  return getInquiriesSourceDistribution()
 }
 
 export async function getAlertsAction() {
@@ -85,19 +215,19 @@ export async function getHighlightsAction() {
 }
 
 // ============================================================
-// Leads tab actions
+// Inquiries tab actions (post-R36; previously "Leads tab")
 // ============================================================
 
-export async function getLeadsStatsAction() {
-  return getLeadsStats()
+export async function getInquiriesStatsAction() {
+  return getInquiriesStats()
 }
 
 export async function getConversionFunnelAction() {
   return getConversionFunnel()
 }
 
-export async function getLeadsBySourceOverTimeAction() {
-  return getLeadsBySourceOverTime()
+export async function getInquiriesBySourceOverTimeAction() {
+  return getInquiriesBySourceOverTime()
 }
 
 export async function getConversionBySourceAction() {
@@ -116,8 +246,8 @@ export async function getBotEngagementAction() {
   return getBotEngagement()
 }
 
-export async function getLeadsByPropertyTypeAction() {
-  return getLeadsByPropertyType()
+export async function getInquiriesByPropertyTypeAction() {
+  return getInquiriesByPropertyType()
 }
 
 // ============================================================

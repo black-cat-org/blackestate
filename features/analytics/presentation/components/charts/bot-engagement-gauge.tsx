@@ -18,8 +18,8 @@ export function BotEngagementGauge({ data }: BotEngagementGaugeProps) {
       <CardHeader className="pb-2">
         <ChartHeader
           title="Engagement del bot"
-          helpText="Muestra qué tan bien está funcionando el primer mensaje de tu bot. Interactuaron son los leads que respondieron al menos un mensaje. Solo vieron son los que abrieron el mensaje pero no respondieron. Sin respuesta son los que nunca abrieron el mensaje. Un porcentaje alto de Interactuaron significa que tu bot está haciendo un buen trabajo enganchando a los clientes desde el primer contacto."
-          subtitle="qué tan bien engancha tu bot a los leads nuevos"
+          helpText="Muestra qué tan bien está funcionando el primer mensaje de tu bot. Interactuaron son las consultas que respondieron al menos un mensaje. Solo vieron son las que abrieron el mensaje pero no respondieron. Sin respuesta son las que nunca abrieron el mensaje. Un porcentaje alto de Interactuaron significa que tu bot está haciendo un buen trabajo enganchando a los clientes desde el primer contacto."
+          subtitle="qué tan bien engancha tu bot a las consultas nuevas"
         />
       </CardHeader>
       <CardContent className="space-y-4">
@@ -27,9 +27,9 @@ export function BotEngagementGauge({ data }: BotEngagementGaugeProps) {
           <span className={`text-3xl font-bold ${data.engagementRate >= 60 ? "text-green-600 dark:text-green-400" : "text-yellow-600 dark:text-yellow-400"}`}>
             {data.engagementRate}%
           </span>
-          <span className="text-sm text-muted-foreground">de los leads interactuaron</span>
+          <span className="text-sm text-muted-foreground">de las consultas interactuaron</span>
         </div>
-        <p className="text-xs text-muted-foreground italic">{per10} de cada 10 leads que el bot contacta termina respondiendo</p>
+        <p className="text-xs text-muted-foreground italic">{per10} de cada 10 consultas que el bot contacta termina respondiendo</p>
 
         <div>
           <div className="mb-1.5 flex justify-between text-xs text-muted-foreground">

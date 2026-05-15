@@ -3,6 +3,7 @@
 import { Pie, PieChart, Cell } from "recharts"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart"
+import { INQUIRY_SOURCE_OTHER_LABEL } from "@/lib/constants/inquiry"
 
 const SOURCE_COLORS: Record<string, string> = {
   facebook: "hsl(221, 44%, 41%)",
@@ -13,12 +14,12 @@ const SOURCE_COLORS: Record<string, string> = {
 }
 
 const chartConfig = {
-  count: { label: "Leads" },
+  count: { label: "Consultas" },
   facebook: { label: "Facebook", color: SOURCE_COLORS.facebook },
   instagram: { label: "Instagram", color: SOURCE_COLORS.instagram },
   whatsapp: { label: "WhatsApp", color: SOURCE_COLORS.whatsapp },
   tiktok: { label: "TikTok", color: SOURCE_COLORS.tiktok },
-  other: { label: "Otro", color: SOURCE_COLORS.other },
+  other: { label: INQUIRY_SOURCE_OTHER_LABEL, color: SOURCE_COLORS.other },
 } satisfies ChartConfig
 
 interface SourceDonutChartProps {
@@ -31,7 +32,7 @@ export function SourceDonutChart({ data }: SourceDonutChartProps) {
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-base">Top fuentes de leads</CardTitle>
+        <CardTitle className="text-base">Top fuentes de consultas</CardTitle>
       </CardHeader>
       <CardContent>
         <ChartContainer config={chartConfig} className="mx-auto h-[200px] w-full">
@@ -46,7 +47,7 @@ export function SourceDonutChart({ data }: SourceDonutChartProps) {
               {total}
             </text>
             <text x="50%" y="58%" textAnchor="middle" dominantBaseline="middle" className="fill-muted-foreground text-xs">
-              leads
+              consultas
             </text>
           </PieChart>
         </ChartContainer>

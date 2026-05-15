@@ -7,7 +7,7 @@ import { ChartHeader } from "@/features/analytics/presentation/components/chart-
 import type { BotFunnelStep } from "@/features/analytics/domain/analytics.entity"
 
 const chartConfig = {
-  value: { label: "Leads" },
+  value: { label: "Consultas" },
 } satisfies ChartConfig
 
 interface BotFunnelProps {
@@ -20,7 +20,7 @@ interface BotFunnelProps {
 export function BotFunnel({
   data,
   title = "Efectividad del bot",
-  helpText = "Muestra qué tan efectivo es tu bot en cada paso del proceso. De cada 100 leads que se registran, cuántos vieron una propiedad, cuántos solicitaron una cita y cuántos la completaron. Si ves que muchos leads ven propiedades pero pocos solicitan cita puede significar que el bot está enviando propiedades que no coinciden con lo que busca el cliente.",
+  helpText = "Muestra qué tan efectivo es tu bot en cada paso del proceso. De cada 100 consultas que se registran, cuántas vieron una propiedad, cuántas solicitaron una cita y cuántas la completaron. Si ves que muchas consultas ven propiedades pero pocas solicitan cita puede significar que el bot está enviando propiedades que no coinciden con lo que busca el cliente.",
   subtitleTemplate,
 }: BotFunnelProps) {
   const first = data[0]?.value || 1
@@ -33,7 +33,7 @@ export function BotFunnel({
         <ChartHeader
           title={title}
           helpText={helpText}
-          subtitle={subtitleTemplate || `de cada 100 leads registrados, ${overallRate} terminan en una cita completada`}
+          subtitle={subtitleTemplate || `de cada 100 consultas registradas, ${overallRate} terminan en una cita completada`}
         />
       </CardHeader>
       <CardContent>

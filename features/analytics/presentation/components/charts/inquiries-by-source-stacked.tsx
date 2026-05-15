@@ -4,6 +4,7 @@ import { Bar, BarChart, XAxis, YAxis, LabelList } from "recharts"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent, type ChartConfig } from "@/components/ui/chart"
 import { ChartHeader } from "@/features/analytics/presentation/components/chart-header"
+import { INQUIRY_SOURCE_OTHER_LABEL } from "@/lib/constants/inquiry"
 import type { TimeSeriesPoint } from "@/features/analytics/domain/analytics.entity"
 
 const chartConfig = {
@@ -11,20 +12,20 @@ const chartConfig = {
   instagram: { label: "Instagram", color: "hsl(330, 70%, 50%)" },
   whatsapp: { label: "WhatsApp", color: "hsl(142, 70%, 40%)" },
   tiktok: { label: "TikTok", color: "hsl(0, 0%, 10%)" },
-  other: { label: "Otro", color: "hsl(0, 0%, 60%)" },
+  other: { label: INQUIRY_SOURCE_OTHER_LABEL, color: "hsl(0, 0%, 60%)" },
 } satisfies ChartConfig
 
-interface LeadsBySourceStackedProps {
+interface InquiriesBySourceStackedProps {
   data: TimeSeriesPoint[]
 }
 
-export function LeadsBySourceStacked({ data }: LeadsBySourceStackedProps) {
+export function InquiriesBySourceStacked({ data }: InquiriesBySourceStackedProps) {
   return (
     <Card>
       <CardHeader className="pb-2">
         <ChartHeader
-          title="Leads por fuente"
-          helpText="Muestra de dónde vienen tus leads cada mes. Si ves que Facebook crece cada mes significa que tu presencia ahí está funcionando. Úsalo para decidir dónde poner más energía."
+          title="Consultas por fuente"
+          helpText="Muestra de dónde vienen tus consultas cada mes. Si ves que Facebook crece cada mes significa que tu presencia ahí está funcionando. Úsalo para decidir dónde poner más energía."
           subtitle="evolución mensual de tus canales de captación"
         />
       </CardHeader>

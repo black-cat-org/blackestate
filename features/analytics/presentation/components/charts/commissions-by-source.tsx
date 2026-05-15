@@ -29,7 +29,7 @@ export function CommissionsBySource({ data }: CommissionsBySourceProps) {
       <CardHeader className="pb-2">
         <ChartHeader
           title="Comisiones por fuente"
-          helpText="Muestra cuánto dinero real has ganado en comisiones según de dónde vino cada lead. A diferencia de saber cuántos leads trajo cada canal, este gráfico te dice cuánto dinero real te generó cada uno. Un canal con pocos leads pero mucho dinero es más valioso que uno con muchos leads pero pocas ventas."
+          helpText="Muestra cuánto dinero real has ganado en comisiones según de dónde vino cada consulta. A diferencia de saber cuántas consultas trajo cada canal, este gráfico te dice cuánto dinero real te generó cada uno. Un canal con pocas consultas pero mucho dinero es más valioso que uno con muchas consultas pero pocas ventas."
           subtitle="cuánto dinero real te generó cada canal en comisiones cobradas"
         />
       </CardHeader>

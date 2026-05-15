@@ -29,7 +29,7 @@ interface BotActivityAreaProps {
 export function BotActivityArea({
   data,
   title = "Actividad del bot por día",
-  helpText = "Muestra cuántos mensajes envió el bot, cuántas propiedades compartió y cuántas citas agendó cada día. Los picos altos significan días con mucha actividad — generalmente cuando llegaron leads nuevos o el bot activó la cola de propiedades. Te ayuda a entender cuándo trabaja más tu bot.",
+  helpText = "Muestra cuántos mensajes envió el bot, cuántas propiedades compartió y cuántas citas agendó cada día. Los picos altos significan días con mucha actividad — generalmente cuando llegaron consultas nuevas o el bot activó la cola de propiedades. Te ayuda a entender cuándo trabaja más tu bot.",
   subtitle = "mensajes, propiedades y citas que el bot gestionó cada día",
 }: BotActivityAreaProps) {
   return (

@@ -10,15 +10,15 @@ const chartConfig = {
   anterior: { label: "Periodo anterior", color: "hsl(0, 0%, 70%)" },
 } satisfies ChartConfig
 
-interface LeadsTrendChartProps {
+interface InquiriesTrendChartProps {
   data: TimeSeriesPoint[]
 }
 
-export function LeadsTrendChart({ data }: LeadsTrendChartProps) {
+export function InquiriesTrendChart({ data }: InquiriesTrendChartProps) {
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-base">Tendencia de leads</CardTitle>
+        <CardTitle className="text-base">Tendencia de consultas</CardTitle>
       </CardHeader>
       <CardContent>
         <ChartContainer config={chartConfig} className="h-[200px] w-full">

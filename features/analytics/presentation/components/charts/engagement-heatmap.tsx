@@ -17,8 +17,8 @@ interface EngagementHeatmapProps {
 export function EngagementHeatmap({
   data,
   title = "Horarios de mayor engagement",
-  helpText = "Muestra en qué días y horarios tus leads responden más al bot. Los cuadros más oscuros significan más respuestas en ese horario. Úsalo para saber cuándo enviar tus mensajes manuales o para entender cuándo están más activos tus clientes. Si ves que los martes a las 12h hay mucha actividad significa que ese es un buen momento para contactar leads nuevos.",
-  subtitle = "en qué días y horarios responden más tus leads",
+  helpText = "Muestra en qué días y horarios tus consultas responden más al bot. Los cuadros más oscuros significan más respuestas en ese horario. Úsalo para saber cuándo enviar tus mensajes manuales o para entender cuándo están más activos tus clientes. Si ves que los martes a las 12h hay mucha actividad significa que ese es un buen momento para contactar consultas nuevas.",
+  subtitle = "en qué días y horarios responden más tus consultas",
 }: EngagementHeatmapProps) {
   const maxValue = Math.max(...data.map((d) => d.value), 1)
 

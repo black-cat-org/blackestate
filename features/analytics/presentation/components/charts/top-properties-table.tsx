@@ -11,7 +11,7 @@ interface TopPropertiesTableProps {
   data: PropertyRanking[]
 }
 
-type SortKey = "leads" | "visits" | "appointments"
+type SortKey = "inquiries" | "visits" | "appointments"
 type SortDir = "asc" | "desc"
 
 function ProgressBar({ value, max, color }: { value: number; max: number; color: string }) {
@@ -24,7 +24,7 @@ function ProgressBar({ value, max, color }: { value: number; max: number; color:
 }
 
 export function TopPropertiesTable({ data }: TopPropertiesTableProps) {
-  const [sortKey, setSortKey] = useState<SortKey>("leads")
+  const [sortKey, setSortKey] = useState<SortKey>("inquiries")
   const [sortDir, setSortDir] = useState<SortDir>("desc")
 
   const sorted = useMemo(() => {
@@ -33,7 +33,7 @@ export function TopPropertiesTable({ data }: TopPropertiesTableProps) {
     )
   }, [data, sortKey, sortDir])
 
-  const maxLeads = Math.max(...data.map((d) => d.leads), 1)
+  const maxInquiries = Math.max(...data.map((d) => d.inquiries), 1)
   const maxVisits = Math.max(...data.map((d) => d.visits), 1)
   const maxAppointments = Math.max(...data.map((d) => d.appointments), 1)
 
@@ -58,7 +58,7 @@ export function TopPropertiesTable({ data }: TopPropertiesTableProps) {
       <CardHeader className="pb-2">
         <ChartHeader
           title="Propiedades con más interacción"
-          helpText="Muestra qué propiedades están generando más actividad. Leads son las personas que preguntaron por esa propiedad, visitas son las veces que alguien abrió su página pública, y citas son las visitas presenciales agendadas. Una propiedad con muchas visitas pero pocos leads puede indicar que el precio o la descripción no está convenciendo."
+          helpText="Muestra qué propiedades están generando más actividad. Consultas son las personas que preguntaron por esa propiedad, visitas son las veces que alguien abrió su página pública, y citas son las visitas presenciales agendadas. Una propiedad con muchas visitas pero pocas consultas puede indicar que el precio o la descripción no está convenciendo."
           subtitle="tus propiedades ordenadas por actividad generada en este período"
         />
       </CardHeader>
@@ -68,8 +68,8 @@ export function TopPropertiesTable({ data }: TopPropertiesTableProps) {
             <TableRow>
               <TableHead>Propiedad</TableHead>
               <TableHead className="text-right w-24">
-                <button type="button" className="inline-flex items-center hover:text-foreground transition-colors" onClick={() => handleSort("leads")}>
-                  Leads <SortIcon column="leads" />
+                <button type="button" className="inline-flex items-center hover:text-foreground transition-colors" onClick={() => handleSort("inquiries")}>
+                  Consultas <SortIcon column="inquiries" />
                 </button>
               </TableHead>
               <TableHead className="text-right w-24">
@@ -89,8 +89,8 @@ export function TopPropertiesTable({ data }: TopPropertiesTableProps) {
               <TableRow key={item.id}>
                 <TableCell className="font-medium">{item.title}</TableCell>
                 <TableCell className="text-right">
-                  <span className="text-sm">{item.leads}</span>
-                  <ProgressBar value={item.leads} max={maxLeads} color="hsl(217, 91%, 60%)" />
+                  <span className="text-sm">{item.inquiries}</span>
+                  <ProgressBar value={item.inquiries} max={maxInquiries} color="hsl(217, 91%, 60%)" />
                 </TableCell>
                 <TableCell className="text-right">
                   <span className="text-sm">{item.visits}</span>

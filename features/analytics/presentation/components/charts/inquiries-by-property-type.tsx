@@ -14,11 +14,11 @@ const TYPE_COLORS: Record<string, string> = {
   ph: "hsl(190, 70%, 45%)",
 }
 
-interface LeadsByPropertyTypeProps {
+interface InquiriesByPropertyTypeProps {
   data: { type: string; label: string; count: number }[]
 }
 
-export function LeadsByPropertyType({ data }: LeadsByPropertyTypeProps) {
+export function InquiriesByPropertyType({ data }: InquiriesByPropertyTypeProps) {
   const total = data.reduce((sum, d) => sum + d.count, 0)
   const sorted = [...data].filter((d) => d.count > 0).sort((a, b) => b.count - a.count)
 
@@ -26,10 +26,10 @@ export function LeadsByPropertyType({ data }: LeadsByPropertyTypeProps) {
     return (
       <Card>
         <CardHeader className="pb-2">
-          <ChartHeader title="Leads por tipo de propiedad" subtitle="sin datos en este período" />
+          <ChartHeader title="Consultas por tipo de propiedad" subtitle="sin datos en este período" />
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground py-6 text-center">No hay leads en este período.</p>
+          <p className="text-sm text-muted-foreground py-6 text-center">No hay consultas en este período.</p>
         </CardContent>
       </Card>
     )
@@ -39,7 +39,7 @@ export function LeadsByPropertyType({ data }: LeadsByPropertyTypeProps) {
     <Card>
       <CardHeader className="pb-2">
         <ChartHeader
-          title="Leads por tipo de propiedad"
+          title="Consultas por tipo de propiedad"
           helpText="Muestra qué tipos de propiedad generan más consultas. Si Casa y Departamento concentran la mayoría significa que ahí está la demanda real de tu mercado. Úsalo para decidir en qué tipo de propiedades especializarte."
           subtitle="qué tipos de propiedad generan más interés en este período"
         />
