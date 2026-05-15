@@ -1,24 +1,35 @@
 "use server"
 
 import {
+  getDashboardData,
   getDashboardStats,
-  getLeadsBySource,
-  getLeadsByStatus,
+  getInquiriesBySource,
+  getInquiriesByStatus,
   getPropertyStatusDistribution,
   getUpcomingAppointments,
   getRecentActivities,
 } from "@/features/dashboard/infrastructure/dashboard.service"
 
+/**
+ * Composite action — single fetch under the hood, returns all KPIs +
+ * chart data + upcoming appointments + recent activities in one
+ * payload. Used by the `/dashboard` page composer to avoid the
+ * previous N-redundant-Inquiry-fetches pattern.
+ */
+export async function getDashboardDataAction() {
+  return getDashboardData()
+}
+
 export async function getDashboardStatsAction() {
   return getDashboardStats()
 }
 
-export async function getLeadsBySourceAction() {
-  return getLeadsBySource()
+export async function getInquiriesBySourceAction() {
+  return getInquiriesBySource()
 }
 
-export async function getLeadsByStatusAction() {
-  return getLeadsByStatus()
+export async function getInquiriesByStatusAction() {
+  return getInquiriesByStatus()
 }
 
 export async function getPropertyStatusDistributionAction() {

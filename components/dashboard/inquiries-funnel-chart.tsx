@@ -9,64 +9,54 @@ import {
   type ChartConfig,
 } from "@/components/ui/chart"
 
-interface LeadsBySourceChartProps {
-  data: { source: string; label: string; count: number }[]
+interface InquiriesFunnelChartProps {
+  data: { status: string; label: string; count: number; fill: string }[]
 }
 
 const chartConfig = {
   count: {
-    label: "Leads",
+    label: "Consultas",
   },
-  facebook: {
-    label: "Facebook",
-    color: "hsl(221, 44%, 41%)",
+  open: {
+    label: "Abierta",
+    color: "hsl(217, 91%, 60%)",
   },
-  instagram: {
-    label: "Instagram",
-    color: "hsl(330, 70%, 50%)",
+  promoted: {
+    label: "Promovida",
+    color: "hsl(142, 71%, 45%)",
   },
-  whatsapp: {
-    label: "WhatsApp",
-    color: "hsl(142, 70%, 40%)",
-  },
-  tiktok: {
-    label: "TikTok",
-    color: "hsl(0, 0%, 10%)",
-  },
-  otro: {
-    label: "Otro",
+  discarded: {
+    label: "Descartada",
     color: "hsl(0, 0%, 60%)",
   },
 } satisfies ChartConfig
 
-export function LeadsBySourceChart({ data }: LeadsBySourceChartProps) {
+export function InquiriesFunnelChart({ data }: InquiriesFunnelChartProps) {
   const chartData = data.map((d) => ({
     ...d,
-    fill: `var(--color-${d.source})`,
+    fill: `var(--color-${d.status})`,
   }))
 
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-base">Leads por fuente</CardTitle>
+        <CardTitle className="text-base">Embudo de consultas</CardTitle>
       </CardHeader>
       <CardContent>
         <ChartContainer config={chartConfig} className="h-[200px] w-full">
-          <BarChart data={chartData} layout="vertical" margin={{ left: 0 }}>
-            <YAxis
+          <BarChart data={chartData} margin={{ bottom: 0 }}>
+            <XAxis
               dataKey="label"
-              type="category"
               tickLine={false}
               axisLine={false}
-              width={80}
               fontSize={12}
             />
-            <XAxis type="number" hide />
+            <YAxis type="number" hide />
             <ChartTooltip
               cursor={false}
               content={<ChartTooltipContent hideLabel />}
             />
-            <Bar dataKey="count" radius={4} />
+            <Bar dataKey="count" radius={[4, 4, 0, 0]} />
           </BarChart>
         </ChartContainer>
       </CardContent>

@@ -36,6 +36,14 @@ export const INQUIRY_STATUS_BADGE_CLASSES: Record<InquiryStatus, string> = {
 }
 
 /**
+ * Fallback label used when an Inquiry has no `source` recorded. Exported
+ * separately so service aggregators (e.g. `getInquiriesBySource`) and
+ * chart configs share the same string instead of duplicating "Otro"
+ * across the codebase.
+ */
+export const INQUIRY_SOURCE_OTHER_LABEL = "Otro"
+
+/**
  * User-facing labels for every channel through which an Inquiry can
  * enter the system. Superset of `DealSource` (which omits
  * `public_form`, `bot`, `manual` — the early capture-only channels).
