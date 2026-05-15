@@ -14,6 +14,23 @@ export interface MoveDealStageInput {
    * adapter appends the deal to the bottom (`MAX(stage_order) + 1`).
    */
   toOrder?: number
+  /**
+   * Optional reason captured when transitioning to `lost`. The adapter
+   * persists this on the same UPDATE that sets `stage = 'lost'` and
+   * `closed_at = now()`, so the three columns are written atomically.
+   *
+   * Ignored when `toStage` is not `'lost'` — there is no semantic
+   * meaning for the field on `won` (no loss to explain) or on any
+   * active stage (no terminal close yet). On reopen (terminal →
+   * active), `lost_reason` is always cleared regardless of this
+   * field's value, mirroring the existing `closed_at` clear semantics.
+   *
+   * Kanban drag-and-drop calls leave this `undefined`; the `lost`
+   * column drop produces a generic loss without a reason. The
+   * `lost-deal-dialog.tsx` (R27) surface captures the reason when the
+   * agent uses the explicit "Marcar como perdido" button instead.
+   */
+  lostReason?: string
 }
 
 /**

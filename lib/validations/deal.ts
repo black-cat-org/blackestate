@@ -134,3 +134,72 @@ export const dealCreateFormSchema = z
   })
 
 export type DealCreateFormValues = z.infer<typeof dealCreateFormSchema>
+
+// ---------------------------------------------------------------------------
+// Edit Deal form (R27 detail page).
+//
+// Intentionally narrower than the create schema — `contactId`,
+// `contactDraft`, `propertyId`, and `stage` are NOT editable here:
+//   - Contact + property changes mean a different Deal (create a new one)
+//   - Stage transitions go through `moveDealStageAction`, NOT the
+//     generic update path, because the Kanban depends on `stage_order`
+//     recompaction + `closed_at` / `lost_reason` side-effects that
+//     `IDealRepository.moveStage` owns
+// ---------------------------------------------------------------------------
+
+export const dealEditFormSchema = z.object({
+  source: z
+    .enum(DEAL_SOURCE_FORM_VALUES)
+    .optional()
+    .or(z.literal("")),
+  message: z
+    .string()
+    .max(2000, "El mensaje no puede exceder 2000 caracteres")
+    .optional()
+    .or(z.literal("")),
+  budget: z
+    .string()
+    .max(120, "El presupuesto no puede exceder 120 caracteres")
+    .optional()
+    .or(z.literal("")),
+  propertyTypeSought: z
+    .string()
+    .max(120, "El tipo buscado no puede exceder 120 caracteres")
+    .optional()
+    .or(z.literal("")),
+  zoneOfInterest: z
+    .string()
+    .max(200, "La zona no puede exceder 200 caracteres")
+    .optional()
+    .or(z.literal("")),
+  wantsOffers: z.boolean(),
+  expectedCloseAt: z
+    .string()
+    .regex(YYYYMMDD_REGEX, "Fecha inválida")
+    .optional()
+    .or(z.literal("")),
+})
+
+export type DealEditFormValues = z.infer<typeof dealEditFormSchema>
+
+// ---------------------------------------------------------------------------
+// Lost Deal form (R27 lost-deal-dialog).
+//
+// Captures the optional `lostReason` text. Submission triggers a
+// single atomic call: `moveDealStageAction(id, { toStage: 'lost',
+// lostReason })`. The repository writes `stage`, `closed_at = now()`
+// and `lost_reason` in one UPDATE inside a single transaction — no
+// race window between "reason saved" and "stage flipped". See
+// `MoveDealStageInput.lostReason` in
+// `features/deals/domain/deal.repository.ts` for the full contract.
+// ---------------------------------------------------------------------------
+
+export const lostDealFormSchema = z.object({
+  lostReason: z
+    .string()
+    .max(2000, "El motivo no puede exceder 2000 caracteres")
+    .optional()
+    .or(z.literal("")),
+})
+
+export type LostDealFormValues = z.infer<typeof lostDealFormSchema>

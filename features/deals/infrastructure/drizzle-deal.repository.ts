@@ -425,12 +425,22 @@ export class DrizzleDealRepository implements IDealRepository {
       // (terminal → active) clear `closedAt` AND `lostReason`; the
       // contract is explicit that BOTH columns reset so a reopened
       // Deal does not carry a stale "lost because price" reason.
+      //
+      // `lostReason` write on transition INTO `lost`: only when the
+      // caller passed an explicit reason. Passing `undefined` leaves
+      // the column at its current value (typically `null` from the
+      // create flow). The Kanban drag drop passes `undefined`; the
+      // explicit "Marcar como perdido" dialog (R27) passes the
+      // captured text.
       const setClause: Record<string, unknown> = {
         stage: input.toStage,
         stageOrder: toOrder,
       }
       if (isMovingToTerminal) {
         setClause.closedAt = new Date()
+        if (input.toStage === "lost" && input.lostReason !== undefined) {
+          setClause.lostReason = input.lostReason
+        }
       } else if (isReopening) {
         setClause.closedAt = null
         setClause.lostReason = null
