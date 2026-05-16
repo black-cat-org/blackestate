@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import {
   pgTable,
   text,
@@ -53,8 +54,15 @@ import { dealStageEnum, dealSourceEnum } from "./enums";
 export const deal = pgTable(
   "deal",
   {
+    // DB default `gen_random_uuid()::text` lives in migration 031 — protects
+    // SQL paths that bypass Drizzle (RPCs, seeds). `$defaultFn` keeps the
+    // application-side UUID generation for Drizzle inserts; both layers
+    // coexist without conflict because Drizzle always sends its value, so
+    // the DB default only fires when the column is omitted from the INSERT
+    // column list.
     id: text("id")
       .primaryKey()
+      .default(sql`gen_random_uuid()::text`)
       .$defaultFn(() => crypto.randomUUID()),
     organizationId: uuid("organization_id").notNull(),
     createdByUserId: uuid("created_by_user_id").notNull(),
