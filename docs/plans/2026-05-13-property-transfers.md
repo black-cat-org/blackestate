@@ -183,7 +183,19 @@ export interface IPropertyTransferRepository {
 8. `UPDATE ai_contents SET created_by_user_id = :toUserId WHERE property_id = ANY(:ids) AND organization_id = ctx.orgId AND deleted_at IS NULL RETURNING id` → `aiContentsCount`.
 9. `UPDATE contact_property_queue SET created_by_user_id = :toUserId WHERE property_id = ANY(:ids) AND organization_id = ctx.orgId AND deleted_at IS NULL RETURNING id` → `queueItemsCount`.
 10. **Si `transferContacts === true`:**
-    - Resolver set de contacts afectados: `SELECT DISTINCT contact_id FROM deal WHERE property_id = ANY(:ids) AND organization_id = ctx.orgId AND deleted_at IS NULL`.
+    - Resolver set de contacts afectados — **UNION de Deal + Inquiry** sobre las props del batch:
+      ```sql
+      SELECT DISTINCT contact_id FROM deal
+        WHERE property_id = ANY(:ids)
+          AND organization_id = ctx.orgId
+          AND deleted_at IS NULL
+      UNION
+      SELECT DISTINCT contact_id FROM inquiry
+        WHERE property_id = ANY(:ids)
+          AND organization_id = ctx.orgId
+          AND deleted_at IS NULL
+      ```
+      El UNION cierra el gap conceptual de §2 ("Inquiries siguen al Contact"): un Contact que solo tiene Inquiries (nunca promovidas a Deal) sobre las props del batch también debe moverse cuando `transferContacts=true`. Sin el UNION, ese Contact quedaría con el agente origen y sus Inquiries apuntarían a props que ya no le pertenecen — orphan inquiry. Las Inquiries no se actualizan explícitamente acá (no tienen `created_by_user_id` que cambiar — viven en la línea de tiempo del Contact y siguen al `contact.created_by_user_id` que sí se updateó).
     - `UPDATE contact SET created_by_user_id = :toUserId WHERE id = ANY(:contactIds) AND organization_id = ctx.orgId AND deleted_at IS NULL RETURNING id` → `contactsCount`.
 11. `INSERT INTO property_transfers (...)` con todos los counts + `transfer_contacts`.
 
