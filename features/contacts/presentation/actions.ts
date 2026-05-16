@@ -98,12 +98,12 @@ export async function updateContactAction(
  * enforce the same invariant at the DB if the race becomes a real
  * product problem.
  *
- * Token-casing note (R46c): the Contact feature predates the lowercase
- * snake_case throw-token convention used by Inquiry / Deal — existing
- * tokens here are SCREAMING_SNAKE (e.g. `EMAIL_ALREADY_EXISTS`). The
- * new token `contact_has_active_deals:<count>` introduced in R23
- * follows the new convention; R46c will sweep the legacy SCREAMING
- * tokens to lowercase in a single dedicated pass.
+ * Throw tokens raised by this surface follow the project's
+ * `lowercase_snake_case` convention (see `CLAUDE.md` "Throw token
+ * convention"): `contact_has_active_deals:<count>` parametric guard
+ * plus the four repository tokens propagated unchanged
+ * (`contact_not_found`, `contact_already_restored`, `contact_no_permission`,
+ * `contact_not_found_or_no_permission`).
  */
 export async function deleteContactAction(id: string): Promise<void> {
   const ctx = await getSessionContext()

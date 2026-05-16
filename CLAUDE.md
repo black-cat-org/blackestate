@@ -263,6 +263,15 @@ export async function createPropertyAction(formData: PropertyFormData): Promise<
 | Feature-A Infrastructure → Feature-B Infrastructure | **Exception** | Only when a repository genuinely owns an atomic operation that spans two domain tables (e.g. `IInquiryRepository.promote` inserts into `deal` while updating `inquiry` in a single tx). The owning repo imports the partner feature's mapper to translate Insert/Row shapes. The alternative — a SECURITY DEFINER RPC — would be overkill for invariants the partial UNIQUE constraint already enforces at the DB. Documented uses: `features/inquiries/infrastructure/drizzle-inquiry.repository.ts` imports `mapCreateDTOToInsert` + `mapDealRowToEntity` from `features/deals/infrastructure/deal.mapper.ts` for the atomic promote operation. Any new exception must be added to this list with justification |
 | Feature-A Application → Feature-B Application | Yes, with justification | Use cases are pure functions with zero Infrastructure deps — importing a sibling use case to compose a multi-feature workflow is a structural win over duplicating logic. The dependency must express a real business relationship, not an incidental code reuse. Documented uses: `features/inquiries/application/create-inquiry.use-case.ts` imports `findOrCreateContactUseCase` from `features/contacts/application/` because every Inquiry needs a resolved Contact — the dependency is intrinsic to the domain, not implementation leak |
 
+### Throw token convention
+
+Repositories and use cases that need to fail with a typed reason use `throw new Error("<token>")` — the action layer catches the raw `Error.message` and maps it to localised Spanish copy at the presentation boundary (see `features/*/presentation/*-error-messages.ts`).
+
+- **Casing:** `lowercase_snake_case` (e.g. `contact_not_found`, `deal_already_active`, `inquiry_not_open`). Matches the RPC error tokens raised by `acceptInvitation` / `bootstrapOrganization` for cross-layer consistency.
+- **Parametric suffix:** when the UI needs a number, append after `:` (e.g. `contact_has_active_deals:3`). Action layer parses the suffix; the catalogue function strips it before switching.
+- **Never leak existence:** soft-deny errors use a generic `<entity>_not_found_or_no_permission` token so the caller cannot distinguish "row does not exist" from "row exists but I cannot see it".
+- **Legacy SCREAMING tokens:** `features/properties/` and `features/appointments/` still raise SCREAMING_SNAKE_CASE tokens (e.g. `PROPERTY_NOT_FOUND`). These predate the convention and migrate in separate tickets — new repos must use lowercase from day one.
+
 ## Database Layer
 
 - **ORM:** Drizzle ORM + Drizzle Kit for domain tables

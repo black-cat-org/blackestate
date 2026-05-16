@@ -14,7 +14,7 @@ import type { SessionContext } from "@/features/shared/domain/session-context"
  * Authorisation: the repository's `contact_update_role_aware` policy
  * (migration 026) restricts the UPDATE to owner/admin OR
  * `created_by_user_id = auth.uid()`. An agent editing another agent's
- * contact receives `CONTACT_NOT_FOUND_OR_NO_PERMISSION` — generic by
+ * contact receives `contact_not_found_or_no_permission` — generic by
  * design so existence is not leaked.
  */
 export async function updateContactUseCase(

@@ -27,17 +27,17 @@ import {
  * from migration 026 are evaluated at the DB. The class never reads from
  * the raw `db` pool directly.
  *
- * Throw tokens (all in SCREAMING_SNAKE_CASE):
- *   - `CONTACT_NOT_FOUND_OR_NO_PERMISSION` — generic miss for
+ * Throw tokens (lowercase_snake_case per project convention — see
+ * `CLAUDE.md` "Throw token convention"):
+ *   - `contact_not_found_or_no_permission` — generic miss for
  *     update/softDelete, never leaks whether the row exists vs the caller
  *     simply cannot see it.
- *   - `CONTACT_NOT_FOUND` / `CONTACT_ALREADY_RESTORED` / `CONTACT_NO_PERMISSION`
+ *   - `contact_not_found` / `contact_already_restored` / `contact_no_permission`
  *     — restore-specific disambiguation after the post-UPDATE re-SELECT.
  *
- * Throwing token strings is the project convention (see Lead and Property
- * repos) so server actions can map them to localised Spanish messages at
- * the presentation boundary instead of leaking English error text to
- * users.
+ * Server actions catch the raw `Error.message` and map to localised
+ * Spanish copy at the presentation boundary instead of leaking English
+ * error text to users.
  */
 export class DrizzleContactRepository implements IContactRepository {
   // ---------------------------------------------------------------------------
@@ -246,7 +246,7 @@ export class DrizzleContactRepository implements IContactRepository {
         .returning(),
     )
     if (rows.length === 0) {
-      throw new Error("CONTACT_NOT_FOUND_OR_NO_PERMISSION")
+      throw new Error("contact_not_found_or_no_permission")
     }
     return mapContactRowToEntity(rows[0])
   }
@@ -277,7 +277,7 @@ export class DrizzleContactRepository implements IContactRepository {
         .returning({ id: contact.id }),
     )
     if (rows.length === 0) {
-      throw new Error("CONTACT_NOT_FOUND_OR_NO_PERMISSION")
+      throw new Error("contact_not_found_or_no_permission")
     }
   }
 
@@ -317,13 +317,13 @@ export class DrizzleContactRepository implements IContactRepository {
         )
         .limit(1)
 
-      if (existing.length === 0) throw new Error("CONTACT_NOT_FOUND")
+      if (existing.length === 0) throw new Error("contact_not_found")
       if (existing[0].deletedAt === null) {
-        throw new Error("CONTACT_ALREADY_RESTORED")
+        throw new Error("contact_already_restored")
       }
       // Reachable only when the caller can SELECT the deleted row but
       // fails the `contact_update_restore` policy — defensive fallback.
-      throw new Error("CONTACT_NO_PERMISSION")
+      throw new Error("contact_no_permission")
     })
   }
 }

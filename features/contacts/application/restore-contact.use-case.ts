@@ -7,8 +7,11 @@ import type { SessionContext } from "@/features/shared/domain/session-context"
  * `deleted_at` and the audit snapshot columns.
  *
  * Throw tokens surfaced by the repository (see
- * `drizzle-contact.repository.ts` JSDoc): `CONTACT_NOT_FOUND`,
- * `CONTACT_ALREADY_RESTORED`, `CONTACT_NO_PERMISSION`. The server
+ * `drizzle-contact.repository.ts` JSDoc): `contact_not_found`,
+ * `contact_already_restored`, `contact_no_permission`, plus
+ * `contact_not_found_or_no_permission` as a defensive fallback when
+ * the caller can SELECT the deleted row but fails the
+ * `contact_update_restore` RLS policy on the UPDATE. The server
  * action layer maps these to localised Spanish messages at the
  * presentation boundary.
  */
