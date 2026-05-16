@@ -91,16 +91,3 @@ export const contactPropertyQueue = pgTable(
   ],
 );
 
-/**
- * Drizzle-inferred row types for the `contact_property_queue` table.
- * Consumed by future infrastructure code that orchestrates the bot's
- * suggestion queue post-refactor.
- *
- * Suffix `Record` is intentional: the domain layer will eventually
- * export a `ContactPropertyQueueItem` interface with a different
- * nullability story (`undefined` for optional fields vs `null` here).
- * Distinct names prevent a callsite from accidentally importing the
- * DB shape where the domain entity is expected.
- */
-export type ContactPropertyQueueRecord = typeof contactPropertyQueue.$inferSelect;
-export type NewContactPropertyQueueRecord = typeof contactPropertyQueue.$inferInsert;

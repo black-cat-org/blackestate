@@ -123,16 +123,3 @@ export const deal = pgTable(
   ],
 );
 
-/**
- * Drizzle-inferred row types for the `deal` table. Consumed by
- * `features/deals/infrastructure/deal.model.ts` (R18) and any repository
- * call site that needs the raw DB shape.
- *
- * Suffix `Record` is intentional: the domain layer exports a `Deal`
- * interface (`features/deals/domain/deal.entity.ts`) with a different
- * nullability story (`undefined` for optional fields vs `null` here).
- * Distinct names prevent a callsite from accidentally importing the
- * DB shape where the domain entity is expected.
- */
-export type DealRecord = typeof deal.$inferSelect;
-export type NewDealRecord = typeof deal.$inferInsert;

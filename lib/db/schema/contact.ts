@@ -83,18 +83,3 @@ export const contact = pgTable(
     index("contact_org_created_by_idx").on(t.organizationId, t.createdByUserId),
   ],
 );
-
-/**
- * Drizzle-inferred row types for the `contact` table. Consumed by
- * `features/contacts/infrastructure/contact.model.ts` (R15) and any
- * repository call site that needs the raw DB shape.
- *
- * Suffix `Record` is intentional: the domain layer already exports a
- * `Contact` interface (`features/contacts/domain/contact.entity.ts`),
- * and the two shapes intentionally differ — the domain version uses
- * `undefined` for nullable fields while the DB row uses `null`. Distinct
- * names prevent a callsite from accidentally importing the DB shape
- * where the domain entity is expected.
- */
-export type ContactRecord = typeof contact.$inferSelect;
-export type NewContactRecord = typeof contact.$inferInsert;

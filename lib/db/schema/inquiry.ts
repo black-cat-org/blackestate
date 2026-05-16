@@ -120,16 +120,3 @@ export const inquiry = pgTable(
   ],
 );
 
-/**
- * Drizzle-inferred row types for the `inquiry` table. Consumed by
- * `features/inquiries/infrastructure/inquiry.model.ts` (I4) and any
- * repository call site that needs the raw DB shape.
- *
- * Suffix `Record` is intentional: the domain layer exports an `Inquiry`
- * interface (`features/inquiries/domain/inquiry.entity.ts`) with a
- * different nullability story (`undefined` for optional fields vs `null`
- * here). Distinct names prevent a callsite from accidentally importing
- * the DB shape where the domain entity is expected.
- */
-export type InquiryRecord = typeof inquiry.$inferSelect;
-export type NewInquiryRecord = typeof inquiry.$inferInsert;
