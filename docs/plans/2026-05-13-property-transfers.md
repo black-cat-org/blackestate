@@ -21,17 +21,27 @@ Owner/admin transfiere **N propiedades de un agente origen a un agente destino**
 
 ---
 
-## 2. Por qué depende del refactor Contact+Deal
+## 2. Por qué depende del refactor Contact+Inquiry+Deal
 
-Con el modelo viejo (`leads` mono-tabla mezclando persona+interés), cascadear leads en un transfer significaba arrastrar la identidad del contacto — perdías la posibilidad de "conservar al contacto como tuyo aunque la prop concreta se vaya a Bob".
+Con el modelo viejo (`leads` mono-tabla mezclando persona + interés + oportunidad), cascadear leads en un transfer significaba arrastrar la identidad del contacto — perdías la posibilidad de "conservar al contacto como tuyo aunque la prop concreta se vaya a Bob".
 
-Con el modelo nuevo (Contact ↔ Deal), la separación es natural:
+Con el modelo nuevo (Contact + Inquiry + Deal — sub-plan `2026-05-13-contact-inquiry-refactor.md`), la separación es natural y cada entidad cascadea distinto según lo que representa:
 
-- **Deals** se cascadean siempre — un interés en una prop específica viaja con la prop.
-- **Contacts** se quedan con el agente original por default — la identidad de la persona no es de la propiedad.
-- **Toggle "transferir contacts también"** queda como **opción avanzada** para el caso donde owner/admin quiere transferir el "directorio completo" relacionado con esas props (por ejemplo: Alice se va de la agencia y todo lo suyo pasa a Bob — contacts + deals + citas + etc.).
+| Entidad | ¿Cascadea en transfer? | Razón |
+|---|---|---|
+| **Property** | sí (es lo que se transfiere) | Es el sujeto del transfer. `created_by_user_id` pasa al destino. |
+| **Deal** | **sí, siempre** | Una Deal es **compromiso comercial real** del agente sobre una prop concreta (visita agendada, negociación abierta, reserva). El compromiso está atado a la prop — si la prop se va, la responsabilidad de cerrarla se va con ella. El receptor necesita continuar la negociación. |
+| **Inquiry** | **no, nunca** | Una Inquiry es **interés ligero histórico** ("Carlos llenó el form preguntando por Casa A"). Es un registro de la conversación que el Contact tuvo con el agente original, no un compromiso. Vive con el Contact (su historial) y **NO se mueve con la prop**. Si transfieres el Contact (toggle opcional, ver siguiente fila), las Inquiries lo siguen porque viven en su línea de tiempo — no porque las cascadee el transfer de prop. |
+| **Contact** | **opt-in** via toggle | Identidad de la persona. Por default queda con el agente original — el "directorio" es del agente, no de la prop. El toggle "transferir también los contactos asociados" lo activa para casos como "Alice se va de la agencia" donde todo su pipeline (contacts + sus inquiries históricas + sus deals + citas + queue) pasa a Bob. |
+| **Appointment** | sí (vía `deal_id`) | Visita agendada atada a un Deal; viaja con él. |
+| **AI content** | sí (vía `property_id`) | Brochures generados para la prop. |
+| **`contact_property_queue`** | sí (vía `property_id`) | Cola de envío de la prop al contact; vive en el contexto de la prop. |
 
-Este modelo elimina el toggle por categoría que habíamos discutido antes (leads/citas/contenidos/cola). Ahora el toggle es uno solo: "**¿transferir también los contactos asociados?**".
+**Justificación operativa de "Inquiry no cascadea":** imaginá que Alice recibió 20 Inquiries sobre 10 props distintas durante el último año. Si vendemos 3 de esas props a Bob, Bob no necesita ver las 6 Inquiries históricas asociadas — son conversaciones que Alice tuvo y para las que ya decidió no abrir un Deal. Cascadear Inquiries (a) ensucia la inbox de Bob con contactos cold que no conoce, (b) le da visibilidad sobre contactos privados de Alice (contactos cuya información comercial vive con Alice), y (c) confunde el funnel de Bob mezclando "interés histórico de otro agente" con "interés mío activo".
+
+La regla derivada es simple: **lo que cascadea en transfer de prop es lo que tiene compromiso comercial activo del agente sobre esa prop concreta. El registro de conversaciones pasadas no es compromiso — vive con el Contact.**
+
+Esto elimina el toggle por categoría que habíamos discutido antes (leads/citas/contenidos/cola). Ahora el toggle es uno solo: "**¿transferir también los contactos asociados?**" — y la cascada de Inquiries se decide automáticamente por dónde vive el Contact (con el agente original → Inquiries con él; con el destino → Inquiries con él).
 
 ---
 
