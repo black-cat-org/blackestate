@@ -29,14 +29,18 @@ function parseView(raw: string | null): DealView {
 }
 
 /**
- * Inner shell that owns `useSearchParams()`. Lives behind a Suspense
- * boundary in the public `DealBoard` export so callers (R40 page)
- * cannot accidentally mount it from a server component without a
- * Suspense parent — Next.js 16 opts the whole route segment out of
- * static rendering if any `useSearchParams()` consumer is not under
- * Suspense. Wrapping it here makes the requirement self-contained.
+ * Inner shell that owns `useSearchParams()`. Exported as
+ * `DealBoardContent` so composers that already own a Suspense
+ * boundary (`DealsView` in R40) can mount the inner shell directly
+ * and avoid a redundant nested boundary. Standalone callers use the
+ * self-wrapping `DealBoard` export below.
+ *
+ * Next.js 16 opts the whole route segment out of static rendering if
+ * any `useSearchParams()` consumer is not under Suspense — the dual
+ * export pattern lets callers pick the right wrapping without paying
+ * for a double-blank during initial render.
  */
-function DealBoardInner({ deals }: DealBoardProps) {
+export function DealBoardContent({ deals }: DealBoardProps) {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -110,7 +114,7 @@ function DealBoardInner({ deals }: DealBoardProps) {
 export function DealBoard({ deals }: DealBoardProps) {
   return (
     <Suspense fallback={null}>
-      <DealBoardInner deals={deals} />
+      <DealBoardContent deals={deals} />
     </Suspense>
   )
 }

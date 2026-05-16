@@ -44,6 +44,31 @@ export type DealStage =
 export const TERMINAL_DEAL_STAGES: ReadonlyArray<DealStage> = ["won", "lost"]
 
 /**
+ * Stages that render as Kanban columns and qualify as the "active
+ * funnel" subset. Complement of `TERMINAL_DEAL_STAGES`. Consumed by
+ * the Table view stage filter (which only offers active stages —
+ * terminal Deals live in the archive surface, not the active board).
+ *
+ * Order matches the funnel sequence (visit → negotiation → reserved)
+ * so iteration produces a natural left-to-right Select list.
+ */
+export const ACTIVE_DEAL_STAGES: ReadonlyArray<DealStage> = [
+  "visit_scheduled",
+  "negotiation",
+  "reserved",
+]
+
+/**
+ * Subset of `DealStage` derived from `ACTIVE_DEAL_STAGES`. Used by
+ * `DealFilters.stage` to express at the type layer that the filter
+ * predicate is meaningful only for stages that actually appear on the
+ * active board: `getDealsAction()` returns `findAllActive`, so filtering
+ * by `"won"` or `"lost"` here would always yield zero results. The
+ * narrowed type prevents that misuse at compile time.
+ */
+export type ActiveDealStage = (typeof ACTIVE_DEAL_STAGES)[number]
+
+/**
  * Where the Deal originated. Mirrors `deal_source_enum` at the DB boundary.
  * Renamed from the legacy `lead_source_enum`.
  */
@@ -193,7 +218,12 @@ export type UpdateDealDTO = Partial<Omit<CreateDealDTO, "contactId" | "contactDr
  */
 export interface DealFilters {
   search: string
-  stage: DealStage | "all"
+  /**
+   * Narrowed to `ActiveDealStage | "all"` because the active board only
+   * holds non-terminal Deals. `"won"` / `"lost"` here would always
+   * produce an empty list, so the type rejects them at compile time.
+   */
+  stage: ActiveDealStage | "all"
   source: DealSource | "all"
   /**
    * Optional unlike the other filter fields: when omitted, Deals across
