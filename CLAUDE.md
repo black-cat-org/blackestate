@@ -84,7 +84,7 @@ features/
       value-objects.ts                  # CurrencyAmount, SurfaceArea, PropertyAddress, etc.
     infrastructure/
       rls.ts                            # withRLS() — RLS transaction wrapper
-      session-context.ts                # getSessionContext() — Better Auth session extraction
+      session-context.ts                # getSessionContext() — Supabase Auth JWT claims extraction
 
   properties/
     domain/
@@ -209,16 +209,35 @@ shortDescription: data.shortDescription || null
 
 ```typescript
 // 1. Model — features/contacts/infrastructure/contact.model.ts
-//    Drizzle $inferSelect, mirrors the DB column exactly.
+//    Two Drizzle-inferred aliases per table:
+//      ContactRow    = typeof contact.$inferSelect  (read shape — all
+//                                                    cols including
+//                                                    auto: id, timestamps)
+//      ContactInsert = typeof contact.$inferInsert  (write shape — cols
+//                                                    with DB defaults
+//                                                    become optional)
 type ContactRow = {
+  id: string
   phone: string | null    // DB column `phone TEXT` nullable
   email: string | null
   name: string             // NOT NULL — never null
+  createdAt: Date
+  updatedAt: Date
+  // ...more cols
+}
+type ContactInsert = {
+  // `id`, `createdAt`, `updatedAt` are omitted by $inferInsert because
+  // the DB column has a default — Drizzle treats them as optional on write.
+  phone?: string | null
+  email?: string | null
+  name: string
+  // ...
 }
 
 // 2. Entity — features/contacts/domain/contact.entity.ts
 //    Domain type consumed by use cases + components. NEVER null.
 interface Contact {
+  id: string
   phone?: string           // optional, never null
   email?: string
   name: string             // required — same as Model
@@ -235,15 +254,19 @@ interface ContactFormValues {
 }
 
 // 4. Mapper — features/contacts/infrastructure/contact.mapper.ts
-//    Bridges Model ↔ Entity and DTO → Model (write path).
+//    Bridges Model ↔ Entity (read path) and DTO → Insert (write path).
 function mapRowToContact(row: ContactRow): Contact {
   return {
+    id: row.id,
     name: row.name,
     phone: row.phone ?? undefined,        // null → undefined (read)
     email: row.email ?? undefined,
   }
 }
-function mapFormToInsert(values: ContactFormValues): ContactRow {
+function mapFormToInsert(values: ContactFormValues): ContactInsert {
+  // Note: NOT `ContactRow` — write side uses the Insert alias because
+  // `id`, `createdAt`, etc. come from DB defaults (`gen_random_uuid()::text`,
+  // `now()`) and the mapper deliberately omits them.
   return {
     name: values.name,
     phone: values.phone || null,          // "" → null (write)
@@ -390,7 +413,7 @@ Repositories and use cases that need to fail with a typed reason use `throw new 
   Any new exception must be added to this list with justification.
 - **Admin client (`getSupabaseAdmin()`)** is reserved for cross-org auth-system operations (e.g. `inviteUserByEmail`, `deleteUser`, future Inngest background jobs). NEVER for queries against domain tables.
 - No hard DELETE. Soft delete = `UPDATE SET deleted_at = now()`. No GRANT DELETE on any table.
-- `created_by_user_id` is NOT NULL on: properties, leads, appointments, ai_contents, lead_property_queue.
+- `created_by_user_id` is NOT NULL on: `properties`, `contact`, `inquiry`, `deal`, `appointments`, `ai_contents`, `contact_property_queue`. Also NOT NULL on the legacy-preserved `leads` and `lead_property_queue` (kept while the UI restoration audit runs — do not model new tables after them).
 - Agent can only UPDATE own records (`created_by_user_id = sub`). Owner/admin can UPDATE anything in their org.
 
 ### ⚠️ DANGER: Never use `drizzle-kit push`
