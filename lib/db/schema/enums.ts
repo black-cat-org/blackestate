@@ -119,3 +119,67 @@ export const appPermissionEnum = pgEnum("app_permission", [
   "settings.manage",
   "billing.manage",
 ]);
+
+// ─── Contact + Inquiry + Deal refactor ────────────────────────────────────
+//
+// Enums for the new model: Contact (identity) → Inquiry (expressed interest)
+// → Deal (commercial opportunity with funnel). Coexist with the legacy
+// `lead_*` enums above until the legacy `leads` table is dropped in R46.
+
+// Lifecycle of an Inquiry — light interest, no funnel.
+//   - `open`      live; the agent / bot may still act on it.
+//   - `discarded` will not progress; `discarded_reason` optional.
+//   - `promoted`  converted into a Deal via atomic `promoteInquiry`;
+//                 the resulting `promoted_deal_id` is guaranteed populated.
+export const inquiryStatusEnum = pgEnum("inquiry_status", [
+  "open",
+  "discarded",
+  "promoted",
+]);
+
+// Channels through which an Inquiry can enter the system. Superset of
+// `dealSourceEnum`: includes `public_form`, `bot`, and `manual` because
+// those are capture surfaces specific to early-interest intake (landing
+// form, WhatsApp bot conversation, agent typing it in manually).
+export const inquirySourceEnum = pgEnum("inquiry_source", [
+  "public_form",
+  "bot",
+  "manual",
+  "whatsapp",
+  "facebook",
+  "instagram",
+  "tiktok",
+  "google",
+  "referral",
+  "direct",
+]);
+
+// Funnel stages of a Deal — only real commercial commitments. Earlier
+// states (prospect / qualified) belong to the Inquiry, not the Deal,
+// so the agent's Kanban is not flooded with conversational noise.
+//   - `visit_scheduled` appointment scheduled or already completed
+//   - `negotiation`     price / terms / offer negotiation in progress
+//   - `reserved`        formal reservation (deposit or down payment)
+//   - `won`             sale or rental closed (terminal)
+//   - `lost`            deal fell through (terminal; `lost_reason` optional)
+export const dealStageEnum = pgEnum("deal_stage", [
+  "visit_scheduled",
+  "negotiation",
+  "reserved",
+  "won",
+  "lost",
+]);
+
+// Channels through which a Deal originates. Subset of `inquirySourceEnum`:
+// does NOT include `public_form` / `bot` / `manual` because by the time a
+// Deal exists, the origin is encoded in the Inquiry it was promoted from
+// (or the agent created it directly and selects a social channel).
+export const dealSourceEnum = pgEnum("deal_source", [
+  "facebook",
+  "instagram",
+  "whatsapp",
+  "tiktok",
+  "google",
+  "referral",
+  "direct",
+]);

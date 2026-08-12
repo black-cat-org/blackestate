@@ -26,7 +26,7 @@ This project follows **Clean Architecture** principles adapted for Next.js, orga
 ### Core Principles
 
 1. **Dependency Rule**: Domain ← Application ← Infrastructure ← Presentation. Inner layers NEVER import from outer layers.
-2. **Feature isolation**: Each business domain (properties, leads, appointments, etc.) is a self-contained module under `features/`.
+2. **Feature isolation**: Each business domain (properties, contacts, inquiries, deals, appointments, etc.) is a self-contained module under `features/`.
 3. **Null safety**: DB speaks `null`. App speaks `undefined`. Mappers translate. Components NEVER see `null`.
 4. **Port/Adapter pattern**: Domain defines repository interfaces (ports). Infrastructure implements them (adapters).
 
@@ -84,7 +84,7 @@ features/
       value-objects.ts                  # CurrencyAmount, SurfaceArea, PropertyAddress, etc.
     infrastructure/
       rls.ts                            # withRLS() — RLS transaction wrapper
-      session-context.ts                # getSessionContext() — Better Auth session extraction
+      session-context.ts                # getSessionContext() — Supabase Auth JWT claims extraction
 
   properties/
     domain/
@@ -105,14 +105,51 @@ features/
       components/                       # React components specific to properties
       actions.ts                        # Server Actions (thin: auth + call use case)
 
-  leads/
-    domain/...
-    application/...
-    infrastructure/...
-    presentation/...
+  contacts/                             # Person identity (split from legacy `leads`)
+    domain/
+      contact.entity.ts                 # Contact + DTOs
+      contact.repository.ts             # IContactRepository
+    application/
+      find-or-create-contact.use-case.ts # Dedup hot path consumed by inquiries/deals
+      ... + CRUD + soft-delete
+    infrastructure/
+      contact.{model,mapper}.ts         # null↔undefined boundary
+      drizzle-contact.repository.ts
+    presentation/
+      actions.ts + components/          # /dashboard/contacts pages, autocomplete, detail tabs
 
-  appointments/...
-  bot/...
+  inquiries/                            # Light expressed interest (no funnel)
+    domain/
+      inquiry.entity.ts                 # status: open | discarded | promoted; bidir invariant
+      inquiry.repository.ts             # promote() runs atomic deal insert + status flip
+    application/
+      create-inquiry.use-case.ts        # imports findOrCreateContactUseCase (cross-feature, documented)
+      promote-inquiry.use-case.ts + discard + getters
+    infrastructure/
+      inquiry.{model,mapper}.ts
+      drizzle-inquiry.repository.ts     # imports deal.mapper for atomic promote — documented exception
+    presentation/
+      actions.ts + components/          # /dashboard/inquiries pages, promote/discard dialogs
+
+  deals/                                # Commercial opportunity with 5-stage funnel
+    domain/
+      deal.entity.ts                    # stages: visit_scheduled→negotiation→reservation→won|lost
+      deal.repository.ts                # ACTIVE_DEAL_STAGES derived type for compile-time guards
+    application/
+      create-deal.use-case.ts + update-stage + close + reopen + getters
+    infrastructure/
+      deal.{model,mapper}.ts            # promoted-from-inquiry has `inquiry_id` back-link
+      drizzle-deal.repository.ts        # stage_order recalculated per (org, active stage)
+    presentation/
+      actions.ts + components/          # /dashboard/deals Kanban + Tabla toggle, detail
+
+  leads/                                # ⚠️ LEGACY — preserved while UI restoration audit runs
+                                        # (R43–R46 of sub-plan 2026-05-13-contact-inquiry-refactor.md
+                                        # paused; sidebar still has "Leads (legacy)" entry).
+                                        # Do NOT add new code here. New work uses contacts/inquiries/deals.
+
+  appointments/...                      # `deal_id` FK (was `lead_id` pre-refactor)
+  bot/...                               # `bot_conversations.contact_id` (was `lead_id` pre-refactor)
   analytics/...
   ai-contents/...
   settings/...
@@ -167,6 +204,83 @@ shortDescription: row.shortDescription ?? undefined
 rooms: data.rooms ? Number(data.rooms) : null
 shortDescription: data.shortDescription || null
 ```
+
+**Worked example — the three shapes for the same field across layers:**
+
+```typescript
+// 1. Model — features/contacts/infrastructure/contact.model.ts
+//    Two Drizzle-inferred aliases per table:
+//      ContactRow    = typeof contact.$inferSelect  (read shape — all
+//                                                    cols including
+//                                                    auto: id, timestamps)
+//      ContactInsert = typeof contact.$inferInsert  (write shape — cols
+//                                                    with DB defaults
+//                                                    become optional)
+type ContactRow = {
+  id: string
+  phone: string | null    // DB column `phone TEXT` nullable
+  email: string | null
+  name: string             // NOT NULL — never null
+  createdAt: Date
+  updatedAt: Date
+  // ...more cols
+}
+type ContactInsert = {
+  // `id`, `createdAt`, `updatedAt` are omitted by $inferInsert because
+  // the DB column has a default — Drizzle treats them as optional on write.
+  phone?: string | null
+  email?: string | null
+  name: string
+  // ...
+}
+
+// 2. Entity — features/contacts/domain/contact.entity.ts
+//    Domain type consumed by use cases + components. NEVER null.
+interface Contact {
+  id: string
+  phone?: string           // optional, never null
+  email?: string
+  name: string             // required — same as Model
+}
+
+// 3. DTO — lib/validations/contact.ts (form values from react-hook-form)
+//    Form fields are strings; empty input is "" not undefined, so the form
+//    keeps the field controlled. Zod validates + transforms at the Server
+//    Action boundary.
+interface ContactFormValues {
+  phone: string            // "" when empty (controlled input)
+  email: string
+  name: string
+}
+
+// 4. Mapper — features/contacts/infrastructure/contact.mapper.ts
+//    Bridges Model ↔ Entity (read path) and DTO → Insert (write path).
+function mapRowToContact(row: ContactRow): Contact {
+  return {
+    id: row.id,
+    name: row.name,
+    phone: row.phone ?? undefined,        // null → undefined (read)
+    email: row.email ?? undefined,
+  }
+}
+function mapFormToInsert(values: ContactFormValues): ContactInsert {
+  // Note: NOT `ContactRow` — write side uses the Insert alias because
+  // `id`, `createdAt`, etc. come from DB defaults (`gen_random_uuid()::text`,
+  // `now()`) and the mapper deliberately omits them.
+  return {
+    name: values.name,
+    phone: values.phone || null,          // "" → null (write)
+    email: values.email || null,
+  }
+}
+```
+
+**Why three shapes and not one?** Each layer has a different reason to differ:
+- **Model** mirrors Postgres; nullable columns are `null` because that is what Drizzle returns.
+- **Entity** mirrors how a JS programmer thinks about "absent": `field?: T`. Components do `contact.phone ?? "—"`, never `contact.phone === null`.
+- **DTO** mirrors how a controlled form input behaves: `""` keeps the input controlled and stops React from logging the "uncontrolled→controlled" warning.
+
+The mapper is the only place that knows about all three.
 
 **Null safety audit checklist (run for EVERY new mapper):**
 
@@ -260,6 +374,17 @@ export async function createPropertyAction(formData: PropertyFormData): Promise<
 | `app/` pages → Infrastructure | No | Never |
 | `app/` pages → Application | No | Server Actions mediate |
 | Any layer → `lib/*` | Yes | Shared utilities (`lib/supabase/*`, `lib/db/*`, `lib/utils/*`, `lib/constants/*`) are cross-cutting. Callable from Application, Presentation, or `app/`. Feature-specific `features/*/infrastructure/` still cannot be imported from Presentation |
+| Feature-A Infrastructure → Feature-B Infrastructure | **Exception** | Only when a repository genuinely owns an atomic operation that spans two domain tables (e.g. `IInquiryRepository.promote` inserts into `deal` while updating `inquiry` in a single tx). The owning repo imports the partner feature's mapper to translate Insert/Row shapes. The alternative — a SECURITY DEFINER RPC — would be overkill for invariants the partial UNIQUE constraint already enforces at the DB. Documented uses: `features/inquiries/infrastructure/drizzle-inquiry.repository.ts` imports `mapCreateDTOToInsert` + `mapDealRowToEntity` from `features/deals/infrastructure/deal.mapper.ts` for the atomic promote operation. Any new exception must be added to this list with justification |
+| Feature-A Application → Feature-B Application | Yes, with justification | Use cases are pure functions with zero Infrastructure deps — importing a sibling use case to compose a multi-feature workflow is a structural win over duplicating logic. The dependency must express a real business relationship, not an incidental code reuse. Documented uses: `features/inquiries/application/create-inquiry.use-case.ts` imports `findOrCreateContactUseCase` from `features/contacts/application/` because every Inquiry needs a resolved Contact — the dependency is intrinsic to the domain, not implementation leak |
+
+### Throw token convention
+
+Repositories and use cases that need to fail with a typed reason use `throw new Error("<token>")` — the action layer catches the raw `Error.message` and maps it to localised Spanish copy at the presentation boundary (see `features/*/presentation/*-error-messages.ts`).
+
+- **Casing:** `lowercase_snake_case` (e.g. `contact_not_found`, `deal_already_active`, `inquiry_not_open`). Matches the RPC error tokens raised by `acceptInvitation` / `bootstrapOrganization` for cross-layer consistency.
+- **Parametric suffix:** when the UI needs a number, append after `:` (e.g. `contact_has_active_deals:3`). Action layer parses the suffix; the catalogue function strips it before switching.
+- **Never leak existence:** soft-deny errors use a generic `<entity>_not_found_or_no_permission` token so the caller cannot distinguish "row does not exist" from "row exists but I cannot see it".
+- **Legacy SCREAMING tokens:** `features/properties/` and `features/appointments/` still raise SCREAMING_SNAKE_CASE tokens (e.g. `PROPERTY_NOT_FOUND`). These predate the convention and migrate in separate tickets — new repos must use lowercase from day one.
 
 ## Database Layer
 
@@ -288,7 +413,7 @@ export async function createPropertyAction(formData: PropertyFormData): Promise<
   Any new exception must be added to this list with justification.
 - **Admin client (`getSupabaseAdmin()`)** is reserved for cross-org auth-system operations (e.g. `inviteUserByEmail`, `deleteUser`, future Inngest background jobs). NEVER for queries against domain tables.
 - No hard DELETE. Soft delete = `UPDATE SET deleted_at = now()`. No GRANT DELETE on any table.
-- `created_by_user_id` is NOT NULL on: properties, leads, appointments, ai_contents, lead_property_queue.
+- `created_by_user_id` is NOT NULL on: `properties`, `contact`, `inquiry`, `deal`, `appointments`, `ai_contents`, `contact_property_queue`. Also NOT NULL on the legacy-preserved `leads` and `lead_property_queue` (kept while the UI restoration audit runs — do not model new tables after them).
 - Agent can only UPDATE own records (`created_by_user_id = sub`). Owner/admin can UPDATE anything in their org.
 
 ### ⚠️ DANGER: Never use `drizzle-kit push`
@@ -363,17 +488,21 @@ app/                        # Pages and layouts (App Router) — imports from fe
 features/                   # Feature-based modules (Clean Architecture)
   shared/                   # Shared domain + infrastructure
     domain/                 # Value objects, shared interfaces
-    infrastructure/         # rls.ts, session-context.ts
+    infrastructure/         # rls.ts, session-context.ts, anon-rls.ts
   properties/               # Property feature module
     domain/                 # Entity, repository interface
     application/            # Use cases
     infrastructure/         # Drizzle repository, mapper, model
     presentation/           # Server Actions, components
-  leads/                    # Lead feature module
-  appointments/             # Appointment feature module
-  bot/                      # Bot feature module
+  contacts/                 # Person identity (split from legacy `leads`)
+  inquiries/                # Light expressed interest (status: open/discarded/promoted)
+  deals/                    # Commercial opportunity (5-stage funnel)
+  leads/                    # ⚠️ LEGACY — preserved during UI restoration audit; do NOT add new code
+  appointments/             # Appointment feature module (FK now `deal_id`)
+  bot/                      # Bot feature module (FK now `contact_id`)
   analytics/                # Analytics feature module
   ai-contents/              # AI content feature module
+  property-transfers/       # (planned) Bulk transfer N props between agents + cascade
   settings/                 # Settings feature module
 components/                 # Shared React components
   ui/                       # shadcn/ui base components

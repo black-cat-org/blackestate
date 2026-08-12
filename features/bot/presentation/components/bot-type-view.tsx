@@ -10,7 +10,7 @@ import {
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { getLeadColor } from "@/lib/utils/lead-colors"
+import { getStableColor } from "@/lib/utils/stable-colors"
 import { formatRelativeTime } from "@/lib/utils/relative-time"
 import { BOT_ACTIVITY_LABELS, BOT_ACTIVITY_COLORS } from "@/lib/constants/bot"
 import type { BotActivity, BotActivityType } from "@/features/bot/domain/bot.entity"
@@ -92,18 +92,18 @@ export function BotTypeView({ activities }: BotTypeViewProps) {
               <ScrollArea className="max-h-[60vh]">
                 <div className="space-y-0.5">
                   {cat.items.map((activity) => {
-                    const leadColor = getLeadColor(activity.leadId)
+                    const contactColor = getStableColor(activity.contactId)
                     return (
                       <button
                         key={activity.id}
                         type="button"
                         className="flex w-full items-start gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-accent/50"
-                        onClick={() => router.push(`/dashboard/leads/${activity.leadId}`)}
+                        onClick={() => router.push(`/dashboard/contacts/${activity.contactId}`)}
                       >
-                        <span className="mt-1 size-2 shrink-0 rounded-full" style={{ backgroundColor: leadColor }} />
+                        <span className="mt-1 size-2 shrink-0 rounded-full" style={{ backgroundColor: contactColor }} />
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-1.5">
-                            <span className="text-xs font-medium truncate">{activity.leadName}</span>
+                            <span className="text-xs font-medium truncate">{activity.contactName}</span>
                             <Badge className={`text-[9px] px-1 py-0 border-0 shrink-0 ${BOT_ACTIVITY_COLORS[activity.type]}`}>{BOT_ACTIVITY_LABELS[activity.type]}</Badge>
                             <span className="text-[10px] text-muted-foreground shrink-0">
                               {formatRelativeTime(activity.timestamp)}

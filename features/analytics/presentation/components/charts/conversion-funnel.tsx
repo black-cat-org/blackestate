@@ -17,8 +17,8 @@ export function ConversionFunnel({ data }: ConversionFunnelProps) {
       <CardHeader className="pb-2">
         <ChartHeader
           title="Embudo de conversión"
-          helpText="Muestra cuántos leads tienes en cada etapa del proceso de venta. Lo ideal es que el número vaya bajando de arriba hacia abajo — muchos leads nuevos y pocos perdidos significa que estás trabajando bien. Si ves que muchos se quedan en Nuevo o Contactado significa que el bot o tú no están logrando avanzarlos."
-          subtitle={`así están distribuidos tus ${total} leads en este momento`}
+          helpText="Muestra cuántas consultas y negocios tienes en cada etapa del proceso de venta. Lo ideal es que los números bajen de arriba hacia abajo — muchas consultas abiertas y pocas perdidas significa que estás trabajando bien. Si ves que muchas se estancan en Abierta o Negociación significa que el bot o tú no están logrando avanzarlas."
+          subtitle={`así están distribuidos tus ${total} registros en el embudo en este momento`}
         />
       </CardHeader>
       <CardContent>

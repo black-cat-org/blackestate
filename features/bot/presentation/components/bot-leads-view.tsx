@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { LeadChatDialog } from "@/features/leads/presentation/components/lead-chat-dialog"
-import { getLeadColor } from "@/lib/utils/lead-colors"
+import { getStableColor } from "@/lib/utils/stable-colors"
 import { formatRelativeTime } from "@/lib/utils/relative-time"
 import { BOT_ACTIVITY_LABELS, BOT_ACTIVITY_COLORS } from "@/lib/constants/bot"
 import { AGENT_CONFIG } from "@/lib/constants/agent"
@@ -18,27 +18,27 @@ interface BotLeadsViewProps {
   messages: BotMessage[]
 }
 
-interface LeadSummary {
-  leadId: string
-  leadName: string
+interface ContactSummary {
+  contactId: string
+  contactName: string
   lastActivity: BotActivity
   messageCount: number
   propertiesSent: number
 }
 
 export function BotLeadsView({ activities, messages }: BotLeadsViewProps) {
-  const [chatLead, setChatLead] = useState<LeadSummary | null>(null)
+  const [chatContact, setChatContact] = useState<ContactSummary | null>(null)
 
-  const leads = useMemo(() => {
-    const map = new Map<string, LeadSummary>()
+  const contacts = useMemo(() => {
+    const map = new Map<string, ContactSummary>()
 
     for (const a of activities) {
-      const existing = map.get(a.leadId)
+      const existing = map.get(a.contactId)
 
       if (!existing) {
-        map.set(a.leadId, {
-          leadId: a.leadId,
-          leadName: a.leadName,
+        map.set(a.contactId, {
+          contactId: a.contactId,
+          contactName: a.contactName,
           lastActivity: a,
           messageCount: (a.type === "message_sent" || a.type === "message_received") ? 1 : 0,
           propertiesSent: a.type === "property_sent" ? 1 : 0,
@@ -58,67 +58,68 @@ export function BotLeadsView({ activities, messages }: BotLeadsViewProps) {
   }, [activities])
 
   const chatMessages = useMemo(() => {
-    if (!chatLead) return []
+    if (!chatContact) return []
     return messages
-      .filter((m) => m.leadId === chatLead.leadId)
+      .filter((m) => m.contactId === chatContact.contactId)
       .sort((a, b) => a.timestamp.localeCompare(b.timestamp))
-  }, [messages, chatLead])
+  }, [messages, chatContact])
 
-  if (leads.length === 0) {
-    return <p className="text-sm text-muted-foreground py-6 text-center">No hay leads activos con el bot.</p>
+  if (contacts.length === 0) {
+    return <p className="text-sm text-muted-foreground py-6 text-center">No hay contactos activos con el bot.</p>
   }
 
   return (
     <>
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-        {leads.map((lead) => {
-          const color = getLeadColor(lead.leadId)
+        {contacts.map((c) => {
+          const color = getStableColor(c.contactId)
 
           return (
             <Card
-              key={lead.leadId}
+              key={c.contactId}
               className="gap-0 py-0 cursor-pointer transition-colors hover:bg-accent/50"
-              onClick={() => setChatLead(lead)}
+              onClick={() => setChatContact(c)}
             >
               <CardContent className="p-3!">
                 <div className="space-y-2.5">
-                  {/* Header — name links to lead detail */}
+                  {/* Header — name links to contact detail */}
                   <div className="flex items-center justify-between gap-2">
                     <Link
-                      href={`/dashboard/leads/${lead.leadId}`}
+                      href={`/dashboard/contacts/${c.contactId}`}
                       className="flex items-center gap-1.5 min-w-0 hover:underline"
                       onClick={(e) => e.stopPropagation()}
                     >
                       <span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: color }} />
-                      <span className="text-sm font-semibold truncate">{lead.leadName}</span>
+                      <span className="text-sm font-semibold truncate">{c.contactName}</span>
                     </Link>
                   </div>
 
                   {/* Last activity */}
                   <div className="space-y-0.5">
                     <div className="flex items-center gap-1.5">
-                      <Badge className={`text-[9px] px-1 py-0 border-0 shrink-0 ${BOT_ACTIVITY_COLORS[lead.lastActivity.type]}`}>
-                        {BOT_ACTIVITY_LABELS[lead.lastActivity.type]}
+                      <Badge className={`text-[9px] px-1 py-0 border-0 shrink-0 ${BOT_ACTIVITY_COLORS[c.lastActivity.type]}`}>
+                        {BOT_ACTIVITY_LABELS[c.lastActivity.type]}
                       </Badge>
-                      <span className="text-[10px] text-muted-foreground">{formatRelativeTime(lead.lastActivity.timestamp)}</span>
+                      <span className="text-[10px] text-muted-foreground">{formatRelativeTime(c.lastActivity.timestamp)}</span>
                     </div>
-                    <p className="text-xs text-muted-foreground truncate">{lead.lastActivity.description}</p>
+                    <p className="text-xs text-muted-foreground truncate">{c.lastActivity.description}</p>
                   </div>
 
                   {/* Counters */}
                   <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
                     <span className="flex items-center gap-1">
                       <MessageSquare className="size-3" />
-                      {lead.messageCount}
+                      {c.messageCount}
                     </span>
                     <span className="flex items-center gap-1">
                       <Home className="size-3" />
-                      {lead.propertiesSent}
+                      {c.propertiesSent}
                     </span>
 
-                    {/* WhatsApp */}
+                    {/* WhatsApp — placeholder; phone lookup will live on the
+                         contact when the bot module sends real messages. */}
                     <a
-                      href={`https://wa.me/${lead.leadId}?text=${encodeURIComponent(AGENT_CONFIG.whatsappMessage("", ""))}`}
+                      href={`https://wa.me/${c.contactId}?text=${encodeURIComponent(AGENT_CONFIG.whatsappMessage("", ""))}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="ml-auto"
@@ -136,14 +137,17 @@ export function BotLeadsView({ activities, messages }: BotLeadsViewProps) {
         })}
       </div>
 
-      {/* Chat dialog — same component used in lead detail */}
-      {chatLead && (
+      {/* Chat dialog — re-uses the legacy `LeadChatDialog` for now. The
+           dialog's `leadName`/`leadPhone` props are content labels in
+           the dialog UI, not domain references. Renaming the dialog is
+           part of the Fase 10 leads-module cleanup (R46+). */}
+      {chatContact && (
         <LeadChatDialog
-          open={!!chatLead}
-          onOpenChange={(open) => { if (!open) setChatLead(null) }}
+          open={!!chatContact}
+          onOpenChange={(open) => { if (!open) setChatContact(null) }}
           messages={chatMessages}
-          leadName={chatLead.leadName}
-          leadPhone={chatLead.leadId}
+          leadName={chatContact.contactName}
+          leadPhone={chatContact.contactId}
         />
       )}
     </>

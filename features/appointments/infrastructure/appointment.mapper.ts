@@ -13,8 +13,9 @@ import type { AppointmentRow, AppointmentInsert } from "./appointment.model"
 
 export function mapRowToEntity(
   row: AppointmentRow,
-  leadName: string,
-  leadPhone: string | undefined,
+  contactId: string,
+  contactName: string,
+  contactPhone: string | undefined,
   propertyTitle: string,
 ): Appointment {
   // Derive `completed` at read time: any `confirmed` row whose `ends_at`
@@ -32,9 +33,10 @@ export function mapRowToEntity(
       : row.completedAt?.toISOString() ?? undefined
   return {
     id: row.id,
-    leadId: row.leadId,
-    leadName,
-    leadPhone,
+    dealId: row.dealId,
+    contactId,
+    contactName,
+    contactPhone,
     propertyId: row.propertyId,
     propertyTitle,
     date: row.startsAt.toISOString().split("T")[0],
@@ -78,7 +80,7 @@ export function mapCreateDTOToInsert(
   return {
     organizationId: ctx.orgId,
     createdByUserId: ctx.userId,
-    leadId: data.leadId,
+    dealId: data.dealId,
     propertyId: data.propertyId,
     startsAt: new Date(`${data.date}T${data.time}:00Z`),
     endsAt: new Date(`${data.date}T${data.endTime}:00Z`),

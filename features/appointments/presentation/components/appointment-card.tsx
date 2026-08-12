@@ -36,7 +36,7 @@ import {
   deleteAppointmentAction,
 } from "@/features/appointments/presentation/actions"
 import { AppointmentEditDialog } from "@/features/appointments/presentation/components/appointment-edit-dialog"
-import { getLeadColor } from "@/lib/utils/lead-colors"
+import { getStableColor } from "@/lib/utils/stable-colors"
 import { toast } from "sonner"
 import type {
   Appointment,
@@ -61,7 +61,7 @@ export function AppointmentCard({
   const [editOpen, setEditOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [deleting, setDeleting] = useState(false)
-  const leadColor = getLeadColor(appointment.leadId)
+  const dealColor = getStableColor(appointment.dealId)
   const transitions = APPOINTMENT_STATUS_TRANSITIONS[appointment.status]
   const hasNotes = !!appointment.notes
 
@@ -95,7 +95,7 @@ export function AppointmentCard({
     }
   }
 
-  const whatsappUrl = `https://wa.me/${(appointment.leadPhone ?? "").replace(/[\s+\-]/g, "")}?text=${encodeURIComponent(
+  const whatsappUrl = `https://wa.me/${(appointment.contactPhone ?? "").replace(/[\s+\-]/g, "")}?text=${encodeURIComponent(
     AGENT_CONFIG.whatsappMessage(appointment.propertyTitle, appointment.propertyId),
   )}`
 
@@ -108,13 +108,13 @@ export function AppointmentCard({
               <button
                 type="button"
                 className="flex items-center gap-1.5 text-sm font-semibold text-left hover:underline"
-                onClick={() => router.push(`/dashboard/leads/${appointment.leadId}`)}
+                onClick={() => router.push(`/dashboard/deals/${appointment.dealId}`)}
               >
                 <span
                   className="size-2.5 shrink-0 rounded-full"
-                  style={{ backgroundColor: leadColor }}
+                  style={{ backgroundColor: dealColor }}
                 />
-                {appointment.leadName}
+                {appointment.contactName}
               </button>
               <div className="flex items-center gap-1">
                 <Badge
@@ -236,7 +236,7 @@ export function AppointmentCard({
         open={deleteOpen}
         onOpenChange={setDeleteOpen}
         title="Eliminar cita"
-        description={`¿Seguro que quieres eliminar la cita con ${appointment.leadName}? Esta acción no se puede deshacer.`}
+        description={`¿Seguro que quieres eliminar la cita con ${appointment.contactName}? Esta acción no se puede deshacer.`}
         onConfirm={handleDelete}
         confirming={deleting}
       />

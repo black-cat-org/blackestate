@@ -4,7 +4,7 @@ import { useState, useMemo } from "react"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { AppointmentCard } from "@/features/appointments/presentation/components/appointment-card"
-import { getLeadColor, getLeadColorLight } from "@/lib/utils/lead-colors"
+import { getStableColor, getStableColorLight } from "@/lib/utils/stable-colors"
 import { formatCalendarTime } from "@/lib/utils/relative-time"
 import { APPOINTMENT_STATUS_LABELS, APPOINTMENT_STATUS_COLORS } from "@/lib/constants/bot"
 import type { Appointment } from "@/features/appointments/domain/appointment.entity"
@@ -38,7 +38,7 @@ const MONTH_NAMES = [
 function StripedBackground({ appointments }: { appointments: Appointment[] }) {
   if (appointments.length === 0) return null
 
-  const colors = appointments.map((a) => getLeadColorLight(a.leadId))
+  const colors = appointments.map((a) => getStableColorLight(a.dealId))
   const pct = 100 / colors.length
 
   const gradient = colors
@@ -215,7 +215,7 @@ export function AppointmentsCalendar({ appointments, onUpdate, onDelete }: Appoi
                       <div className="flex flex-col items-center self-stretch">
                         <span
                           className="mt-1.5 size-2 shrink-0 rounded-full"
-                          style={{ backgroundColor: getLeadColor(apt.leadId) }}
+                          style={{ backgroundColor: getStableColor(apt.dealId) }}
                         />
                         {!isLastInDay && (
                           <div className="flex-1 w-px bg-border mt-1" />
@@ -225,7 +225,7 @@ export function AppointmentsCalendar({ appointments, onUpdate, onDelete }: Appoi
                       {/* Content */}
                       <div className="flex-1 min-w-0 py-0.5">
                         <div className="flex items-center gap-2">
-                          <span className="text-xs font-medium truncate">{apt.leadName}</span>
+                          <span className="text-xs font-medium truncate">{apt.contactName}</span>
                           <span className="text-[10px] text-muted-foreground shrink-0">{apt.time}</span>
                           <span className={`text-[9px] px-1 py-0 rounded shrink-0 ${APPOINTMENT_STATUS_COLORS[apt.status]}`}>
                             {APPOINTMENT_STATUS_LABELS[apt.status]}

@@ -24,7 +24,7 @@ export class DrizzleBotRepository implements IBotRepository {
       return tx
         .select({
           message: botMessages,
-          leadId: botConversations.leadId,
+          contactId: botConversations.contactId,
         })
         .from(botMessages)
         .leftJoin(
@@ -35,19 +35,19 @@ export class DrizzleBotRepository implements IBotRepository {
     })
 
     return rows.map((r) =>
-      mapMessageRowToEntity(r.message, r.leadId ?? ""),
+      mapMessageRowToEntity(r.message, r.contactId ?? ""),
     )
   }
 
-  async getMessagesByLead(
+  async getMessagesByContact(
     ctx: SessionContext,
-    leadId: string,
+    contactId: string,
   ): Promise<BotMessage[]> {
     const rows = await withRLS(ctx, async (tx) => {
       return tx
         .select({
           message: botMessages,
-          leadId: botConversations.leadId,
+          contactId: botConversations.contactId,
         })
         .from(botMessages)
         .leftJoin(
@@ -56,14 +56,14 @@ export class DrizzleBotRepository implements IBotRepository {
         )
         .where(
           and(
-            eq(botConversations.leadId, leadId),
+            eq(botConversations.contactId, contactId),
             isNull(botMessages.deletedAt),
           ),
         )
     })
 
     return rows.map((r) =>
-      mapMessageRowToEntity(r.message, r.leadId ?? leadId),
+      mapMessageRowToEntity(r.message, r.contactId ?? contactId),
     )
   }
 
@@ -76,9 +76,9 @@ export class DrizzleBotRepository implements IBotRepository {
     return []
   }
 
-  async getActivitiesByLead(
+  async getActivitiesByContact(
     _ctx: SessionContext,
-    _leadId: string,
+    _contactId: string,
   ): Promise<BotActivity[]> {
     // TODO: implement when dedicated bot_activities table exists
     return []
@@ -88,9 +88,9 @@ export class DrizzleBotRepository implements IBotRepository {
   // Sent properties
   // ---------------------------------------------------------------------------
 
-  async getSentPropertiesByLead(
+  async getSentPropertiesByContact(
     _ctx: SessionContext,
-    _leadId: string,
+    _contactId: string,
   ): Promise<SentProperty[]> {
     // TODO: implement when dedicated bot_sent_properties table exists
     return []

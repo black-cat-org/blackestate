@@ -64,8 +64,8 @@ export function MyActivityTab({
         <BotFunnel
           data={funnel}
           title="Tu efectividad"
-          helpText="Muestra qué tan efectivo eres en cada paso del proceso cuando intervienes manualmente. De cada 100 leads que contactas directamente, cuántos vieron una propiedad, cuántos solicitaron cita y cuántos la agendaron. Compáralo con la efectividad del bot para entender dónde agregas más valor."
-          subtitleTemplate="de cada 100 leads que contactas, cuántos terminan en una cita"
+          helpText="Muestra qué tan efectivo eres en cada paso del proceso cuando intervienes manualmente. De cada 100 consultas que contactas directamente, cuántas vieron una propiedad, cuántas solicitaron cita y cuántas la agendaron. Compáralo con la efectividad del bot para entender dónde agregas más valor."
+          subtitleTemplate="de cada 100 consultas que contactas, cuántas terminan en una cita"
         />
         <AppointmentOutcomesDonut data={appointmentOutcomes} />
       </div>

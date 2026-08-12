@@ -9,13 +9,43 @@ import type {
 } from "@/features/appointments/domain/appointment.entity"
 import type { SessionContext } from "@/features/shared/domain/session-context"
 import { withRLS } from "@/features/shared/infrastructure/rls"
-import { appointments, leads, properties } from "@/lib/db/schema"
+import { appointments, contact, deal, properties } from "@/lib/db/schema"
 import {
   mapRowToEntity,
   mapCreateDTOToInsert,
   mapUpdateDTOToUpdate,
 } from "./appointment.mapper"
 
+// User-facing fallbacks shown when a JOIN unexpectedly returns NULL.
+// `appointments.deal_id` is NOT NULL with ON DELETE CASCADE so the
+// deal join cannot fail at runtime, but the contact/properties joins
+// remain LEFT JOINs and could in theory yield NULL if upstream data
+// drifts. Surfacing a Spanish placeholder is safer than crashing on
+// missing string in the UI.
+const FALLBACK_CONTACT_NAME = "Sin contacto"
+const FALLBACK_PROPERTY_TITLE = "Sin propiedad"
+
+/**
+ * Drizzle adapter for IAppointmentRepository.
+ *
+ * Join shape post-R34: every read joins `appointments → deal → contact`
+ * to denormalise the contact name/phone the UI needs without an extra
+ * round-trip. `appointments.deal_id` is NOT NULL with ON DELETE
+ * CASCADE so the `deal` join is `innerJoin` (the row is guaranteed to
+ * exist). The `contact` join stays `leftJoin` because a deal could
+ * theoretically lose its contact pointer through upstream data drift,
+ * and we prefer surfacing a placeholder ("Sin contacto") over a
+ * runtime crash. `properties` is also joined directly via
+ * `appointments.property_id` and stays `leftJoin` for the same
+ * defensive reason.
+ *
+ * Every query is wrapped in `withRLS(ctx, ...)`. The appointments
+ * RLS policies (drizzle/sql/017a) restrict rows to the caller's
+ * `organization_id` claim, so no explicit `eq(organization_id, ...)`
+ * filter is needed inside the query body. The contact + deal +
+ * properties joins are inner-org by RLS as well — a row outside the
+ * caller's org cannot leak through the join.
+ */
 export class DrizzleAppointmentRepository implements IAppointmentRepository {
   // ---------------------------------------------------------------------------
   // Reads
@@ -26,12 +56,14 @@ export class DrizzleAppointmentRepository implements IAppointmentRepository {
       return tx
         .select({
           appointment: appointments,
-          leadName: leads.name,
-          leadPhone: leads.phone,
+          contactId: contact.id,
+          contactName: contact.name,
+          contactPhone: contact.phone,
           propertyTitle: properties.title,
         })
         .from(appointments)
-        .leftJoin(leads, eq(appointments.leadId, leads.id))
+        .innerJoin(deal, eq(appointments.dealId, deal.id))
+        .leftJoin(contact, eq(deal.contactId, contact.id))
         .leftJoin(properties, eq(appointments.propertyId, properties.id))
         .where(isNull(appointments.deletedAt))
     })
@@ -39,31 +71,34 @@ export class DrizzleAppointmentRepository implements IAppointmentRepository {
     return rows.map((r) =>
       mapRowToEntity(
         r.appointment,
-        r.leadName ?? "Unknown",
-        r.leadPhone ?? undefined,
-        r.propertyTitle ?? "Unknown",
+        r.contactId ?? "",
+        r.contactName ?? FALLBACK_CONTACT_NAME,
+        r.contactPhone ?? undefined,
+        r.propertyTitle ?? FALLBACK_PROPERTY_TITLE,
       ),
     )
   }
 
-  async findByLead(
+  async findByDeal(
     ctx: SessionContext,
-    leadId: string,
+    dealId: string,
   ): Promise<Appointment[]> {
     const rows = await withRLS(ctx, async (tx) => {
       return tx
         .select({
           appointment: appointments,
-          leadName: leads.name,
-          leadPhone: leads.phone,
+          contactId: contact.id,
+          contactName: contact.name,
+          contactPhone: contact.phone,
           propertyTitle: properties.title,
         })
         .from(appointments)
-        .leftJoin(leads, eq(appointments.leadId, leads.id))
+        .innerJoin(deal, eq(appointments.dealId, deal.id))
+        .leftJoin(contact, eq(deal.contactId, contact.id))
         .leftJoin(properties, eq(appointments.propertyId, properties.id))
         .where(
           and(
-            eq(appointments.leadId, leadId),
+            eq(appointments.dealId, dealId),
             isNull(appointments.deletedAt),
           ),
         )
@@ -72,9 +107,46 @@ export class DrizzleAppointmentRepository implements IAppointmentRepository {
     return rows.map((r) =>
       mapRowToEntity(
         r.appointment,
-        r.leadName ?? "Unknown",
-        r.leadPhone ?? undefined,
-        r.propertyTitle ?? "Unknown",
+        r.contactId ?? "",
+        r.contactName ?? FALLBACK_CONTACT_NAME,
+        r.contactPhone ?? undefined,
+        r.propertyTitle ?? FALLBACK_PROPERTY_TITLE,
+      ),
+    )
+  }
+
+  async findByContact(
+    ctx: SessionContext,
+    contactId: string,
+  ): Promise<Appointment[]> {
+    const rows = await withRLS(ctx, async (tx) => {
+      return tx
+        .select({
+          appointment: appointments,
+          contactId: contact.id,
+          contactName: contact.name,
+          contactPhone: contact.phone,
+          propertyTitle: properties.title,
+        })
+        .from(appointments)
+        .innerJoin(deal, eq(appointments.dealId, deal.id))
+        .leftJoin(contact, eq(deal.contactId, contact.id))
+        .leftJoin(properties, eq(appointments.propertyId, properties.id))
+        .where(
+          and(
+            eq(deal.contactId, contactId),
+            isNull(appointments.deletedAt),
+          ),
+        )
+    })
+
+    return rows.map((r) =>
+      mapRowToEntity(
+        r.appointment,
+        r.contactId ?? "",
+        r.contactName ?? FALLBACK_CONTACT_NAME,
+        r.contactPhone ?? undefined,
+        r.propertyTitle ?? FALLBACK_PROPERTY_TITLE,
       ),
     )
   }
@@ -87,12 +159,14 @@ export class DrizzleAppointmentRepository implements IAppointmentRepository {
       return tx
         .select({
           appointment: appointments,
-          leadName: leads.name,
-          leadPhone: leads.phone,
+          contactId: contact.id,
+          contactName: contact.name,
+          contactPhone: contact.phone,
           propertyTitle: properties.title,
         })
         .from(appointments)
-        .leftJoin(leads, eq(appointments.leadId, leads.id))
+        .innerJoin(deal, eq(appointments.dealId, deal.id))
+        .leftJoin(contact, eq(deal.contactId, contact.id))
         .leftJoin(properties, eq(appointments.propertyId, properties.id))
         .where(
           and(
@@ -105,9 +179,10 @@ export class DrizzleAppointmentRepository implements IAppointmentRepository {
     return rows.map((r) =>
       mapRowToEntity(
         r.appointment,
-        r.leadName ?? "Unknown",
-        r.leadPhone ?? undefined,
-        r.propertyTitle ?? "Unknown",
+        r.contactId ?? "",
+        r.contactName ?? FALLBACK_CONTACT_NAME,
+        r.contactPhone ?? undefined,
+        r.propertyTitle ?? FALLBACK_PROPERTY_TITLE,
       ),
     )
   }
@@ -124,10 +199,16 @@ export class DrizzleAppointmentRepository implements IAppointmentRepository {
     const rows = await withRLS(ctx, (tx) =>
       tx.insert(appointments).values(insert).returning(),
     )
+    // The caller (create dialog) resolves the Deal first and passes the
+    // denormalised contact + property snapshot — including `contactId`
+    // pulled from the chosen Deal — so the entity returned post-insert
+    // carries the same shape the read paths produce. No JOIN needed on
+    // the way out.
     return mapRowToEntity(
       rows[0],
-      data.leadName,
-      data.leadPhone,
+      data.contactId,
+      data.contactName,
+      data.contactPhone,
       data.propertyTitle,
     )
   }
@@ -155,12 +236,14 @@ export class DrizzleAppointmentRepository implements IAppointmentRepository {
       const joined = await tx
         .select({
           appointment: appointments,
-          leadName: leads.name,
-          leadPhone: leads.phone,
+          contactId: contact.id,
+          contactName: contact.name,
+          contactPhone: contact.phone,
           propertyTitle: properties.title,
         })
         .from(appointments)
-        .leftJoin(leads, eq(appointments.leadId, leads.id))
+        .innerJoin(deal, eq(appointments.dealId, deal.id))
+        .leftJoin(contact, eq(deal.contactId, contact.id))
         .leftJoin(properties, eq(appointments.propertyId, properties.id))
         .where(and(eq(appointments.id, updated[0].id), isNull(appointments.deletedAt)))
         .limit(1)
@@ -170,9 +253,10 @@ export class DrizzleAppointmentRepository implements IAppointmentRepository {
 
     return mapRowToEntity(
       rows[0].appointment,
-      rows[0].leadName ?? "Unknown",
-      rows[0].leadPhone ?? undefined,
-      rows[0].propertyTitle ?? "Unknown",
+      rows[0].contactId ?? "",
+      rows[0].contactName ?? FALLBACK_CONTACT_NAME,
+      rows[0].contactPhone ?? undefined,
+      rows[0].propertyTitle ?? FALLBACK_PROPERTY_TITLE,
     )
   }
 
@@ -181,12 +265,14 @@ export class DrizzleAppointmentRepository implements IAppointmentRepository {
       return tx
         .select({
           appointment: appointments,
-          leadName: leads.name,
-          leadPhone: leads.phone,
+          contactId: contact.id,
+          contactName: contact.name,
+          contactPhone: contact.phone,
           propertyTitle: properties.title,
         })
         .from(appointments)
-        .leftJoin(leads, eq(appointments.leadId, leads.id))
+        .innerJoin(deal, eq(appointments.dealId, deal.id))
+        .leftJoin(contact, eq(deal.contactId, contact.id))
         .leftJoin(properties, eq(appointments.propertyId, properties.id))
         .where(isNotNull(appointments.deletedAt))
         .orderBy(desc(appointments.deletedAt))
@@ -195,9 +281,10 @@ export class DrizzleAppointmentRepository implements IAppointmentRepository {
     return rows.map((r) =>
       mapRowToEntity(
         r.appointment,
-        r.leadName ?? "Unknown",
-        r.leadPhone ?? undefined,
-        r.propertyTitle ?? "Unknown",
+        r.contactId ?? "",
+        r.contactName ?? FALLBACK_CONTACT_NAME,
+        r.contactPhone ?? undefined,
+        r.propertyTitle ?? FALLBACK_PROPERTY_TITLE,
       ),
     )
   }
@@ -247,21 +334,24 @@ export class DrizzleAppointmentRepository implements IAppointmentRepository {
       const joined = await tx
         .select({
           appointment: appointments,
-          leadName: leads.name,
-          leadPhone: leads.phone,
+          contactId: contact.id,
+          contactName: contact.name,
+          contactPhone: contact.phone,
           propertyTitle: properties.title,
         })
         .from(appointments)
-        .leftJoin(leads, eq(appointments.leadId, leads.id))
+        .innerJoin(deal, eq(appointments.dealId, deal.id))
+        .leftJoin(contact, eq(deal.contactId, contact.id))
         .leftJoin(properties, eq(appointments.propertyId, properties.id))
         .where(eq(appointments.id, targetId))
         .limit(1)
 
       return mapRowToEntity(
         joined[0].appointment,
-        joined[0].leadName ?? "Unknown",
-        joined[0].leadPhone ?? undefined,
-        joined[0].propertyTitle ?? "Unknown",
+        joined[0].contactId ?? "",
+        joined[0].contactName ?? FALLBACK_CONTACT_NAME,
+        joined[0].contactPhone ?? undefined,
+        joined[0].propertyTitle ?? FALLBACK_PROPERTY_TITLE,
       )
     })
   }
@@ -322,21 +412,24 @@ export class DrizzleAppointmentRepository implements IAppointmentRepository {
       const joined = await tx
         .select({
           appointment: appointments,
-          leadName: leads.name,
-          leadPhone: leads.phone,
+          contactId: contact.id,
+          contactName: contact.name,
+          contactPhone: contact.phone,
           propertyTitle: properties.title,
         })
         .from(appointments)
-        .leftJoin(leads, eq(appointments.leadId, leads.id))
+        .innerJoin(deal, eq(appointments.dealId, deal.id))
+        .leftJoin(contact, eq(deal.contactId, contact.id))
         .leftJoin(properties, eq(appointments.propertyId, properties.id))
         .where(eq(appointments.id, updated[0].id))
         .limit(1)
 
       return mapRowToEntity(
         joined[0].appointment,
-        joined[0].leadName ?? "Unknown",
-        joined[0].leadPhone ?? undefined,
-        joined[0].propertyTitle ?? "Unknown",
+        joined[0].contactId ?? "",
+        joined[0].contactName ?? FALLBACK_CONTACT_NAME,
+        joined[0].contactPhone ?? undefined,
+        joined[0].propertyTitle ?? FALLBACK_PROPERTY_TITLE,
       )
     })
   }

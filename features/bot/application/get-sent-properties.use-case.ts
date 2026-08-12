@@ -2,12 +2,12 @@ import type { SentProperty } from "@/features/bot/domain/bot.entity"
 import type { SessionContext } from "@/features/shared/domain/session-context"
 import { DrizzleBotRepository } from "@/features/bot/infrastructure/drizzle-bot.repository"
 
-export async function getSentPropertiesByLeadUseCase(
+export async function getSentPropertiesByContactUseCase(
   ctx: SessionContext,
-  leadId: string,
+  contactId: string,
 ): Promise<SentProperty[]> {
   const repo = new DrizzleBotRepository()
-  return repo.getSentPropertiesByLead(ctx, leadId)
+  return repo.getSentPropertiesByContact(ctx, contactId)
 }
 
 export async function getSentPropertiesAllUseCase(

@@ -36,7 +36,7 @@ export interface SourceMetric {
 export interface PropertyRanking {
   id: string
   title: string
-  leads: number
+  inquiries: number
   visits: number
   appointments: number
 }

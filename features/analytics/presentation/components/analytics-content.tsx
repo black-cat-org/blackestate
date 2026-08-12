@@ -5,7 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { DateRangeFilter } from "@/features/analytics/presentation/components/date-range-filter"
 import { ExportButton } from "@/features/analytics/presentation/components/export-button"
 import { OverviewTab } from "@/features/analytics/presentation/components/tabs/overview-tab"
-import { LeadsTab } from "@/features/analytics/presentation/components/tabs/leads-tab"
+import { InquiriesTab } from "@/features/analytics/presentation/components/tabs/inquiries-tab"
 import { PropertiesTab } from "@/features/analytics/presentation/components/tabs/properties-tab"
 import { FinancialTab } from "@/features/analytics/presentation/components/tabs/financial-tab"
 import { BotTab } from "@/features/analytics/presentation/components/tabs/bot-tab"
@@ -14,19 +14,19 @@ import type { DateRangePreset, StatCardData, TimeSeriesPoint, AlertItem, FunnelS
 
 interface OverviewData {
   stats: StatCardData[]
-  leadsTrend: TimeSeriesPoint[]
+  inquiriesTrend: TimeSeriesPoint[]
   conversionsByMonth: TimeSeriesPoint[]
   sourceDistribution: { source: string; label: string; count: number; percentage: number }[]
   alerts: AlertItem[]
   highlights: string[]
 }
 
-interface LeadsData {
+interface InquiriesData {
   stats: StatCardData[]
   conversionFunnel: FunnelStep[]
-  leadsBySourceOverTime: TimeSeriesPoint[]
+  inquiriesBySourceOverTime: TimeSeriesPoint[]
   conversionBySource: SourceMetric[]
-  leadsByPropertyType: { type: string; label: string; count: number }[]
+  inquiriesByPropertyType: { type: string; label: string; count: number }[]
 }
 
 interface PropertiesData {
@@ -67,7 +67,7 @@ interface MyActivityData {
 
 interface AnalyticsContentProps {
   overviewData: OverviewData
-  leadsData: LeadsData
+  inquiriesData: InquiriesData
   propertiesData: PropertiesData
   financialData: FinancialData
   botData: BotData
@@ -80,7 +80,7 @@ function formatStatChange(change?: number): string {
   return `${sign}${change}%`
 }
 
-export function AnalyticsContent({ overviewData, leadsData, propertiesData, financialData, botData, myActivityData }: AnalyticsContentProps) {
+export function AnalyticsContent({ overviewData, inquiriesData, propertiesData, financialData, botData, myActivityData }: AnalyticsContentProps) {
   const [dateRange, setDateRange] = useState<DateRangePreset>("30d")
   const [activeTab, setActiveTab] = useState("overview")
 
@@ -89,12 +89,12 @@ export function AnalyticsContent({ overviewData, leadsData, propertiesData, fina
       case "overview": {
         const rows: (string | number)[][] = []
 
-        // Stats section
+        // Stats section.
         for (const stat of overviewData.stats) {
           rows.push([stat.title, String(stat.value), formatStatChange(stat.change)])
         }
 
-        // Blank separator
+        // Blank separator.
         rows.push(["", "", ""])
         rows.push(["Distribución por fuente", "", ""])
         rows.push(["Fuente", "Cantidad", "Porcentaje"])
@@ -104,40 +104,40 @@ export function AnalyticsContent({ overviewData, leadsData, propertiesData, fina
         }
 
         return {
-          title: "Resumen General",
+          title: "Resumen general",
           headers: ["Métrica", "Valor", "Cambio"],
           rows,
         }
       }
 
-      case "leads": {
+      case "inquiries": {
         const rows: (string | number)[][] = []
 
-        // Stats section
-        for (const stat of leadsData.stats) {
+        // Stats section.
+        for (const stat of inquiriesData.stats) {
           rows.push([stat.title, String(stat.value), formatStatChange(stat.change)])
         }
 
-        // Blank separator
+        // Blank separator.
         rows.push(["", "", ""])
         rows.push(["Embudo de conversión", "", ""])
-        rows.push(["Estado", "Cantidad", ""])
+        rows.push(["Etapa", "Cantidad", ""])
 
-        for (const step of leadsData.conversionFunnel) {
+        for (const step of inquiriesData.conversionFunnel) {
           rows.push([step.label, step.value, ""])
         }
 
-        // Conversion by source
+        // Conversion by source.
         rows.push(["", "", ""])
         rows.push(["Conversión por fuente", "", ""])
-        rows.push(["Fuente", "Leads", "Tasa de conversión"])
+        rows.push(["Fuente", "Consultas", "Tasa de conversión"])
 
-        for (const src of leadsData.conversionBySource) {
+        for (const src of inquiriesData.conversionBySource) {
           rows.push([src.label, src.count, `${src.conversionRate}%`])
         }
 
         return {
-          title: "Analítica de Leads",
+          title: "Analítica de consultas",
           headers: ["Métrica", "Valor", "Cambio"],
           rows,
         }
@@ -146,12 +146,12 @@ export function AnalyticsContent({ overviewData, leadsData, propertiesData, fina
       case "properties": {
         const rows: (string | number)[][] = []
 
-        // Stats section
+        // Stats section.
         for (const stat of propertiesData.stats) {
           rows.push([stat.title, String(stat.value), formatStatChange(stat.change)])
         }
 
-        // Inventory status
+        // Inventory status.
         rows.push(["", "", ""])
         rows.push(["Estado del inventario", "", ""])
         rows.push(["Estado", "Cantidad", "Porcentaje"])
@@ -160,7 +160,7 @@ export function AnalyticsContent({ overviewData, leadsData, propertiesData, fina
           rows.push([inv.label, inv.count, `${inv.percentage}%`])
         }
 
-        // Price by zone
+        // Price by zone.
         rows.push(["", "", ""])
         rows.push(["Precio por zona", "", ""])
         rows.push(["Zona", "Precio promedio", "Precio/m²"])
@@ -170,7 +170,7 @@ export function AnalyticsContent({ overviewData, leadsData, propertiesData, fina
         }
 
         return {
-          title: "Analítica de Propiedades",
+          title: "Analítica de propiedades",
           headers: ["Métrica", "Valor", "Cambio"],
           rows,
         }
@@ -179,12 +179,12 @@ export function AnalyticsContent({ overviewData, leadsData, propertiesData, fina
       case "financial": {
         const rows: (string | number)[][] = []
 
-        // Stats section
+        // Stats section.
         for (const stat of financialData.stats) {
           rows.push([stat.title, String(stat.value), formatStatChange(stat.change)])
         }
 
-        // Revenue by month
+        // Revenue by month.
         rows.push(["", "", ""])
         rows.push(["Ingresos por mes", "", ""])
         rows.push(["Mes", "Ingreso", "Meta"])
@@ -193,11 +193,11 @@ export function AnalyticsContent({ overviewData, leadsData, propertiesData, fina
           rows.push([
             point.date,
             typeof point.revenue === "number" ? `$${point.revenue.toLocaleString()}` : String(point.revenue ?? ""),
-            typeof point.meta === "number" ? `$${point.meta.toLocaleString()}` : String(point.meta ?? ""),
+            typeof point.goal === "number" ? `$${point.goal.toLocaleString()}` : String(point.goal ?? ""),
           ])
         }
 
-        // Top operations
+        // Top operations.
         rows.push(["", "", ""])
         rows.push(["Top operaciones", "", ""])
         rows.push(["Propiedad", "Tipo", "Comisión"])
@@ -207,7 +207,7 @@ export function AnalyticsContent({ overviewData, leadsData, propertiesData, fina
         }
 
         return {
-          title: "Analítica Financiera",
+          title: "Analítica financiera",
           headers: ["Métrica", "Valor", "Cambio"],
           rows,
         }
@@ -216,12 +216,12 @@ export function AnalyticsContent({ overviewData, leadsData, propertiesData, fina
       case "bot": {
         const rows: (string | number)[][] = []
 
-        // Stats section
+        // Stats section.
         for (const stat of botData.stats) {
           rows.push([stat.title, String(stat.value), formatStatChange(stat.change)])
         }
 
-        // Bot funnel
+        // Bot funnel.
         rows.push(["", "", ""])
         rows.push(["Embudo del bot", "", ""])
         rows.push(["Etapa", "Cantidad", "Porcentaje"])
@@ -231,7 +231,7 @@ export function AnalyticsContent({ overviewData, leadsData, propertiesData, fina
         }
 
         return {
-          title: "Analítica del Bot",
+          title: "Analítica del bot",
           headers: ["Métrica", "Valor", "Cambio"],
           rows,
         }
@@ -243,7 +243,7 @@ export function AnalyticsContent({ overviewData, leadsData, propertiesData, fina
           rows.push([stat.title, String(stat.value), formatStatChange(stat.change)])
         }
         return {
-          title: "Mi Actividad",
+          title: "Mi actividad",
           headers: ["Métrica", "Valor", "Cambio"],
           rows,
         }
@@ -256,7 +256,7 @@ export function AnalyticsContent({ overviewData, leadsData, propertiesData, fina
           rows: [],
         }
     }
-  }, [activeTab, overviewData, leadsData, propertiesData, financialData, botData, myActivityData])
+  }, [activeTab, overviewData, inquiriesData, propertiesData, financialData, botData, myActivityData])
 
   return (
     <div className="flex flex-1 flex-col gap-4">
@@ -268,18 +268,18 @@ export function AnalyticsContent({ overviewData, leadsData, propertiesData, fina
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
           <TabsTrigger value="overview">Resumen</TabsTrigger>
-          <TabsTrigger value="leads">Leads</TabsTrigger>
+          <TabsTrigger value="inquiries">Consultas</TabsTrigger>
           <TabsTrigger value="properties">Propiedades</TabsTrigger>
           <TabsTrigger value="financial">Financiero</TabsTrigger>
           <TabsTrigger value="bot">Bot</TabsTrigger>
-          <TabsTrigger value="my-activity">Mi Actividad</TabsTrigger>
+          <TabsTrigger value="my-activity">Mi actividad</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="mt-4">
           <OverviewTab {...overviewData} />
         </TabsContent>
-        <TabsContent value="leads" className="mt-4">
-          <LeadsTab {...leadsData} />
+        <TabsContent value="inquiries" className="mt-4">
+          <InquiriesTab {...inquiriesData} />
         </TabsContent>
         <TabsContent value="properties" className="mt-4">
           <PropertiesTab {...propertiesData} />

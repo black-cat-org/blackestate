@@ -46,7 +46,7 @@ export function BotView({ activities, messages }: BotViewProps) {
     const now = new Date()
 
     return activities.filter((a) => {
-      if (q && !a.leadName.toLowerCase().includes(q) && !a.description.toLowerCase().includes(q)) return false
+      if (q && !a.contactName.toLowerCase().includes(q) && !a.description.toLowerCase().includes(q)) return false
 
       if (timeRange !== "all") {
         const ts = new Date(a.timestamp)
@@ -88,7 +88,7 @@ export function BotView({ activities, messages }: BotViewProps) {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Buscar por lead o descripción..."
+            placeholder="Buscar por contacto o descripción..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-9"
@@ -140,7 +140,7 @@ export function BotView({ activities, messages }: BotViewProps) {
           onClick={() => setViewMode("leads")}
         >
           <Users className="size-3.5 mr-1" />
-          Por Lead
+          Por Contacto
         </Button>
         <Button
           variant={viewMode === "tipo" ? "secondary" : "ghost"}

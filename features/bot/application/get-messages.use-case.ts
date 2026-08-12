@@ -9,10 +9,10 @@ export async function getAllMessagesUseCase(
   return repo.getAllMessages(ctx)
 }
 
-export async function getMessagesByLeadUseCase(
+export async function getMessagesByContactUseCase(
   ctx: SessionContext,
-  leadId: string,
+  contactId: string,
 ): Promise<BotMessage[]> {
   const repo = new DrizzleBotRepository()
-  return repo.getMessagesByLead(ctx, leadId)
+  return repo.getMessagesByContact(ctx, contactId)
 }

@@ -137,7 +137,7 @@
 | 2.1.15.15 | Partial indexes en `deleted_at` | Partial indexes creados en 14 tablas (cobertura mayor que las 3 originales del plan). Tablas alto tráfico: `properties_active_org_idx`, `leads_active_org_idx`, `appointments_active_org_starts_idx` (incluye `starts_at` para agenda). Mirror indexes para papelera (`WHERE deleted_at IS NOT NULL`) en todas las tablas con soft delete. Verificado vía `pg_indexes`. | ✅ |
 | 2.1.15.11 | Permiso `org:properties:assign` | Permisos creados con nomenclatura `property.assign` + `lead.assign` (formato dot en vez de `org:properties:assign` del plan original — misma intención). Owner + admin tienen ambos. Agent bloqueado (no presente). Verificado en `role_permissions`. La función `authorize()` lee de esta tabla. | ✅ |
 | 2.1.15.12 | Tabla `property_transfers` | Schema creado en `lib/db/schema/property-transfers.ts` con audit trail (`fromUserId`, `toUserId`, `transferredByUserId`, `propertyIds`, counts cascade, `acknowledgedAt`, `notes`, timestamps) + RLS. Server actions + UI pendientes (ver 2.1.15.13-14 y 2.4). | ✅ (schema) |
-| 2.1.15.13 | `transferProperties()` | Server Action: bulk transfer N propiedades + cascade (leads, appointments, ai_contents, lead_property_queue). Actualiza `created_by_user_id` en todo. Crea registro en `property_transfers`. Todo en una transacción. Solo owner/admin. | ⬜ |
+| 2.1.15.13 | `transferProperties()` | Server Action: bulk transfer N propiedades + cascade (deals, appointments, ai_contents, contact_property_queue). Actualiza `created_by_user_id` en todo. Crea registro en `property_transfers`. Todo en una transacción. Solo owner/admin. **Inquiries NO cascadean** (interés ligero histórico — viaja con el Contact). **Contacts opt-in** via toggle. Detalle en `docs/plans/2026-05-13-property-transfers.md`. Pre-requisito cumplido: refactor 2.2.10 ✅. Pendiente: sub-plan property-transfers (rama `feat/property-transfers`). | ⬜ |
 | 2.1.15.14 | `previewTransfer()` | Server Action: dado N property IDs y agente destino, retorna resumen de todo lo que se va a transferir (counts) sin ejecutar. Para el dialog de confirmación. | ⬜ |
 
 **Tablas y policies:**
@@ -260,6 +260,32 @@
 | 2.2.9.2 | Delete `lib/types/` | Deleted. Entity types in `features/*/domain/`. Shared types in `features/shared/domain/`. | ✅ |
 | 2.2.9.3 | Update `CLAUDE.md` | Project structure section reflects `features/` architecture. | ✅ |
 | 2.2.9.4 | Full build | Build passes. 0 old imports. 0 backward compat files. 0 empty directories. | ✅ |
+
+#### 2.2.10 — Refactor `lead` → `contact` + `inquiry` + `deal` (split entidad mono-tabla)
+
+> **Sub-plan completo:** `docs/plans/2026-05-13-contact-inquiry-refactor.md` (Fases 1–11 cerradas 2026-05-16).
+>
+> El modelo `leads` mono-tabla mezclaba **identidad** (persona), **interés ligero** (consulta sin compromiso) y **oportunidad comercial** (deal con funnel). Validamos contra Salesforce Propertybase + HubSpot y partimos en tres entidades:
+>
+> - **Contact** (`features/contacts/`) — persona física. Dedup `(org, phone) | (org, email)` en use case (no UNIQUE constraint — phone/email nullable y mutables, teléfonos familiares legítimos).
+> - **Inquiry** (`features/inquiries/`) — interés ligero sin funnel. Status `open` / `discarded` / `promoted`. Form público y bot crean Inquiries. Partial UNIQUE `(org, contact, property) WHERE status='open' AND deleted_at IS NULL` reactiva el "open" si el mismo contacto vuelve a consultar la misma prop.
+> - **Deal** (`features/deals/`) — oportunidad comercial con funnel 5 stages (`visit_scheduled` → `negotiation` → `reservation` → `won` | `lost`). `inquiry_id` opcional (back-link cuando nació de un Inquiry promote).
+
+| # | Tarea | Detalle | Estado |
+|---|-------|---------|--------|
+| 2.2.10.1 | Domain (3 features) | `contact.entity.ts` + `inquiry.entity.ts` (con invariante bidireccional `promoted_deal_id ↔ deal.inquiry_id`) + `deal.entity.ts` (5 stages enum + `ACTIVE_DEAL_STAGES` derived type). Repositorios como ports. | ✅ |
+| 2.2.10.2 | Drizzle schemas | `lib/db/schema/contact.ts` + `inquiry.ts` + `deal.ts` + `contact-property-queue.ts` + enums (`dealStageEnum`, `dealSourceEnum`, `inquiryStatusEnum`, `inquirySourceEnum`). Partial indexes + partial UNIQUE en SQL manual (Drizzle Kit no los expresa). | ✅ |
+| 2.2.10.3 | Migración data (mig 026) | One-shot ETL: dedup `leads` por `(org, phone\|email)` → `contact`; mapping por status → `deal` (won/lost/visit_scheduled) o `inquiry` (resto); `appointments.lead_id` → `appointments.deal_id`. Invariantes MIG1–MIG11 verificadas. | ✅ |
+| 2.2.10.4 | Mappers (3 features) | `null ↔ undefined` mappers en cada infrastructure layer. Mismo patrón que `property.mapper.ts`. | ✅ |
+| 2.2.10.5 | Repositorios Drizzle | `withRLS` en todas las queries. `IInquiryRepository.promote` corre INSERT deal + UPDATE inquiry en single tx (única exception documentada Feature-A↔Feature-B Infrastructure import — ver CLAUDE.md `Import Rules`). | ✅ |
+| 2.2.10.6 | Use cases | Composición cross-feature documentada: `features/inquiries/application/create-inquiry.use-case.ts` importa `findOrCreateContactUseCase` de contacts (toda Inquiry necesita un Contact resuelto). | ✅ |
+| 2.2.10.7 | Server Actions + presentation | Páginas `/dashboard/contacts/`, `/dashboard/inquiries/`, `/dashboard/deals/` (Kanban+Tabla con toggle URL-persisted `?view=`). Sidebar refactoreado: Contactos / Consultas / Negocios. Detail pages con drill-down bidireccional. | ✅ |
+| 2.2.10.8 | Form público + RPC anon | `public.public_create_inquiry` SECURITY DEFINER (mig 028) — único path donde anon escribe en domain. EC8 reactivación + race-safe via partial UNIQUE catch. `LandingContactForm` apunta directo. | ✅ |
+| 2.2.10.9 | Bot migration | `bot_conversations.lead_id` → `contact_id` (mig 029). Repository `features/bot/` actualizado para JOIN contact. | ✅ |
+| 2.2.10.10 | Throw token convention | `lowercase_snake_case` adoptado en repos contacts/inquiries/deals desde día uno (`contact_not_found`, `deal_already_active`, `inquiry_not_open`, etc.). Properties/Appointments aún SCREAMING legacy (migran en tickets aparte). | ✅ |
+| 2.2.10.11 | DB defaults `id` (mig 031) | `gen_random_uuid()::text` agregado como DB default a `contact.id` / `inquiry.id` / `deal.id` — el RPC del form público insertaba sin `id` y rompía con NOT NULL violation. Drizzle `$defaultFn` solo aplica TS-side; el default DB protege RPCs/seeds/scripts. Schemas TS sync con `.default(sql\`...\`)` para evitar drift. Bug detectado por R47 Playwright smoke. | ✅ |
+| 2.2.10.12 | Tests + invariants | Playwright smoke §6.3 17/17 ✅ + §6.4 DB invariants ✅ (bidireccional Inquiry↔Deal, no dangling deals, `stage_order` denso). Tabla detallada en `docs/plans/2026-05-13-contact-inquiry-refactor.md` R47. | ✅ |
+| 2.2.10.K1 | Legacy `features/leads/` preservado | R43–R46 del sub-plan (eliminar `features/leads/` + `lib/db/schema/leads.ts` + enums legacy + DROP TABLE) **pausados bajo confirmación estricta** porque la UI dashboard `/leads` aún se consume y forma parte del audit de restauración (`docs/ui-restoration-audit.md`). Entry "Leads (legacy)" en sidebar mantiene acceso. Levantar pausa cuando el audit cierre. | ⏭️ pausado |
 
 #### Known issues (deferred — not blocking, fix when touching related features)
 

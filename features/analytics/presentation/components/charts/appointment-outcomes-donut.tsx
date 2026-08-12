@@ -32,7 +32,7 @@ export function AppointmentOutcomesDonut({ data }: AppointmentOutcomesDonutProps
       <CardHeader className="pb-2">
         <ChartHeader
           title="Resultado de citas"
-          helpText="Muestra cómo terminaron todas las citas que el bot agendó en este período. Solicitada significa que el lead pidió la cita pero aún no fue confirmada. Confirmada significa que fue aceptada pero aún no ocurrió. Completada significa que la visita se realizó. Cancelada significa que no se llevó a cabo. Una tasa de completadas alta significa que el bot está agendando citas de calidad con leads realmente interesados."
+          helpText="Muestra cómo terminaron todas las citas que el bot agendó en este período. Solicitada significa que la consulta pidió la cita pero aún no fue confirmada. Confirmada significa que fue aceptada pero aún no ocurrió. Completada significa que la visita se realizó. Cancelada significa que no se llevó a cabo. Una tasa de completadas alta significa que el bot está agendando citas de calidad con consultas realmente interesadas."
           subtitle="cómo terminaron las citas que el bot agendó en este período"
         />
       </CardHeader>

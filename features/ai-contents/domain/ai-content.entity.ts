@@ -11,6 +11,7 @@ export interface AiContentAnalytics {
 
 export interface AiContent {
   id: string
+  createdByUserId: string
   propertyId: string
   propertyTitle: string
   type: AiContentType

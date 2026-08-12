@@ -7,28 +7,16 @@ import {
 } from "@/components/ui/breadcrumb"
 import { DashboardHeader } from "@/components/dashboard-header"
 import { StatCard } from "@/components/dashboard/stat-card"
-import { LeadsBySourceChart } from "@/components/dashboard/leads-by-source-chart"
-import { LeadsFunnelChart } from "@/components/dashboard/leads-funnel-chart"
+import { InquiriesBySourceChart } from "@/components/dashboard/inquiries-by-source-chart"
+import { InquiriesFunnelChart } from "@/components/dashboard/inquiries-funnel-chart"
 import { UpcomingAppointments } from "@/components/dashboard/upcoming-appointments"
 import { RecentActivity } from "@/components/dashboard/recent-activity"
-import {
-  getDashboardStatsAction,
-  getLeadsBySourceAction,
-  getLeadsByStatusAction,
-  getUpcomingAppointmentsAction,
-  getRecentActivitiesAction,
-} from "@/features/dashboard/presentation/actions"
+import { getDashboardDataAction } from "@/features/dashboard/presentation/actions"
 import { PendingInvitationsPanel } from "@/features/shared/presentation/components/pending-invitations-panel"
 
 export default async function DashboardPage() {
-  const [stats, leadsBySource, leadsByStatus, upcomingAppointments, recentActivities] =
-    await Promise.all([
-      getDashboardStatsAction(),
-      getLeadsBySourceAction(),
-      getLeadsByStatusAction(),
-      getUpcomingAppointmentsAction(),
-      getRecentActivitiesAction(8),
-    ])
+  const { stats, inquiriesBySource, inquiriesByStatus, upcomingAppointments, recentActivities } =
+    await getDashboardDataAction()
 
   return (
     <>
@@ -47,9 +35,9 @@ export default async function DashboardPage() {
         {/* KPI Cards */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <StatCard
-            title="Leads totales"
-            value={stats.totalLeads}
-            subtitle={`${stats.newLeadsCount} nuevos`}
+            title="Consultas totales"
+            value={stats.totalInquiries}
+            subtitle={`${stats.newInquiriesCount} abiertas`}
             icon={Users}
           />
           <StatCard
@@ -67,15 +55,15 @@ export default async function DashboardPage() {
           <StatCard
             title="Tasa de conversión"
             value={`${stats.conversionRate.toFixed(1)}%`}
-            subtitle={`${Math.round(stats.conversionRate * stats.totalLeads / 100)} cerrado de ${stats.totalLeads} leads`}
+            subtitle={`${stats.wonDealsCount} ventas ganadas de ${stats.totalInquiries} consultas`}
             icon={TrendingUp}
           />
         </div>
 
         {/* Charts */}
         <div className="grid gap-4 md:grid-cols-2">
-          <LeadsBySourceChart data={leadsBySource} />
-          <LeadsFunnelChart data={leadsByStatus} />
+          <InquiriesBySourceChart data={inquiriesBySource} />
+          <InquiriesFunnelChart data={inquiriesByStatus} />
         </div>
 
         {/* Panels */}

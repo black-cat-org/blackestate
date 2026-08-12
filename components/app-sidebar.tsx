@@ -6,6 +6,8 @@ import {
   Bot,
   Building2,
   Calendar,
+  Handshake,
+  HelpCircle,
   LayoutDashboard,
   LifeBuoy,
   Megaphone,
@@ -31,7 +33,15 @@ const data = {
   navMain: [
     { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
     { title: "Propiedades", url: "/dashboard/properties", icon: Building2 },
-    { title: "Leads", url: "/dashboard/leads", icon: Users },
+    { title: "Contactos", url: "/dashboard/contacts", icon: Users },
+    { title: "Consultas", url: "/dashboard/inquiries", icon: HelpCircle },
+    { title: "Negocios", url: "/dashboard/deals", icon: Handshake },
+    // TODO(ui-restoration): temporary "Leads (legacy)" entry restored to let
+    // the user navigate the rich Lead detail surface (bot timeline, chat
+    // dialog, suggested properties) while we audit what to port into the
+    // new Contact / Inquiry / Deal pages. Remove after the audit doc
+    // (docs/ui-restoration-audit.md) is resolved and Phase R-UI-3 ships.
+    { title: "Leads (legacy)", url: "/dashboard/leads", icon: Users },
     { title: "Conversaciones", url: "/dashboard/conversations", icon: MessageSquare },
     { title: "Citas", url: "/dashboard/appointments", icon: Calendar },
     { title: "Mi Bot", url: "/dashboard/bot", icon: Bot },

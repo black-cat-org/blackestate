@@ -102,7 +102,7 @@ export function AiCaptionGenerator({ property, defaultPlatform, onSave }: AiCapt
             Incluir algo específico (opcional)
           </label>
           <Input
-            placeholder='Ej: "mencionar la pileta"'
+            placeholder='Ej: "mencionar la piscina"'
             value={customNote}
             onChange={(e) => setCustomNote(e.target.value)}
           />

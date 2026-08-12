@@ -25,7 +25,7 @@ export function ConversionBySource({ data }: ConversionBySourceProps) {
       <CardHeader className="pb-2">
         <ChartHeader
           title="Conversión por fuente"
-          helpText="Muestra qué canal te trae los leads que realmente compran o alquilan. Por ejemplo si Instagram tiene 50% significa que 1 de cada 2 leads de Instagram termina en venta. Úsalo para saber dónde están tus mejores clientes."
+          helpText="Muestra qué canal te trae las consultas que realmente compran o alquilan. Por ejemplo si Instagram tiene 50% significa que 1 de cada 2 consultas de Instagram termina en venta. Úsalo para saber dónde están tus mejores clientes."
           subtitle="qué canal te trae los clientes que realmente cierran"
         />
       </CardHeader>
@@ -44,7 +44,7 @@ export function ConversionBySource({ data }: ConversionBySourceProps) {
                   <div className="h-full rounded-full transition-all" style={{ width: `${widthPct}%`, backgroundColor: color }} />
                 </div>
                 <span className="w-12 text-right text-sm font-semibold">{entry.conversionRate}%</span>
-                <span className="w-16 text-right text-xs text-muted-foreground">{entry.count} leads</span>
+                <span className="w-16 text-right text-xs text-muted-foreground">{entry.count} consultas</span>
               </div>
             )
           })}

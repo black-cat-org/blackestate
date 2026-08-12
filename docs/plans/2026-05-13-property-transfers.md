@@ -2,7 +2,7 @@
 
 **Fecha:** 2026-05-13
 **Branch:** `feat/property-transfers`
-**Pre-requisito:** `docs/plans/2026-05-13-contact-inquiry-refactor.md` mergeado (modelo Contact + Inquiry activo).
+**Pre-requisito:** `docs/plans/2026-05-13-contact-deal-refactor.md` mergeado (modelo Contact + Deal + Funnel activo).
 **Tareas plan maestro:** `2.1.15.13`, `2.1.15.14`, `2.4.1`–`2.4.4` (2.4.5 ⏭️ Capa 4)
 **Estado actual:** schema `property_transfers` ✅ + RLS ✅ + permisos `property.assign` ✅. Falta: aplicación, server actions, UI, notificación email + realtime.
 
@@ -10,28 +10,38 @@
 
 ## 1. Resumen
 
-Owner/admin transfiere **N propiedades de un agente origen a un agente destino** dentro de la misma org. La operación hace **cascade configurable** sobre lo que cuelga de esas props (inquiries, appointments, ai_contents, contact_property_queue) actualizando `created_by_user_id`. Toda la operación corre en **una transacción** con audit row en `property_transfers`. El receptor:
+Owner/admin transfiere **N propiedades de un agente origen a un agente destino** dentro de la misma org. La operación hace **cascade configurable** sobre lo que cuelga de esas props (deals, appointments, ai_contents, contact_property_queue) actualizando `created_by_user_id`. Toda la operación corre en **una transacción** con audit row en `property_transfers`. El receptor:
 
 1. **Ve la transferencia en su sidebar** (badge con count de pendientes) — SSR en page-load.
 2. **Recibe push en tiempo real** vía Supabase Realtime broadcast — sin refrescar.
 3. **Recibe email transaccional** — entregado vía `after()` post-action.
 4. Marca la transferencia como revisada (`acknowledgedAt`) desde el inbox.
 
-**No es:** transferencia de propiedad a otra org, transferencia sin cascade obligatorio (las inquiries siempre van, los contacts son opt-in via toggle), transferencia que mueve datos a un agente fuera de la org.
+**No es:** transferencia de propiedad a otra org, transferencia sin cascade obligatorio (las deals siempre van, los contacts son opt-in via toggle), transferencia que mueve datos a un agente fuera de la org.
 
 ---
 
-## 2. Por qué depende del refactor Contact+Inquiry
+## 2. Por qué depende del refactor Contact+Inquiry+Deal
 
-Con el modelo viejo (`leads` mono-tabla mezclando persona+interés), cascadear leads en un transfer significaba arrastrar la identidad del contacto — perdías la posibilidad de "conservar al contacto como tuyo aunque la prop concreta se vaya a Bob".
+Con el modelo viejo (`leads` mono-tabla mezclando persona + interés + oportunidad), cascadear leads en un transfer significaba arrastrar la identidad del contacto — perdías la posibilidad de "conservar al contacto como tuyo aunque la prop concreta se vaya a Bob".
 
-Con el modelo nuevo (Contact ↔ Inquiry), la separación es natural:
+Con el modelo nuevo (Contact + Inquiry + Deal — sub-plan `2026-05-13-contact-inquiry-refactor.md`), la separación es natural y cada entidad cascadea distinto según lo que representa:
 
-- **Inquiries** se cascadean siempre — un interés en una prop específica viaja con la prop.
-- **Contacts** se quedan con el agente original por default — la identidad de la persona no es de la propiedad.
-- **Toggle "transferir contacts también"** queda como **opción avanzada** para el caso donde owner/admin quiere transferir el "directorio completo" relacionado con esas props (por ejemplo: Alice se va de la agencia y todo lo suyo pasa a Bob — contacts + inquiries + citas + etc.).
+| Entidad | ¿Cascadea en transfer? | Razón |
+|---|---|---|
+| **Property** | sí (es lo que se transfiere) | Es el sujeto del transfer. `created_by_user_id` pasa al destino. |
+| **Deal** | **sí, siempre** | Una Deal es **compromiso comercial real** del agente sobre una prop concreta (visita agendada, negociación abierta, reserva). El compromiso está atado a la prop — si la prop se va, la responsabilidad de cerrarla se va con ella. El receptor necesita continuar la negociación. |
+| **Inquiry** | **no, nunca** | Una Inquiry es **interés ligero histórico** ("Carlos llenó el form preguntando por Casa A"). Es un registro de la conversación que el Contact tuvo con el agente original, no un compromiso. Vive con el Contact (su historial) y **NO se mueve con la prop**. Si transfieres el Contact (toggle opcional, ver siguiente fila), las Inquiries lo siguen porque viven en su línea de tiempo — no porque las cascadee el transfer de prop. |
+| **Contact** | **opt-in** via toggle | Identidad de la persona. Por default queda con el agente original — el "directorio" es del agente, no de la prop. El toggle "transferir también los contactos asociados" lo activa para casos como "Alice se va de la agencia" donde todo su pipeline (contacts + sus inquiries históricas + sus deals + citas + queue) pasa a Bob. |
+| **Appointment** | sí (vía `deal_id`) | Visita agendada atada a un Deal; viaja con él. |
+| **AI content** | sí (vía `property_id`) | Brochures generados para la prop. |
+| **`contact_property_queue`** | sí (vía `property_id`) | Cola de envío de la prop al contact; vive en el contexto de la prop. |
 
-Este modelo elimina el toggle por categoría que habíamos discutido antes (leads/citas/contenidos/cola). Ahora el toggle es uno solo: "**¿transferir también los contactos asociados?**".
+**Justificación operativa de "Inquiry no cascadea":** imaginá que Alice recibió 20 Inquiries sobre 10 props distintas durante el último año. Si vendemos 3 de esas props a Bob, Bob no necesita ver las 6 Inquiries históricas asociadas — son conversaciones que Alice tuvo y para las que ya decidió no abrir un Deal. Cascadear Inquiries (a) ensucia la inbox de Bob con contactos cold que no conoce, (b) le da visibilidad sobre contactos privados de Alice (contactos cuya información comercial vive con Alice), y (c) confunde el funnel de Bob mezclando "interés histórico de otro agente" con "interés mío activo".
+
+La regla derivada es simple: **lo que cascadea en transfer de prop es lo que tiene compromiso comercial activo del agente sobre esa prop concreta. El registro de conversaciones pasadas no es compromiso — vive con el Contact.**
+
+Esto elimina el toggle por categoría que habíamos discutido antes (leads/citas/contenidos/cola). Ahora el toggle es uno solo: "**¿transferir también los contactos asociados?**" — y la cascada de Inquiries se decide automáticamente por dónde vive el Contact (con el agente original → Inquiries con él; con el destino → Inquiries con él).
 
 ---
 
@@ -82,7 +92,7 @@ export interface PropertyTransfer {
   counts: {
     properties: number
     contacts: number       // count cuando transferContacts = true; 0 si no
-    inquiries: number
+    deals: number
     appointments: number
     aiContents: number
     queueItems: number
@@ -113,8 +123,8 @@ export type TransferWarning =
   | { code: "properties_not_found"; missingIds: string[] }
   | { code: "properties_not_owned_by_source"; ids: string[] }
   | { code: "properties_deleted"; ids: string[] }
-  | { code: "contact_has_other_inquiries"; contactIds: string[]; note: string }
-  // ↑ Solo cuando transferContacts = true Y el contact tiene inquiries en
+  | { code: "contact_has_other_deals"; contactIds: string[]; note: string }
+  // ↑ Solo cuando transferContacts = true Y el contact tiene deals en
   //   props que NO están en el batch — el receptor "hereda" un contact
   //   con visibilidad cruzada. Decisión del operador.
 
@@ -135,7 +145,7 @@ Tabla `property_transfers` con ajustes:
 
 | Columna | Cambio | Razón |
 |---|---|---|
-| `leads_count` | RENAME → `inquiries_count` | Coherencia con refactor Contact+Inquiry |
+| `leads_count` | RENAME → `deals_count` | Coherencia con refactor Contact+Deal |
 | `contacts_count` | **NUEVA** `integer NOT NULL default 0` | Audit count cuando transferContacts=true |
 | `transfer_contacts` | **NUEVA** `boolean NOT NULL default false` | Audit flag de si se transfirieron contacts |
 
@@ -168,12 +178,24 @@ export interface IPropertyTransferRepository {
    → si no: `DESTINATION_NOT_IN_ORG`.
 4. `fromUserId != toUserId` (defense-in-depth post UI validation) → si no: `SAME_AGENT_TRANSFER`.
 5. `UPDATE properties SET created_by_user_id = :toUserId WHERE id = ANY(:ids) AND organization_id = ctx.orgId` → updated count.
-6. `UPDATE inquiry SET created_by_user_id = :toUserId WHERE property_id = ANY(:ids) AND organization_id = ctx.orgId AND deleted_at IS NULL RETURNING id` → `inquiriesCount`.
+6. `UPDATE deal SET created_by_user_id = :toUserId WHERE property_id = ANY(:ids) AND organization_id = ctx.orgId AND deleted_at IS NULL RETURNING id` → `dealsCount`.
 7. `UPDATE appointments SET created_by_user_id = :toUserId WHERE property_id = ANY(:ids) AND organization_id = ctx.orgId AND deleted_at IS NULL RETURNING id` → `appointmentsCount`.
 8. `UPDATE ai_contents SET created_by_user_id = :toUserId WHERE property_id = ANY(:ids) AND organization_id = ctx.orgId AND deleted_at IS NULL RETURNING id` → `aiContentsCount`.
 9. `UPDATE contact_property_queue SET created_by_user_id = :toUserId WHERE property_id = ANY(:ids) AND organization_id = ctx.orgId AND deleted_at IS NULL RETURNING id` → `queueItemsCount`.
 10. **Si `transferContacts === true`:**
-    - Resolver set de contacts afectados: `SELECT DISTINCT contact_id FROM inquiry WHERE property_id = ANY(:ids) AND organization_id = ctx.orgId AND deleted_at IS NULL`.
+    - Resolver set de contacts afectados — **UNION de Deal + Inquiry** sobre las props del batch:
+      ```sql
+      SELECT DISTINCT contact_id FROM deal
+        WHERE property_id = ANY(:ids)
+          AND organization_id = ctx.orgId
+          AND deleted_at IS NULL
+      UNION
+      SELECT DISTINCT contact_id FROM inquiry
+        WHERE property_id = ANY(:ids)
+          AND organization_id = ctx.orgId
+          AND deleted_at IS NULL
+      ```
+      El UNION cierra el gap conceptual de §2 ("Inquiries siguen al Contact"): un Contact que solo tiene Inquiries (nunca promovidas a Deal) sobre las props del batch también debe moverse cuando `transferContacts=true`. Sin el UNION, ese Contact quedaría con el agente origen y sus Inquiries apuntarían a props que ya no le pertenecen — orphan inquiry. Las Inquiries no se actualizan explícitamente acá (no tienen `created_by_user_id` que cambiar — viven en la línea de tiempo del Contact y siguen al `contact.created_by_user_id` que sí se updateó).
     - `UPDATE contact SET created_by_user_id = :toUserId WHERE id = ANY(:contactIds) AND organization_id = ctx.orgId AND deleted_at IS NULL RETURNING id` → `contactsCount`.
 11. `INSERT INTO property_transfers (...)` con todos los counts + `transfer_contacts`.
 
@@ -215,7 +237,7 @@ export interface TransferReceivedPayload {
   transferId: string
   fromUserName: string
   propertyCount: number
-  inquiriesCount: number
+  dealsCount: number
   appointmentsCount: number
 }
 
@@ -252,7 +274,7 @@ const channel = supabase
 **Body:**
 - Saludo al receptor por nombre.
 - "**{fromUserName}** te transfirió {N} propiedad(es) en **{orgName}**".
-- Detalle counts: "{X} consultas, {Y} citas, {Z} contenidos AI" (solo categorías con count > 0).
+- Detalle counts: "{X} negocios, {Y} citas, {Z} contenidos AI" (solo categorías con count > 0).
 - `notes` opcional (si lo escribió el operador).
 - Botón CTA → `${NEXT_PUBLIC_APP_URL}/dashboard/transfers`.
 - Footer estándar.
@@ -329,7 +351,7 @@ export async function executeTransferAction(input: ExecuteTransferInput): Promis
       transferId: transfer.id,
       fromUserName: fromMember?.name ?? fromMember?.email ?? "Un compañero",
       propertyCount: transfer.counts.properties,
-      inquiriesCount: transfer.counts.inquiries,
+      dealsCount: transfer.counts.deals,
       appointmentsCount: transfer.counts.appointments,
     })
 
@@ -397,15 +419,15 @@ Disparado desde el listado de propiedades con selección múltiple:
 │ ☐ Transferir también los contactos          │
 │   asociados a estas propiedades.            │
 │   (Por defecto los contactos siguen siendo  │
-│   tuyos; las consultas se mueven al destino)│
+│   tuyos; los negocios se mueven al destino)│
 │                                             │
 │ ── Resumen ──────────────────────────────── │
 │   3 propiedades                             │
-│   12 consultas (inquiries)                  │
+│   12 negocios                            │
 │   5 citas agendadas                         │
 │   8 contenidos AI                           │
 │   4 ítems en cola del bot                   │
-│   ⚠ 2 contactos tienen consultas en otras  │
+│   ⚠ 2 contactos tienen negocios en otras   │
 │     propiedades — ven info de Bob ahora     │
 │     (solo si activás el toggle)             │
 │                                             │
@@ -468,7 +490,7 @@ previewTransferAction(input)
 getSessionContext + previewTransferUseCase(ctx, repo, input)
     ↓
 repo.preview (withRLS, sin escribir):
-  - COUNT inquiries, appointments, ai_contents, queue WHERE property_id = ANY(ids)
+  - COUNT deals, appointments, ai_contents, queue WHERE property_id = ANY(ids)
   - Si transferContacts: COUNT DISTINCT contact_id + detect "shared contacts"
   - Validate destination (member exists)
   - Build warnings[]
@@ -489,7 +511,7 @@ repo.execute(ctx, input) [ÚNICA TRANSACCIÓN]
   ├─ SELECT properties FOR UPDATE
   ├─ Validate ownership + soft-delete + destination
   ├─ UPDATE properties.created_by_user_id
-  ├─ UPDATE inquiry.created_by_user_id WHERE property_id IN ...
+  ├─ UPDATE deal.created_by_user_id WHERE property_id IN ...
   ├─ UPDATE appointments
   ├─ UPDATE ai_contents
   ├─ UPDATE contact_property_queue
@@ -564,8 +586,8 @@ revalidatePath('/dashboard') → badge se recalcula a count - 1
 | EC10 | Race: 2 owners transfieren misma prop | `FOR UPDATE` serializa. Segundo ve created_by ya cambiado → validation fail → ROLLBACK | FOR UPDATE lock |
 | EC11 | Cualquier paso UPDATE falla | Transacción rollback total. Audit row no se crea. Realtime + email NO se ejecutan (corren en `after()` post-success) | Transaction atomicity |
 | EC12 | Re-ack | RPC retorna `already_acknowledged` | RPC check |
-| EC13 | `transferContacts = true` y contact tiene inquiry en otra prop (no transferida) | Preview warning `contact_has_other_inquiries`. Si el operador confirma → contact pasa a Bob; Bob ahora ve inquiry de Alice en su otra prop. Decisión del operador. | Warning + opt-in |
-| EC14 | `transferContacts = true` pero ningún contact existe (props sin inquiries) | `contactsCount = 0`. Sin error. | Idempotency |
+| EC13 | `transferContacts = true` y contact tiene deal en otra prop (no transferida) | Preview warning `contact_has_other_deals`. Si el operador confirma → contact pasa a Bob; Bob ahora ve deal de Alice en su otra prop. Decisión del operador. | Warning + opt-in |
+| EC14 | `transferContacts = true` pero ningún contact existe (props sin deals) | `contactsCount = 0`. Sin error. | Idempotency |
 | EC15 | Email falla post-execute | DB y broadcast ya OK. Log error. Operador puede resend manual (futuro, fuera de scope v1) | Best-effort `after()` |
 | EC16 | Realtime broadcast falla | DB OK. Email OK. Bob no ve el toast inmediato pero verá el badge en next nav. Log. | Best-effort `after()` |
 | EC17 | Agente removido de la org tras transfer | Su membership queda `deleted_at IS NOT NULL`. Props que recibió quedan con `created_by_user_id` de un user inactivo. **Out of scope** — flow de offboarding lo maneja | N/A |
@@ -589,7 +611,7 @@ revalidatePath('/dashboard') → badge se recalcula a count - 1
 
 | # | Test | Setup | Esperado |
 |---|---|---|---|
-| T1 | Owner transfer 2 props con inquiries (toggle OFF) | Owner sesión, props de Alice | Preview counts. Execute success. Audit row creada. Props + inquiries/appts/contents cascade. **Contacts NO se mueven** (`contactsCount = 0`). Toast |
+| T1 | Owner transfer 2 props con deals (toggle OFF) | Owner sesión, props de Alice | Preview counts. Execute success. Audit row creada. Props + deals/appts/contents cascade. **Contacts NO se mueven** (`contactsCount = 0`). Toast |
 | T2 | Owner transfer mismo escenario con toggle ON | Toggle "transferir contactos" activado | Igual + contacts también pasan a Bob. `contactsCount > 0` |
 | T3 | Admin transfer (no owner) | Admin sesión | Misma capacidad que owner |
 | T4 | Agent abre /dashboard/transfers | Agent sesión | Tab "Todas de la org" no aparece. Solo "Recibidas" + "Realizadas" |
@@ -607,14 +629,14 @@ revalidatePath('/dashboard') → badge se recalcula a count - 1
 | T16 | Email recibido | Inbox Mailtrap | Email llega con counts + CTA |
 | T17 | Email falla (SMTP down) | Mock SMTP error | DB OK. Toast UI normal. Log error |
 | T18 | Realtime broadcast falla | Mock broadcast error | DB OK. Email OK. Badge se ve en próximo nav |
-| T19 | Toggle ON + warning shared contacts | Setup: contact Carlos tiene inquiry en Casa A (transfer) y Casa Z (no transfer) | Preview muestra warning. Si confirma → Bob ve Carlos con inquiry de Casa Z también |
-| T20 | Toggle OFF + contact preserva ownership | Setup igual T19 | Carlos sigue siendo de Alice. Inquiries en Casa A pasan a Bob. Inquiries en Casa Z quedan con Alice |
+| T19 | Toggle ON + warning shared contacts | Setup: contact Carlos tiene deal en Casa A (transfer) y Casa Z (no transfer) | Preview muestra warning. Si confirma → Bob ve Carlos con deal de Casa Z también |
+| T20 | Toggle OFF + contact preserva ownership | Setup igual T19 | Carlos sigue siendo de Alice. Deals en Casa A pasan a Bob. Deals en Casa Z quedan con Alice |
 
 ### 6.3 Verificación DB post-Playwright
 
 | Check | Query |
 |---|---|
-| Counts denormalizados consistentes | `SELECT id, inquiries_count, (SELECT count(*) FROM inquiry WHERE property_id = ANY(property_ids)) FROM property_transfers` |
+| Counts denormalizados consistentes | `SELECT id, deals_count, (SELECT count(*) FROM deal WHERE property_id = ANY(property_ids)) FROM property_transfers` |
 | Cero cross-org bleed | Query como Org-B → 0 visibilidad transfers Org-A |
 | `created_by_user_id` cambió donde debía | `SELECT created_by_user_id FROM properties WHERE id = ANY(...)` |
 | Audit row inmutable | `UPDATE property_transfers SET notes = 'x'` como authenticated → bloqueado |
@@ -628,12 +650,12 @@ Orden interno por tarea: `implementar → code review → fixes → tests → co
 
 ### Pre-requisitos
 
-- [ ] **T0** — Verificar `feat/contact-inquiry-refactor` mergeado a `main`. Si NO → no empezar transfers, terminar refactor primero.
+- [ ] **T0** — Verificar `feat/contact-deal-refactor` mergeado a `main`. Si NO → no empezar transfers, terminar refactor primero.
 - [ ] **T1** — Crear branch `feat/property-transfers` desde `main` post-merge.
 
 ### Capa Infra (SQL + schema)
 
-- [ ] **T2** — Migración SQL `drizzle/sql/027_property_transfers_contacts_columns.sql` (aditiva: `transfer_contacts boolean`, `contacts_count integer`, rename `leads_count` → `inquiries_count`). Aplicada vía Supabase MCP.
+- [ ] **T2** — Migración SQL `drizzle/sql/027_property_transfers_contacts_columns.sql` (aditiva: `transfer_contacts boolean`, `contacts_count integer`, rename `leads_count` → `deals_count`). Aplicada vía Supabase MCP.
 - [ ] **T3** — Migración SQL `drizzle/sql/028_acknowledge_property_transfer_rpc.sql` (RPC SECURITY DEFINER + grants + revokes).
 - [ ] **T4** — Migración SQL `drizzle/sql/029_realtime_user_property_transfers_channel_rls.sql` (RLS policy en Supabase Realtime channel).
 - [ ] **T5** — Actualizar Drizzle schema `lib/db/schema/property-transfers.ts` con las columnas nuevas.
@@ -670,7 +692,7 @@ Orden interno por tarea: `implementar → code review → fixes → tests → co
 
 | # | Decisión | Resolución |
 |---|---|---|
-| D1 | Cascade semantics | ✅ **Inquiries siempre cascadean** (atadas a property). **Contacts opt-in via toggle** (default OFF). Modelo Contact+Inquiry hace toggle por categoría innecesario. |
+| D1 | Cascade semantics | ✅ **Deals siempre cascadean** (atadas a property). **Contacts opt-in via toggle** (default OFF). Modelo Contact+Deal hace toggle por categoría innecesario. |
 | D2 | Multi-source en un batch | ✅ Single source (schema actual) |
 | D3 | `acknowledgedAt` UPDATE | ✅ RPC SECURITY DEFINER (mirror invitation pattern) |
 | D4 | Notificación al receptor | ✅ **A + B**: badge UI (SSR + Realtime broadcast) **+ email** (after() + React Email). Mirror exacto del flow de invitations. |
@@ -684,7 +706,7 @@ Orden interno por tarea: `implementar → code review → fixes → tests → co
 
 | Riesgo | Probabilidad | Impacto | Mitigación |
 |---|---|---|---|
-| Refactor Contact+Inquiry no terminado al empezar este plan | Media | Crítico | T0 valida merge antes de empezar. Si no está mergeado: bloquear |
+| Refactor Contact+Deal no terminado al empezar este plan | Media | Crítico | T0 valida merge antes de empezar. Si no está mergeado: bloquear |
 | Cascade UPDATE rompe trigger downstream | Baja | Medio | Auditar triggers existentes pre-T7. Si hay triggers reactivos a `created_by_user_id` change, evaluar |
 | RPC SECURITY DEFINER mal escrito → privilege escalation | Baja | Crítico | `SET search_path = ''`, EXECUTE solo `authenticated`, validación `auth.uid() = to_user_id` dentro, code review obligatorio del SQL |
 | Race transfer + soft-delete | Media | Medio | `FOR UPDATE` + filter `deleted_at IS NULL` en step 1 |
@@ -692,7 +714,7 @@ Orden interno por tarea: `implementar → code review → fixes → tests → co
 | UI revalidate no refresca badge tras ack | Media | Bajo | `revalidatePath('/dashboard')` post-ack. Smoke T15 verifica |
 | Realtime broadcast no llega al receptor | Media | Bajo | Best-effort `after()`. Badge SSR cubre fallback en next nav (T14, T18 verifican) |
 | Email no se entrega | Media | Bajo | Best-effort `after()`. Log + futura UI de resend manual. T17 verifica que DB OK aunque email falle |
-| Toggle contacts ON cuando contact tiene inquiry cross-prop | Media | Medio | Warning explícito en preview (EC13, T19). Opt-in del operador |
+| Toggle contacts ON cuando contact tiene deal cross-prop | Media | Medio | Warning explícito en preview (EC13, T19). Opt-in del operador |
 
 ---
 
@@ -709,7 +731,7 @@ Orden interno por tarea: `implementar → code review → fixes → tests → co
 
 ## 11. Pre-flight checks antes de empezar T1
 
-- [ ] `feat/contact-inquiry-refactor` mergeado a `main` (T0).
+- [ ] `feat/contact-deal-refactor` mergeado a `main` (T0).
 - [ ] D1–D7 confirmadas (este doc).
 - [ ] Acceso Supabase dev para aplicar migraciones T2–T4.
 - [ ] Mailtrap sandbox configurado (already, vía `EMAIL_FROM` + `SMTP_*` env vars).

@@ -10,14 +10,14 @@ import type {
 export interface IBotRepository {
   // Messages
   getAllMessages(ctx: SessionContext): Promise<BotMessage[]>
-  getMessagesByLead(ctx: SessionContext, leadId: string): Promise<BotMessage[]>
+  getMessagesByContact(ctx: SessionContext, contactId: string): Promise<BotMessage[]>
 
   // Activities
   getAllActivities(ctx: SessionContext): Promise<BotActivity[]>
-  getActivitiesByLead(ctx: SessionContext, leadId: string): Promise<BotActivity[]>
+  getActivitiesByContact(ctx: SessionContext, contactId: string): Promise<BotActivity[]>
 
   // Sent properties
-  getSentPropertiesByLead(ctx: SessionContext, leadId: string): Promise<SentProperty[]>
+  getSentPropertiesByContact(ctx: SessionContext, contactId: string): Promise<SentProperty[]>
   getSentPropertiesAll(ctx: SessionContext): Promise<SentProperty[]>
 
   // Notifications
